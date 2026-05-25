@@ -192,6 +192,14 @@ const Sidebar = ({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) => {
             <LogOut size={18} className="shrink-0" />
             {!collapsed && <span>Logout</span>}
           </button>
+
+          {/* Version */}
+          <div className={`pt-2 mt-1 border-t border-slate-100 flex ${collapsed ? "justify-center" : "items-center justify-between px-1"}`}>
+            {!collapsed && <span className="text-[10px] text-slate-400 font-medium">HumanEdge</span>}
+            <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+              v1.0.0
+            </span>
+          </div>
         </div>
       </aside>
     </>
