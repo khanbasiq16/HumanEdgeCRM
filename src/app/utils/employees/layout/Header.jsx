@@ -46,7 +46,7 @@ const Header = ({ onMobileMenu, mobileOpen }) => {
 
         {/* ── Brand / Logo ── */}
         <div className="flex items-center gap-1 shrink-0 sm:w-52">
-          <div className="w-9 h-9 rounded-xl bg-white shrink-0 shadow-sm flex items-center justify-center p-0.5">
+          <div className="w-9 h-9  flex items-center justify-center p-0.5">
             <Image src="/logo.webp" alt="HumanEdge" width={36} height={36} className="w-full h-full object-contain" />
           </div>
           <div className="hidden sm:flex flex-col leading-none gap-0.5">
