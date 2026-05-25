@@ -1,93 +1,68 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogTrigger,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
+  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select";
 import toast from "react-hot-toast";
 import axios from "axios";
-import { Send } from "lucide-react";
+import { Send, Loader2, User, Mail, Phone } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import { getallclients } from "@/features/Slice/ClientSlice";
-import { useRouter } from "next/navigation";
 
-const SendContractDialog = ({contractid}) => {
-  const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+const selectCls = "h-9 text-sm bg-slate-50 border-slate-200 rounded-lg focus-visible:ring-emerald-500 focus-visible:ring-1";
+
+const SendContractDialog = ({ contractid }) => {
+  const [open, setOpen]                 = useState(false);
+  const [loading, setLoading]           = useState(false);
   const [selectedClient, setSelectedClient] = useState("");
-  const [clientInfo, setClientInfo] = useState(null);
-
-  const router = useRouter();
+  const [clientInfo, setClientInfo]     = useState(null);
 
   const { id } = useParams();
   const dispatch = useDispatch();
-  const { clients } = useSelector((state) => state.Client);
+  const { clients } = useSelector((s) => s.Client);
 
   useEffect(() => {
     const fetchclients = async () => {
       try {
         setLoading(true);
         const res = await axios.get(`/api/get-all-clients/${id}`);
-
-        if (res.data.success) {
-          dispatch(getallclients(res.data.clients));
-        }
-      } catch (error) {
+        if (res.data.success) dispatch(getallclients(res.data.clients));
+      } catch {
         dispatch(getallclients([]));
       } finally {
         setLoading(false);
       }
     };
-
     fetchclients();
   }, [id, dispatch]);
 
   const handleClientSelect = (value) => {
     setSelectedClient(value);
-    const found = clients.find((c) => c.id === value);
-    setClientInfo(found || null);
+    setClientInfo(clients.find((c) => c.id === value) || null);
   };
 
   const handleSendContract = async () => {
-    if (!selectedClient) {
-      return toast.error("Please select a client");
-    }
-
-
-
+    if (!selectedClient) return toast.error("Please select a client");
     setLoading(true);
- try {
+    try {
       const res = await axios.post("/api/contracts/send", {
         clientId: selectedClient,
-        contractid: contractid,
-        companyslug:id
+        contractid,
+        companyslug: id,
       });
-
       if (res.data.success) {
         toast.success("Contract sent successfully");
         setOpen(false);
-
-        setTimeout(() => {
-          window.location.reload();
-        }, 500);
+        setTimeout(() => window.location.reload(), 500);
       } else {
         toast.error("Failed to send contract");
       }
-    } catch (error) {
+    } catch {
       toast.error("Error sending contract");
     } finally {
       setLoading(false);
@@ -97,78 +72,94 @@ const SendContractDialog = ({contractid}) => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          className="flex items-center gap-2 w-full justify-center border-green-500 text-green-600 hover:bg-green-100/40 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-900/40 transition-all rounded-xl font-medium py-5"
-        >
-          <Send className="w-4 h-4" />
+        <button className="flex items-center gap-2 w-full justify-center py-2.5 rounded-xl border border-emerald-400 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-sm font-semibold transition-colors">
+          <Send size={14} />
           Send Contract
-        </Button>
+        </button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-[520px] rounded-2xl p-6 shadow-xl">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-            Send Contract
-          </DialogTitle>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Select a client and review their details before sending the contract.
-          </p>
-        </DialogHeader>
-
-        {/* Client Select */}
-        <div className="flex flex-col mt-4 space-y-2">
-          <Label className="text-sm font-medium">Select Client</Label>
-          <Select value={selectedClient} onValueChange={handleClientSelect}>
-            <SelectTrigger className="h-11 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm">
-              <SelectValue placeholder="Choose client..." />
-            </SelectTrigger>
-            <SelectContent>
-              {clients.length > 0 ? (
-                clients.map((client) => (
-                  <SelectItem key={client.id} value={client.id}>
-                    {client.clientName}
-                  </SelectItem>
-                ))
-              ) : (
-                <SelectItem disabled value="none">
-                  No clients found
-                </SelectItem>
-              )}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* 🟦 Client Details Card */}
-        {clientInfo && (
-          <div className="mt-5 p-4 border rounded-xl bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Client Details
-            </h3>
-
-            <div className="mt-3 space-y-1">
-              <p className="text-sm text-gray-600 dark:text-gray-300">
-                <span className="font-medium">Name:</span> {clientInfo.clientName}
-              </p>
-              <p className="text-sm text-gray-600 dark:text-gray-300">
-                <span className="font-medium">Email:</span> {clientInfo.clientEmail}
-              </p>
-              <p className="text-sm text-gray-600 dark:text-gray-300">
-                <span className="font-medium">Phone:</span> {clientInfo.clientPhone}
-              </p>
+      <DialogContent className="sm:max-w-[480px] p-0 gap-0 rounded-2xl overflow-hidden">
+        <DialogHeader className="px-6 py-4 border-b border-slate-100 bg-slate-50/60">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-emerald-600 flex items-center justify-center shrink-0">
+              <Send size={16} className="text-white" />
+            </div>
+            <div>
+              <DialogTitle className="text-base font-bold text-slate-900 leading-none">
+                Send Contract
+              </DialogTitle>
+              <p className="text-xs text-slate-400 mt-0.5">Select a client to receive this contract</p>
             </div>
           </div>
-        )}
+        </DialogHeader>
 
-        <DialogFooter>
-          <Button
-            className="bg-[#5965AB] hover:bg-[#46529A] transition-all text-white mt-6 py-5 rounded-xl w-full"
-            onClick={handleSendContract}
-            disabled={loading}
+        <div className="px-6 py-5 space-y-4">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
+              <User size={12} className="text-slate-400" />
+              Select Client
+            </Label>
+            <Select value={selectedClient} onValueChange={handleClientSelect}>
+              <SelectTrigger className={selectCls}>
+                <SelectValue placeholder="Choose client…" />
+              </SelectTrigger>
+              <SelectContent>
+                {clients.length > 0 ? (
+                  clients.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.clientName}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem disabled value="none">No clients found</SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {clientInfo && (
+            <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 space-y-2">
+              <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Client Info</p>
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2 text-sm text-slate-700">
+                  <User size={13} className="text-emerald-500 shrink-0" />
+                  <span className="font-semibold">{clientInfo.clientName}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-slate-600">
+                  <Mail size={13} className="text-emerald-500 shrink-0" />
+                  {clientInfo.clientEmail}
+                </div>
+                {clientInfo.clientPhone && (
+                  <div className="flex items-center gap-2 text-sm text-slate-600">
+                    <Phone size={13} className="text-emerald-500 shrink-0" />
+                    {clientInfo.clientPhone}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/60 flex items-center justify-end gap-3">
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"
           >
-            {loading ? "Sending..." : "Send Contract"}
-          </Button>
-        </DialogFooter>
+            Cancel
+          </button>
+          <button
+            onClick={handleSendContract}
+            disabled={loading || !selectedClient}
+            className="inline-flex items-center gap-2 px-5 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm shadow-emerald-200"
+          >
+            {loading ? (
+              <><Loader2 size={14} className="animate-spin" /> Sending…</>
+            ) : (
+              <><Send size={14} /> Send Contract</>
+            )}
+          </button>
+        </div>
       </DialogContent>
     </Dialog>
   );

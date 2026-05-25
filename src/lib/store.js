@@ -20,6 +20,8 @@ import ContractReducer from "../features/Slice/ContractsSlice";
 import AccountantReducer from "../features/Slice/AccountantSlice";
 import CurencyReducer from "../features/Slice/CurencySlice";
 import BanksReducer from "../features/Slice/BankSlice";
+import ProjectReducer from "../features/Slice/ProjectSlice";
+import TaskReducer from "../features/Slice/TaskSlice";
 
 const rootReducer = combineReducers({
   Acounts: AccountantReducer,
@@ -39,7 +41,8 @@ const rootReducer = combineReducers({
   Contracts: ContractReducer,
   Curency: CurencyReducer,
   Banks: BanksReducer,
-
+  Projects: ProjectReducer,
+  Tasks: TaskReducer,
 });
 
 

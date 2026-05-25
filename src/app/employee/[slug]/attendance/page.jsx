@@ -1,49 +1,52 @@
 "use client";
-
-import Employeebreadcrumb from "@/app/utils/employees/components/breadcrumbs/Employeebreadcrumb";
 import Employeelayout from "@/app/utils/employees/layout/Employeelayout";
-import { useParams } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import axios from "axios";
 import Listattendance from "@/app/utils/employees/components/Listelements/Listattendance";
+import { Loader2 } from "lucide-react";
 
 const Page = () => {
-  const { slug } = useParams();
-  const { user } = useSelector((state) => state.User);
-
-  const [attendance, setAttendance] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const { user }      = useSelector((state) => state.User);
+  const [attendance,  setAttendance] = useState([]);
+  const [loading,     setLoading]    = useState(false);
 
   useEffect(() => {
-    const fetchEmployee = async () => {
-      if (!user?.employeeId) return;
-
+    if (!user?.employeeId) return;
+    (async () => {
       setLoading(true);
       try {
         const res = await axios.get(`/api/get-employee/${user.employeeId}`);
-        setAttendance(res?.data?.employee?.Attendance); 
-        console.log("✅ Employee Data:", res.data.data);
-      } catch (error) {
-        console.error("❌ Error fetching employee:", error);
+        setAttendance(res?.data?.employee?.Attendance || []);
+      } catch (e) {
+        console.error("❌ Error fetching attendance:", e);
       } finally {
         setLoading(false);
       }
-    };
-
-    fetchEmployee();
+    })();
   }, [user?.employeeId]);
 
   return (
     <Employeelayout>
-      <section className="w-full p-6">
+      <div className="max-w-5xl mx-auto space-y-5">
 
-      <Employeebreadcrumb slug={slug} path="Show all Attendance" />
+        <div>
+          <h1 className="text-xl font-extrabold text-slate-900">Attendance History</h1>
+          <p className="text-sm text-slate-400 mt-0.5">
+            Your complete check-in and check-out records
+          </p>
+        </div>
 
-      <Listattendance attendance={attendance} />
+        {loading ? (
+          <div className="flex flex-col items-center py-20 gap-3">
+            <Loader2 size={28} className="animate-spin text-blue-500" />
+            <p className="text-sm text-slate-400">Loading attendance records…</p>
+          </div>
+        ) : (
+          <Listattendance attendance={attendance} />
+        )}
 
-      </section>
-  
+      </div>
     </Employeelayout>
   );
 };

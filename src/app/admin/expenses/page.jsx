@@ -57,16 +57,13 @@ const page = () => {
 
     return (
         <SuperAdminlayout>
-            <section className="w-full p-6">
-                <Superbreadcrumb
-                    path="Expenses"
-                    expensesCategories={expensesCategories}
-                    bankaccounts={bankaccounts}
-                    setExpenses={setExpenses}
-                />
-
-                <ListExpenses bankaccounts={bankaccounts} expenses={expenses} setExpenses={setExpenses} />
-            </section>
+            <Superbreadcrumb
+                path="Expenses"
+                expensesCategories={expensesCategories}
+                bankaccounts={bankaccounts}
+                setExpenses={setExpenses}
+            />
+            <ListExpenses bankaccounts={bankaccounts} expenses={expenses} setExpenses={setExpenses} />
         </SuperAdminlayout>
     )
 }

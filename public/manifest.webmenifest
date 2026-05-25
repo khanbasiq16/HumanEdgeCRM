@@ -1,14 +1,16 @@
 {
-  "name": "HumanEdge | Invoicing Software",
+  "name": "HumanEdge | HR Management",
   "short_name": "HumanEdge",
-  "description": "",
+  "description": "All-in-one HR operations platform — attendance, payroll, contracts, and multi-company management.",
   "display": "standalone",
   "start_url": "/",
   "scope": "/",
   "orientation": "any",
-  "id": "",
+  "id": "/",
   "lang": "en",
   "dir": "auto",
+  "background_color": "#EEF4FF",
+  "theme_color": "#2563EB",
   "icons": [
     {
       "src": "icons/icon-72x72.png",

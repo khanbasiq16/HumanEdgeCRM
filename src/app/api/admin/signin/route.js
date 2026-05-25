@@ -42,8 +42,13 @@ export async function POST(req) {
       );
     }
 
-
-
+    const allowedRoles = ["admin", "superAdmin"];
+    if (!allowedRoles.includes(userData.role)) {
+      return NextResponse.json(
+        { error: "Access denied. You are not authorized to access the admin panel." },
+        { status: 403 }
+      );
+    }
 
     const token = signToken({
       id: user.uid,

@@ -1,17 +1,13 @@
 "use client";
 
+import Image from "next/image";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-} from "@/components/ui/card";
-import { Loader2, Eye, EyeOff } from "lucide-react";
+  Loader2, Eye, EyeOff, Mail, Lock,
+  ClipboardCheck, BarChart3, FileText, Clock,
+  CheckCircle2, ArrowRight, UserCircle2,
+} from "lucide-react";
 import axios from "axios";
 import React, { useState } from "react";
 import toast from "react-hot-toast";
@@ -20,13 +16,20 @@ import { useDispatch } from "react-redux";
 import { loginSuccess } from "@/features/Slice/UserSlice";
 import Link from "next/link";
 
+const FEATURES = [
+  { icon: ClipboardCheck, text: "One-tap check-in & check-out"         },
+  { icon: BarChart3,      text: "View your attendance history"          },
+  { icon: FileText,       text: "Access contracts & invoices"           },
+  { icon: Clock,          text: "Real-time schedule & timing details"   },
+];
+
 export default function Page() {
-  const router = useRouter();
+  const router   = useRouter();
   const dispatch = useDispatch();
 
-  const [formData, setFormData] = useState({ email: "", password: "" });
-  const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState({ email: "", password: "" });
+  const [formData, setFormData]         = useState({ email: "", password: "" });
+  const [loading, setLoading]           = useState(false);
+  const [errors, setErrors]             = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e) => {
@@ -35,20 +38,14 @@ export default function Page() {
   };
 
   const validateForm = () => {
+    const newErrors = { email: "", password: "" };
     let valid = true;
-    let newErrors = { email: "", password: "" };
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      newErrors.email = "Please enter a valid email address";
-      valid = false;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = "Enter a valid email address"; valid = false;
     }
-
     if (formData.password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters long";
-      valid = false;
+      newErrors.password = "Password must be at least 6 characters"; valid = false;
     }
-
     setErrors(newErrors);
     return valid;
   };
@@ -56,111 +53,184 @@ export default function Page() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
-
     setLoading(true);
     try {
-      const response = await axios.post("/api/check-in-sign-in", {
-        ...formData,
-      });
-
-      if (response.data.success) {
-        toast.success(response.data.message);
-
-        dispatch(loginSuccess(response.data.user));
-        const slug = response.data.user.employeeName
-          .trim()
-          .replace(/\s+/g, "-")
-          .toLowerCase();
-          
-
+      const res = await axios.post("/api/check-in-sign-in", formData);
+      if (res.data.success) {
+        toast.success(res.data.message);
+        dispatch(loginSuccess(res.data.user));
+        const slug = res.data.user.employeeName.trim().replace(/\s+/g, "-").toLowerCase();
         router.push(`/employee/${slug}`);
       }
-    } catch (error) {
-      toast.error(error?.response.data.error);
+    } catch (err) {
+      toast.error(err?.response?.data?.error || "Sign in failed");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Employee Panel</CardTitle>
-          <CardDescription>Login </CardDescription>
-        </CardHeader>
+    <div className="h-screen flex overflow-hidden">
 
-        <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="Enter email"
-                value={formData.email}
-                onChange={handleChange}
-              />
+      {/* ── Left panel ────────────────────────────────────────── */}
+      <div className="hidden lg:flex lg:w-[52%] bg-gradient-to-br from-[#EEF4FF] via-white to-blue-100 flex-col justify-between p-10 relative overflow-hidden">
+
+        {/* Background pattern */}
+        <div
+          className="absolute inset-0 opacity-[0.4]"
+          style={{
+            backgroundImage: "radial-gradient(circle at 1px 1px, #bfdbfe 1px, transparent 0)",
+            backgroundSize: "32px 32px",
+          }}
+        />
+        <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-blue-300 rounded-full opacity-20 blur-3xl" />
+        <div className="absolute -top-20 -right-20 w-80 h-80 bg-indigo-300 rounded-full opacity-20 blur-3xl" />
+
+        {/* Brand */}
+        <div className="relative z-10">
+          <div className="flex items-center gap-1 mb-12">
+            <div className="w-10 h-10 rounded-xl shrink-0 flex items-center justify-center">
+              <Image src="/logo.webp" alt="HumanEdge" width={40} height={40} className="w-full h-full object-contain" />
+            </div>
+            <div>
+              <p className="text-slate-900 font-bold text-lg leading-none">HumanEdge</p>
+              <p className="text-slate-500 text-xs font-medium">Employee Portal</p>
+            </div>
+          </div>
+
+          <h1 className="text-3xl font-black text-slate-900 leading-tight mb-3">
+            Your workspace,<br />always within<br />
+            <span className="text-blue-600">reach.</span>
+          </h1>
+          <p className="text-slate-500 text-sm leading-relaxed max-w-xs">
+            Sign in to manage your attendance, view your schedule, access contracts, and stay connected with your team.
+          </p>
+        </div>
+
+        {/* Features */}
+        <div className="relative z-10 space-y-4">
+          {FEATURES.map(({ icon: Icon, text }) => (
+            <div key={text} className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-blue-100 border border-blue-200 flex items-center justify-center shrink-0">
+                <Icon size={14} className="text-blue-600" />
+              </div>
+              <p className="text-slate-700 text-sm font-medium">{text}</p>
+            </div>
+          ))}
+
+          <p className="text-slate-400 text-xs pt-4 border-t border-blue-200">
+            © {new Date().getFullYear()} HumanEdge. All rights reserved.
+          </p>
+        </div>
+      </div>
+
+      {/* ── Right panel — form ─────────────────────────────────── */}
+      <div className="flex-1 flex items-center justify-center bg-white px-8 overflow-y-auto">
+        <div className="w-full max-w-sm">
+
+          {/* Mobile brand */}
+          <div className="flex items-center gap-2 mb-8 lg:hidden">
+            <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center p-0.5">
+              <Image src="/logo.webp" alt="HumanEdge" width={32} height={32} className="w-full h-full object-contain" />
+            </div>
+            <p className="font-bold text-slate-900">HumanEdge</p>
+          </div>
+
+          {/* Avatar icon */}
+          <div className="mb-6 w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center">
+            <UserCircle2 size={24} className="text-blue-600" />
+          </div>
+
+          {/* Heading */}
+          <div className="mb-8">
+            <h2 className="text-2xl font-black text-slate-900">Welcome back</h2>
+            <p className="text-slate-400 text-sm mt-1">Sign in to your employee account</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+
+            {/* Email */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Email Address</Label>
+              <div className="relative">
+                <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@company.com"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="pl-9 h-11 text-sm bg-slate-50 border-slate-200 rounded-xl focus-visible:ring-blue-500 focus-visible:ring-1 placeholder:text-slate-400"
+                />
+              </div>
               {errors.email && (
-                <p className="text-sm text-red-500">{errors.email}</p>
+                <p className="text-xs text-red-500 font-medium flex items-center gap-1">
+                  <span className="w-1 h-1 rounded-full bg-red-500 inline-block" />
+                  {errors.email}
+                </p>
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+            {/* Password */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Password</Label>
+                <Link
+                  href="/forgot-password"
+                  className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+                >
+                  Forgot password?
+                </Link>
+              </div>
               <div className="relative">
+                <Lock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="Enter password"
+                  placeholder="••••••••"
                   value={formData.password}
                   onChange={handleChange}
+                  className="pl-9 pr-10 h-11 text-sm bg-slate-50 border-slate-200 rounded-xl focus-visible:ring-blue-500 focus-visible:ring-1 placeholder:text-slate-400"
                 />
                 <button
                   type="button"
-                  className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700"
                   onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5" />
-                  ) : (
-                    <Eye className="h-5 w-5" />
-                  )}
+                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
               {errors.password && (
-                <p className="text-sm text-red-500">{errors.password}</p>
+                <p className="text-xs text-red-500 font-medium flex items-center gap-1">
+                  <span className="w-1 h-1 rounded-full bg-red-500 inline-block" />
+                  {errors.password}
+                </p>
               )}
             </div>
-          </CardContent>
 
-          <CardFooter className="flex justify-between mt-3 gap-2">
-            <Link
-              href="/forgot-password" // Change this to your actual forgot password route
-              className="text-sm text-blue-600 hover:underline"
-            >
-              Forgot Password?
-            </Link>
-
-            <Button
+            {/* Submit */}
+            <button
               type="submit"
               disabled={loading}
-              className="flex items-center gap-2"
+              className="w-full h-11 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm font-bold rounded-xl transition-colors shadow-sm shadow-blue-200 flex items-center justify-center gap-2 mt-2"
             >
               {loading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" /> Verifying your
-                  identity...
-                </>
+                <><Loader2 size={15} className="animate-spin" /> Signing in…</>
               ) : (
-                "login"
+                <>Sign In <ArrowRight size={15} /></>
               )}
-            </Button>
-          </CardFooter>
-        </form>
-      </Card>
+            </button>
+          </form>
+
+          {/* Footer note */}
+          <div className="mt-8 pt-6 border-t border-slate-100">
+            <div className="flex items-center gap-2 text-xs text-slate-400">
+              <CheckCircle2 size={13} className="text-blue-500 shrink-0" />
+              Secured with enterprise-grade encryption
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
-
-// export default page;

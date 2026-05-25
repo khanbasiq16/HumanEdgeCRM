@@ -2,74 +2,54 @@
 import React, { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
 import { doc, onSnapshot } from "firebase/firestore";
-import { useDispatch, useSelector } from "react-redux";
-import { updatetime } from "@/features/Slice/StopwatchSlice";
+import { useSelector } from "react-redux";
 
 const Timer = () => {
-  const [elapsed, setElapsed] = useState(0);
-  const [startTime, setStartTime] = useState(null);
-  const [isCheckedin, setIsCheckedin] = useState(false);
-  const { user } = useSelector((state) => state.User);
+  const { user }                                 = useSelector((s) => s.User);
+  const { isRunning, startTime: reduxStartTime } = useSelector((s) => s.Stopwatch);
 
-  const dispatch = useDispatch();
+  const [fsCheckedin, setFsCheckedin] = useState(false);
+  const [fsStartTime, setFsStartTime] = useState(null);
+  const [elapsed,     setElapsed]     = useState(0);
 
+  /* ── Firestore listener — only updates local state, never touches Redux ── */
   useEffect(() => {
     if (!user?.employeeId) return;
-
-    const userRef = doc(db, "employees", user.employeeId);
-
-    const unsubscribe = onSnapshot(userRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.data();
-        setStartTime(data.startTime || null);
-        dispatch(updatetime(data.startTime || 0));
-        setIsCheckedin(data.isCheckedin || false);
+    const unsub = onSnapshot(doc(db, "employees", user.employeeId), (snap) => {
+      if (snap.exists()) {
+        const d = snap.data();
+        setFsCheckedin(d.isCheckedin  || false);
+        setFsStartTime(d.startTime    || null);
       }
     });
-
-    return () => unsubscribe();
+    return () => unsub();
   }, [user?.employeeId]);
 
+  /* ── Use whichever source is available first ─────────────────────────── */
+  // Redux is updated instantly on check-in (no network delay).
+  // Firestore arrives 1-3 s later and takes over.
+  const active    = fsCheckedin || isRunning;
+  const startTime = fsStartTime || reduxStartTime;
+
+  /* ── Tick every second ───────────────────────────────────────────────── */
   useEffect(() => {
-    let interval;
+    if (!active || !startTime) { setElapsed(0); return; }
 
-    // ✅ Run timer only when checked in & startTime exists
-    if (isCheckedin && startTime) {
-      interval = setInterval(() => {
-        const now = new Date().getTime();
-        const start = new Date(startTime).getTime();
-        const diff = Math.floor((now - start) / 1000);
-        setElapsed(diff);
-      }, 1000);
-    } else {
-      setElapsed(0); 
-    }
+    const tick = () => {
+      const diff = Math.floor((Date.now() - new Date(startTime).getTime()) / 1000);
+      setElapsed(Math.max(0, diff));
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [active, startTime]);
 
-    return () => clearInterval(interval);
-  }, [isCheckedin, startTime]);
+  const fmt = (s) =>
+    [Math.floor(s / 3600), Math.floor((s % 3600) / 60), s % 60]
+      .map((v) => String(v).padStart(2, "0"))
+      .join(":");
 
-  const formatTime = (seconds) => {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = seconds % 60;
-    return `${h.toString().padStart(2, "0")}:${m
-      .toString()
-      .padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
-  };
-
-  return (
-    <div className="text-center font-semibold text-gray-800">
-      {isCheckedin && startTime ? (
-        <>
-          ⏱ <span>{formatTime(elapsed)}</span>
-        </>
-      ) : (
-        <>
-          ⏱ <span>00:00:00</span>
-        </>
-      )}
-    </div>
-  );
+  return <span className="tabular-nums font-semibold">{fmt(elapsed)}</span>;
 };
 
 export default Timer;

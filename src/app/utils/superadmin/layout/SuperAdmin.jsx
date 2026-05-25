@@ -1,19 +1,35 @@
-import React from 'react'
+"use client";
+import React, { useState } from 'react'
 import Header from './Header'
 import Sidebar from './Sidebar'
+
 const SuperAdminlayout = ({ children }) => {
+  const [collapsed, setCollapsed]     = useState(false);
+  const [mobileOpen, setMobileOpen]   = useState(false);
+
   return (
-    <>
-      <section className='w-full h-full bg-[#F6F6F6] px-3 sm:px-5 pb-4'>
-        <Header />
-        <div className='flex'>
-          <Sidebar />
-          <div className='flex-1 overflow-y-auto lg:ml-[20%] mt-28 2xl:mt-32 lg:w-[78%]  rounded-xl '>
-            {children}
-          </div>
+    <div className='min-h-screen bg-slate-50'>
+      <Header
+        onMobileMenu={() => setMobileOpen((v) => !v)}
+        mobileOpen={mobileOpen}
+      />
+      <Sidebar
+        collapsed={collapsed}
+        setCollapsed={setCollapsed}
+        mobileOpen={mobileOpen}
+        setMobileOpen={setMobileOpen}
+      />
+      <main
+        className={`transition-all duration-300 ease-in-out pt-[73px] ${
+          collapsed ? 'lg:pl-16' : 'lg:pl-60'
+        }`}
+      >
+        <div className='p-4 sm:p-6 min-h-[calc(100vh-73px)]'>
+          {children}
         </div>
-      </section>
-    </>
+      </main>
+    </div>
   )
 }
+
 export default SuperAdminlayout

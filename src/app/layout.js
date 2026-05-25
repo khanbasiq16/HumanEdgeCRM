@@ -56,9 +56,18 @@ const geistMono = Geist_Mono({
 
 
 export const metadata = {
-  title: "HumanEdge | Invoicing Software",
-  description: "Created by Brintor",
-  manifest:'/manifest.webmenifest'
+  title: "HumanEdge | HR Management",
+  description: "All-in-one HR operations platform — attendance, payroll, contracts, and multi-company management.",
+  manifest: "/manifest.webmenifest",
+  themeColor: "#2563EB",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "HumanEdge",
+  },
+  icons: {
+    apple: "/icons/icon-192x192.png",
+  },
 };
 
 export default function RootLayout({ children }) {

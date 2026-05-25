@@ -1,393 +1,326 @@
 "use client";
 import React, { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogTrigger,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectTrigger, SelectContent, SelectItem, SelectValue,
 } from "@/components/ui/select";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { useParams } from "next/navigation";
-import { Eye, EyeOff, KeyRound } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { createemployees } from "@/features/Slice/EmployeeSlice";
+import {
+  Users, Plus, Loader2, Eye, EyeOff, KeyRound, Mail, Phone,
+  MapPin, CreditCard, DollarSign, Clock, Calendar, Building2,
+  Briefcase, Target,
+} from "lucide-react";
+
+/* ── Field wrapper ──────────────────────────────────────── */
+const Field = ({ label, required, icon: Icon, children }) => (
+  <div className="space-y-1.5">
+    <Label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
+      {Icon && <Icon size={12} className="text-slate-400" />}
+      {label}
+      {required && <span className="text-red-500 ml-0.5">*</span>}
+    </Label>
+    {children}
+  </div>
+);
+
+/* ── Section header ─────────────────────────────────────── */
+const Section = ({ title, subtitle }) => (
+  <div className="col-span-2 pt-2 pb-1 border-b border-slate-100">
+    <p className="text-xs font-bold text-slate-800 uppercase tracking-wider">{title}</p>
+    {subtitle && <p className="text-[11px] text-slate-400 mt-0.5">{subtitle}</p>}
+  </div>
+);
+
+/* ── Main component ─────────────────────────────────────── */
+const today = new Date().toISOString().split("T")[0];
 
 const Employeedailog = () => {
-  const [loading, setLoading] = useState(false);
-  const [open, setOpen] = useState(false);
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [passwordError, setPasswordError] = useState("");
-
+  const [loading, setLoading]               = useState(false);
+  const [open, setOpen]                     = useState(false);
+  const [password, setPassword]             = useState("");
+  const [showPassword, setShowPassword]     = useState(false);
+  const [passwordError, setPasswordError]   = useState("");
   const [selectedDepartment, setSelectedDepartment] = useState("");
-  const [selectedCompanies, setSelectedCompanies] = useState([]);
+  const [selectedCompanies, setSelectedCompanies]   = useState([]);
+  const [dateOfJoining, setDateOfJoining]           = useState(today);
+
   const dispatch = useDispatch();
+  const { department } = useSelector((s) => s.Department);
+  const { companies }  = useSelector((s) => s.Company);
 
-  const { department } = useSelector((state) => state.Department);
-  const { companies } = useSelector((state) => state.Company);
-  const { slug } = useParams();
+  const validatePassword = (val) => {
+    if (val.length < 6)       setPasswordError("Must be at least 6 characters");
+    else if (!/\d/.test(val)) setPasswordError("Must contain at least one number");
+    else                      setPasswordError("");
+  };
 
-  const capitalizedCompanyName = slug
-    ? slug.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())
-    : "";
+  const generatePassword = () => {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+";
+    const pass  = Array.from({ length: 10 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+    setPassword(pass);
+    validatePassword(pass);
+    navigator.clipboard.writeText(pass);
+    toast.success("Password generated & copied!");
+    setShowPassword(true);
+  };
 
-  // ✅ Password validation
-  const validatePassword = (value) => {
-    if (value.length < 6) {
-      setPasswordError("Password must be at least 6 characters");
-    } else if (!/\d/.test(value)) {
-      setPasswordError("Password must contain at least one number");
-    } else {
-      setPasswordError("");
-    }
+  const handleCompanySelect = (value) => {
+    const c = companies.find((c) => c.name === value);
+    setSelectedCompanies(c ? [c.id] : []);
   };
 
   const formHandler = async (e) => {
     e.preventDefault();
-    const passwordValue = password;
-    if (!passwordValue || passwordError) return;
-
-    if (!selectedDepartment) {
-      toast.error("Please select a department");
-      return;
-    }
-
-    if (selectedCompanies.length === 0) {
-      toast.error("Please select a company");
-      return;
-    }
+    if (!password || passwordError) return;
+    if (!selectedDepartment) { toast.error("Please select a department"); return; }
+    if (selectedCompanies.length === 0) { toast.error("Please select a company"); return; }
 
     setLoading(true);
-
     try {
       const formData = new FormData();
+      selectedCompanies.forEach((id) => formData.append("companyIds[]", id));
+      formData.append("employeeName",      e.target.employeeName.value);
+      formData.append("employeeAddress",   e.target.employeeAddress.value);
+      formData.append("employeeemail",     e.target.employeeemail.value);
+      formData.append("employeepassword",  password);
+      formData.append("employeePhone",     e.target.employeePhone.value);
+      formData.append("employeeCNIC",      e.target.employeeCNIC.value);
+      formData.append("employeeSalary",    e.target.employeeSalary.value);
+      formData.append("department",        selectedDepartment);
+      formData.append("designation",       e.target.designation.value);
+      formData.append("totalWorkingHours", e.target.totalWorkingHours?.value || "");
+      formData.append("dateOfJoining",     e.target.dateOfJoining.value);
+      if (e.target.salesTarget) formData.append("salesTarget", e.target.salesTarget.value);
 
-      selectedCompanies.forEach((companyId) => {
-        formData.append("companyIds[]", companyId);
+      const payload = {};
+      formData.forEach((v, k) => {
+        if (k === "companyIds[]") {
+          payload.companyIds = payload.companyIds ? [...payload.companyIds, v] : [v];
+        } else {
+          payload[k] = v;
+        }
       });
 
-      formData.append("employeeName", e.target.employeeName.value);
-      formData.append("employeeAddress", e.target.employeeAddress.value);
-      formData.append("employeeemail", e.target.employeeemail.value);
-      formData.append("employeepassword", passwordValue);
-      formData.append("employeePhone", e.target.employeePhone.value);
-      formData.append("employeeCNIC", e.target.employeeCNIC.value);
-      formData.append("employeeSalary", e.target.employeeSalary.value);
-      formData.append("department", selectedDepartment);
-
-      formData.append(
-        "totalWorkingHours",
-        e.target.totalWorkingHours?.value || ""
-      );
-      formData.append("dateOfJoining", e.target.dateOfJoining.value);
-
-      if (e.target.salesTarget) {
-        formData.append("salesTarget", e.target.salesTarget.value);
-      }
-
-      const res = await axios.post("/api/create-employee", formData, {
+      const res = await axios.post("/api/create-employee", payload, {
         headers: { "Content-Type": "application/json" },
       });
 
       if (res.data.success) {
-        toast.success("Employee Created Successfully");
+        toast.success("Employee created successfully");
         e.target.reset();
         dispatch(createemployees(res.data.employees));
+
         setSelectedDepartment("");
         setSelectedCompanies([]);
         setPassword("");
+        setDateOfJoining(today);
         setOpen(false);
-      } 
-    } catch (error) {
-      console.error(error.response.data.error);
+      }
+    } catch {
       toast.error("Error creating employee");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCompanySelect = (value) => {
-    const selectedCompany = companies.find((c) => c.name === value);
-    if (selectedCompany) {
-      setSelectedCompanies([selectedCompany.id]);
-    } else {
-      setSelectedCompanies([]);
-    }
-  };
+  const inputCls = "h-9 text-sm bg-slate-50 border-slate-200 rounded-lg focus-visible:ring-blue-500 focus-visible:ring-1 placeholder:text-slate-400";
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-[#5965AB] text-white font-semibold rounded-md px-4 py-2">
-          + Create Employee
-        </Button>
+        <button className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm shadow-blue-200">
+          <Plus size={15} />
+          Create Employee
+        </button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-[700px]">
-        <DialogHeader>
-          <DialogTitle>Create New Employee</DialogTitle>
-          {capitalizedCompanyName && (
-            <p className="text-sm text-gray-500 mt-1">
-              Company:{" "}
-              <span className="font-semibold">{capitalizedCompanyName}</span>
-            </p>
-          )}
+      <DialogContent className="sm:max-w-[680px] p-0 gap-0 rounded-2xl overflow-hidden">
+        {/* Header */}
+        <DialogHeader className="px-6 py-4 border-b border-slate-100 bg-slate-50/60">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center shrink-0">
+              <Users size={18} className="text-white" />
+            </div>
+            <div>
+              <DialogTitle className="text-base font-bold text-slate-900 leading-none">
+                Create New Employee
+              </DialogTitle>
+              <p className="text-xs text-slate-400 mt-0.5">Fill in the details to register a new employee</p>
+            </div>
+          </div>
         </DialogHeader>
 
-        <form
-          onSubmit={formHandler}
-          className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4 max-h-[80vh] overflow-y-auto p-2"
-        >
-          {/* Left column */}
-          <div className="space-y-4">
-            {/* Employee Name */}
-            <div>
-              <Label htmlFor="employeeName">
-                Employee Name <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="employeeName"
-                name="employeeName"
-                placeholder="Enter employee name"
-                required
-              />
-            </div>
+        {/* Form */}
+        <form onSubmit={formHandler}>
+          <div className="px-6 py-5 max-h-[70vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-            {/* Department */}
-            <div>
-              <Label htmlFor="department">
-                Department <span className="text-red-500">*</span>
-              </Label>
-              <Select
-                onValueChange={setSelectedDepartment}
-                value={selectedDepartment}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select Department" />
-                </SelectTrigger>
-                <SelectContent>
-                  {department?.length > 0 ? (
-                    department.map((dep) => (
-                      <SelectItem
-                        key={dep._id || dep.id}
-                        value={dep.departmentName}
+              {/* ── Personal Information ───────────────────── */}
+              <Section title="Personal Information" subtitle="Employee identity and contact details" />
+
+              <Field label="Full Name" required icon={Users}>
+                <Input className={inputCls} name="employeeName" placeholder="John Doe" required />
+              </Field>
+
+              <Field label="Email Address" required icon={Mail}>
+                <Input className={inputCls} name="employeeemail" type="email" placeholder="john@company.com" required />
+              </Field>
+
+              <Field label="Phone Number" icon={Phone}>
+                <Input className={inputCls} name="employeePhone" placeholder="+92 300 1234567" />
+              </Field>
+
+              <Field label="CNIC Number" required icon={CreditCard}>
+                <Input className={inputCls} name="employeeCNIC" placeholder="42201-1234567-8" required />
+              </Field>
+
+              <div className="md:col-span-2">
+                <Field label="Address" icon={MapPin}>
+                  <Input className={inputCls} name="employeeAddress" placeholder="123 Main Street, City" />
+                </Field>
+              </div>
+
+              {/* Password — full width */}
+              <div className="md:col-span-2">
+                <Field label="Password" required icon={KeyRound}>
+                  <div className="relative">
+                    <Input
+                      className={`${inputCls} pr-20`}
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => { setPassword(e.target.value); validatePassword(e.target.value); }}
+                      required
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="text-slate-400 hover:text-slate-600 transition-colors"
                       >
-                        {dep.departmentName}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="none" disabled>
-                      No departments available
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Sales Target */}
-            {selectedDepartment === "Sales" && (
-              <div>
-                <Label htmlFor="salesTarget">
-                  Sales Target <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="salesTarget"
-                  name="salesTarget"
-                  placeholder="Enter monthly sales target"
-                  type="number"
-                  required
-                />
-              </div>
-            )}
-
-            {/* Company */}
-            <div>
-              <Label htmlFor="company">
-                Company <span className="text-red-500">*</span>
-              </Label>
-              <Select
-                onValueChange={handleCompanySelect}
-                value={
-                  companies.find((comp) => selectedCompanies[0] === comp.id)
-                    ?.name || ""
-                }
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select Company" />
-                </SelectTrigger>
-                <SelectContent>
-                  {companies?.length > 0 ? (
-                    companies.map((comp) => (
-                      <SelectItem key={comp.id} value={comp.name}>
-                        {comp.name}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="none" disabled>
-                      No companies available
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Email */}
-            <div>
-              <Label htmlFor="employeeemail">
-                Email <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="employeeemail"
-                name="employeeemail"
-                placeholder="Enter Email"
-                type="email"
-                required
-              />
-            </div>
-
-            {/* Password Field */}
-            <div className="flex flex-col w-full max-w-sm mx-auto">
-              <Label htmlFor="employeepassword">
-                Password <span className="text-red-500">*</span>
-              </Label>
-
-              <div className="relative">
-                <Input
-                  id="employeepassword"
-                  name="employeepassword"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Enter password"
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    validatePassword(e.target.value);
-                  }}
-                  required
-                  className="w-full px-4 py-3 pr-20"
-                />
-
-                <span
-                  className="absolute inset-y-0 right-10 flex items-center text-gray-500 cursor-pointer"
-                  onClick={() => setShowPassword(!showPassword)}
-                  title={showPassword ? "Hide Password" : "Show Password"}
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </span>
-
-                <span
-                  className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-500 cursor-pointer"
-                  onClick={() => {
-                    const chars =
-                      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+";
-                    let randomPass = "";
-                    for (let i = 0; i < 10; i++) {
-                      randomPass += chars.charAt(
-                        Math.floor(Math.random() * chars.length)
-                      );
-                    }
-                    setPassword(randomPass);
-                    validatePassword(randomPass);
-                    navigator.clipboard.writeText(randomPass);
-                    toast.success("Password generated & copied!");
-                    setShowPassword(true); // 👈 show generated password
-                  }}
-                  title="Generate Password"
-                >
-                  <KeyRound size={18} />
-                </span>
+                        {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={generatePassword}
+                        title="Generate password"
+                        className="text-slate-400 hover:text-blue-600 transition-colors"
+                      >
+                        <KeyRound size={15} />
+                      </button>
+                    </div>
+                  </div>
+                  {passwordError && <p className="text-red-500 text-[11px] mt-1">{passwordError}</p>}
+                </Field>
               </div>
 
-              {passwordError && (
-                <p className="text-red-500 text-sm mt-1">{passwordError}</p>
+              {/* ── Work Details ───────────────────────────── */}
+              <Section title="Work Details" subtitle="Employment and role information" />
+
+              <Field label="Department" required icon={Briefcase}>
+                <Select onValueChange={setSelectedDepartment} value={selectedDepartment}>
+                  <SelectTrigger className={`${inputCls} w-full`}>
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {department?.length > 0 ? (
+                      department.map((dep) => (
+                        <SelectItem key={dep._id || dep.id} value={dep.departmentName}>
+                          {dep.departmentName}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="none" disabled>No departments available</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </Field>
+
+              <Field label="Company" required icon={Building2}>
+                <Select
+                  onValueChange={handleCompanySelect}
+                  value={companies.find((c) => selectedCompanies[0] === c.id)?.name || ""}
+                >
+                  <SelectTrigger className={`${inputCls} w-full`}>
+                    <SelectValue placeholder="Select company" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {companies?.length > 0 ? (
+                      companies.map((comp) => (
+                        <SelectItem key={comp.id} value={comp.name}>{comp.name}</SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="none" disabled>No companies available</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </Field>
+
+              <div className="md:col-span-2">
+                <Field label="Designation / Job Title" required icon={Briefcase}>
+                  <Input className={inputCls} name="designation" placeholder="e.g. Software Engineer" required />
+                </Field>
+              </div>
+
+              {selectedDepartment === "Sales" && (
+                <Field label="Sales Target" required icon={Target}>
+                  <Input className={inputCls} name="salesTarget" type="number" placeholder="Monthly target" required />
+                </Field>
               )}
-            </div>
 
-            {/* CNIC */}
-            <div>
-              <Label htmlFor="employeeCNIC">
-                CNIC Number <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="employeeCNIC"
-                name="employeeCNIC"
-                placeholder="Enter CNIC number"
-                required
-              />
+              <Field label="Salary (PKR)" required icon={DollarSign}>
+                <Input className={inputCls} name="employeeSalary" placeholder="50,000" required />
+              </Field>
+
+              <Field label="Working Hours / Day" icon={Clock}>
+                <Input className={inputCls} name="totalWorkingHours" placeholder="8" />
+              </Field>
+
+              <Field label="Date of Joining" icon={Calendar}>
+                <div className="relative">
+                  <input
+                    name="dateOfJoining"
+                    type="date"
+                    value={dateOfJoining}
+                    max={today}
+                    onChange={(e) => setDateOfJoining(e.target.value)}
+                    className="w-full h-9 text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 pr-9 focus:outline-none focus:ring-1 focus:ring-blue-500 text-slate-700 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                  />
+                  <Calendar size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                </div>
+              </Field>
+
             </div>
           </div>
 
-          {/* Right column */}
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="employeeSalary">
-                Salary <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="employeeSalary"
-                name="employeeSalary"
-                placeholder="Enter salary"
-                required
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="totalWorkingHours">
-                Total Working Hours <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="totalWorkingHours"
-                name="totalWorkingHours"
-                placeholder="Enter total working hours"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="employeeAddress">
-                Address <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="employeeAddress"
-                name="employeeAddress"
-                placeholder="Enter address"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="employeePhone">
-                Phone Number <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="employeePhone"
-                name="employeePhone"
-                placeholder="Enter phone number"
-              />
-            </div>
-
-            <DateInput label="Date of Joining" name="dateOfJoining" />
-          </div>
-
-          <DialogFooter className="col-span-2 flex justify-end mt-2">
-            <Button
-              type="submit"
-              className="bg-[#5965AB] text-white font-semibold px-6 py-2"
-              disabled={loading || !!passwordError}
+          {/* Footer */}
+          <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/60 flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"
             >
-              {loading ? "Saving..." : "Save"}
-            </Button>
-          </DialogFooter>
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading || !!passwordError}
+              className="inline-flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm shadow-blue-200"
+            >
+              {loading ? (
+                <><Loader2 size={14} className="animate-spin" /> Saving…</>
+              ) : (
+                <><Plus size={14} /> Create Employee</>
+              )}
+            </button>
+          </div>
         </form>
       </DialogContent>
     </Dialog>
@@ -395,10 +328,3 @@ const Employeedailog = () => {
 };
 
 export default Employeedailog;
-
-const DateInput = ({ label, name }) => (
-  <div className="flex flex-col w-full max-w-sm mx-auto mt-4">
-    <Label className="mb-2 text-sm font-semibold">{label}</Label>
-    <Input id={name} name={name} type="date" className="w-full px-4 py-3" />
-  </div>
-);

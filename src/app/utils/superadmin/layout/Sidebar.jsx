@@ -1,154 +1,71 @@
 "use client";
-import React, { useState } from "react";
+import React from "react";
 import {
-  Home,
-  Calendar,
-  LogOut,
-  Menu,
-  X,
-  Users,
-  BanknoteArrowDown,
-  PersonStanding,
-  CardSim,
-  NotepadTextDashed,
-  Settings,
-  ArrowBigLeft,
-  Building,
-  DollarSign,
-  Receipt,
-  BadgeDollarSign,
+  Home, Calendar, LogOut, Users, PersonStanding, CardSim,
+  NotepadTextDashed, Settings, ArrowLeft, Building, DollarSign,
+  Receipt, BadgeDollarSign, ChevronLeft, ChevronRight, Landmark, Layers,
+  FolderKanban, ClipboardList,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import Link from "next/link";
 import { logout } from "@/features/Slice/UserSlice";
 import axios from "axios";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 
-const Sidebar = () => {
-  const [open, setOpen] = useState(false);
+const Sidebar = ({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) => {
   const pathname = usePathname();
-  const router = useRouter();
+  const router   = useRouter();
   const dispatch = useDispatch();
+  const { user } = useSelector((s) => s.User);
 
-  /* ================= DASHBOARD LINKS ================= */
-  const dashboardLinks = [
-    {
-      href: "/admin",
-      label: "Dashboard",
-      icon: <Home className="w-4 h-4 2xl:w-5 2xl:h-5" />,
-    },
-    {
-      href: "/admin/companies",
-      label: "Companies",
-      icon: <Building className="w-4 h-4 2xl:w-5 2xl:h-5" />,
-    },
-    {
-      href: "/admin/employees",
-      label: "Employees",
-      icon: <Users className="w-4 h-4 2xl:w-5 2xl:h-5" />,
-    },
-    {
-      href: "/admin/templates",
-      label: "Templates",
-      icon: <NotepadTextDashed className="w-4 h-4 2xl:w-5 2xl:h-5" />,
-    },
-    {
-      href: "/admin/attendance",
-      label: "Attendance",
-      icon: <Calendar className="w-4 h-4 2xl:w-5 2xl:h-5" />,
-    },
-    {
-      href: "/admin/accounts",
-      label: "Accounts",
-      icon: <DollarSign className="w-4 h-4 2xl:w-5 2xl:h-5" />,
-    },
-    {
-      href: "/admin/banks",
-      label: "Bank Accounts",
-      icon: <BanknoteArrowDown className="w-4 h-4 2xl:w-5 2xl:h-5" />,
-    },
-    {
-      href: "/admin/taxes",
-      label: "Taxes",
-      icon: <DollarSign className="w-4 h-4 2xl:w-5 2xl:h-5" />,
-    },
-    {
-      href: "/admin/expenses",
-      label: "Expenses",
-      icon: <Receipt className="w-4 h-4 2xl:w-5 2xl:h-5" />,
-    },
+  /* ── nav data ──────────────────────────────────────────── */
+  const isSuperAdmin = user?.role === "superAdmin";
+  const perms        = user?.permissions || [];
+  const can          = (p) => isSuperAdmin || perms.includes(p);
 
+  const allDashboardLinks = [
+    { href: "/admin",               label: "Dashboard",     icon: Home,             perm: null         },
+    { href: "/admin/companies",     label: "Companies",     icon: Building,         perm: "companies"  },
+    { href: "/admin/employees",     label: "Employees",     icon: Users,            perm: "employees"  },
+    { href: "/admin/departments",   label: "Departments",   icon: Layers,           perm: "employees"  },
+    { href: "/admin/templates",     label: "Templates",     icon: NotepadTextDashed,perm: "templates"  },
+    { href: "/admin/projects",      label: "Projects",      icon: FolderKanban,     perm: "employees"  },
+    { href: "/admin/tasks",         label: "All Tasks",     icon: ClipboardList,    perm: "employees"  },
+    { href: "/admin/attendance",    label: "Attendance",    icon: Calendar,         perm: "attendance" },
+    { href: "/admin/accounts",      label: "Accounts",      icon: DollarSign,       perm: "accounts"   },
+    { href: "/admin/banks",         label: "Bank Accounts", icon: Landmark,         perm: "accounts"   },
+    { href: "/admin/taxes",         label: "Taxes",         icon: BadgeDollarSign,  perm: "accounts"   },
+    { href: "/admin/expenses",      label: "Expenses",      icon: Receipt,          perm: "accounts"   },
   ];
 
-  /* ================= SLUG EXTRACTION ================= */
-  const parts = pathname.split("/");
+  const dashboardLinks = allDashboardLinks.filter((l) => l.perm === null || can(l.perm));
+
+  const parts     = pathname.split("/");
   const companyId = pathname.startsWith("/admin/company/") ? parts[3] : null;
-  const bankId = pathname.startsWith("/admin/bank/") ? parts[3] : null;
+  const bankId    = pathname.startsWith("/admin/bank/")    ? parts[3] : null;
 
-  /* ================= COMPANY DETAILS LINKS ================= */
-  const companyDetailsLinks = companyId
-    ? [
-      {
-        href: `/admin/company/${companyId}`,
-        label: "General",
-        icon: <Home className="w-4 h-4 2xl:w-5 2xl:h-5" />,
-      },
-      {
-        href: `/admin/company/${companyId}/clients`,
-        label: "Clients",
-        icon: <PersonStanding className="w-4 h-4 2xl:w-5 2xl:h-5" />,
-      },
-      {
-        href: `/admin/company/${companyId}/invoices`,
-        label: "Invoices",
-        icon: <CardSim className="w-4 h-4 2xl:w-5 2xl:h-5" />,
-      },
-      {
-        href: `/admin/company/${companyId}/templates`,
-        label: "Templates",
-        icon: <NotepadTextDashed className="w-4 h-4 2xl:w-5 2xl:h-5" />,
-      },
-    ]
-    : [];
+  const companyDetailsLinks = companyId ? [
+    { href: `/admin/company/${companyId}`,           label: "General",   icon: Home },
+    { href: `/admin/company/${companyId}/clients`,   label: "Clients",   icon: PersonStanding },
+    { href: `/admin/company/${companyId}/invoices`,  label: "Invoices",  icon: CardSim },
+    { href: `/admin/company/${companyId}/templates`, label: "Templates", icon: NotepadTextDashed },
+  ] : [];
 
-  /* ================= BANK DETAILS LINKS ================= */
-  const bankDetailsLinks = bankId
-    ? [
-      {
-        href: `/admin/bank/${bankId}`,
-        label: "General",
-        icon: <Home className="w-4 h-4 2xl:w-5 2xl:h-5" />,
-      },
-      {
-        href: `/admin/bank/${bankId}/transfer`,
-        label: "Transfer",
-        icon: <NotepadTextDashed className="w-4 h-4 2xl:w-5 2xl:h-5" />,
-      },
-      {
-        href: `/admin/bank/${bankId}/loans`,
-        label: "Loans",
-        icon: <BadgeDollarSign className="w-4 h-4 2xl:w-5 2xl:h-5" />,
-      },
-    ]
-    : [];
+  const bankDetailsLinks = bankId ? [
+    { href: `/admin/bank/${bankId}`,          label: "General",  icon: Home },
+    { href: `/admin/bank/${bankId}/transfer`, label: "Transfer", icon: NotepadTextDashed },
+    { href: `/admin/bank/${bankId}/loans`,    label: "Loans",    icon: BadgeDollarSign },
+  ] : [];
 
-  /* ================= LINKS SWITCH ================= */
   let links = dashboardLinks;
-
-  if (pathname.startsWith("/admin/company/")) {
-    links = companyDetailsLinks;
-  }
-
-  if (pathname.startsWith("/admin/bank/")) {
-    links = bankDetailsLinks;
-  }
+  if (pathname.startsWith("/admin/company/")) links = companyDetailsLinks;
+  if (pathname.startsWith("/admin/bank/"))    links = bankDetailsLinks;
 
   const showBackButton =
-    pathname.startsWith("/admin/company/") ||
-    pathname.startsWith("/admin/bank/");
+    pathname.startsWith("/admin/company/") || pathname.startsWith("/admin/bank/");
 
-  /* ================= LOGOUT ================= */
+  /* ── logout ────────────────────────────────────────────── */
   const handleLogout = async () => {
     try {
       const res = await axios.get("/api/logout");
@@ -157,72 +74,123 @@ const Sidebar = () => {
         router.push("/superadmin/sign-in");
         toast.success("Logged out successfully");
       }
-    } catch (error) {
+    } catch {
       toast.error("Logout failed");
     }
   };
 
+  const isSettingsActive = pathname === "/admin/settings";
+
+  /* ── render ─────────────────────────────────────────────── */
   return (
     <>
-      {/* Mobile Toggle */}
-      <button
-        onClick={() => setOpen(!open)}
-        className="lg:hidden fixed top-24 right-4 z-50 bg-[#5965AB] text-white p-2 rounded-md"
-      >
-        {open ? <X /> : <Menu />}
-      </button>
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div
+          className="lg:hidden fixed inset-0 z-30 bg-black/40 backdrop-blur-sm"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 mt-24 z-40 bg-white shadow-sm rounded-lg
-        w-[60%] sm:w-[55%] px-6 py-8 transition-transform duration-300
-        ${open ? "translate-x-4" : "-translate-x-full"}
-        lg:translate-x-0 lg:w-[20%] lg:h-[78vh] lg:mt-28`}
+        className={`
+          fixed top-[73px] left-0 z-40 bg-white border-r border-slate-200
+          flex flex-col h-[calc(100vh-73px)] overflow-visible
+          transition-all duration-300 ease-in-out
+          ${collapsed ? "w-16" : "w-60"}
+          ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
+        `}
       >
-        {/* Links */}
-        <nav className="flex flex-col gap-2 h-[50vh] overflow-y-auto">
+        {/* ── Collapse handle ── */}
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className="
+            hidden lg:flex absolute -right-3 top-5 z-50
+            w-6 h-6 items-center justify-center
+            rounded-full bg-white border border-slate-200 shadow-md
+            text-slate-400 hover:text-blue-600 hover:border-blue-300 hover:shadow-blue-100
+            transition-all duration-200
+          "
+        >
+          {collapsed ? <ChevronRight size={11} /> : <ChevronLeft size={11} />}
+        </button>
+
+        {/* ── Nav links ──────────────────────────────────── */}
+        <nav className="flex-1 px-2 pt-3 pb-2 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {links.map((link) => {
+            const Icon     = link.icon;
             const isActive = pathname === link.href;
             return (
               <Link
                 key={link.href}
                 href={link.href}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg font-medium
-                ${isActive
-                    ? "bg-gradient-to-r from-[#5965AB] to-[#60B89E] text-white"
-                    : "text-gray-700 hover:bg-gray-100"
-                  }`}
+                title={collapsed ? link.label : ""}
+                onClick={() => setMobileOpen(false)}
+                className={`
+                  group flex items-center gap-3 px-3 py-2.5 rounded-lg mb-0.5
+                  text-sm font-medium transition-all
+                  ${isActive
+                    ? "bg-blue-50 text-blue-600"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"}
+                `}
               >
-                {link.icon}
-                {link.label}
+                <Icon
+                  size={18}
+                  className={`shrink-0 transition-colors ${
+                    isActive
+                      ? "text-blue-600"
+                      : "text-slate-400 group-hover:text-slate-600"
+                  }`}
+                />
+                {!collapsed && <span className="truncate">{link.label}</span>}
               </Link>
             );
           })}
         </nav>
 
-        {/* Bottom Actions */}
-        <div className="mt-6 flex flex-col gap-2">
+        {/* ── Bottom actions ─────────────────────────────── */}
+        <div className="px-2 py-3 border-t border-slate-100 space-y-0.5">
           {showBackButton && (
             <Link
               href="/admin"
-              className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100"
+              title={collapsed ? "Back" : ""}
+              onClick={() => setMobileOpen(false)}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900"
             >
-              <ArrowBigLeft className="w-4 h-4" /> Back
+              <ArrowLeft size={18} className="shrink-0 text-slate-400" />
+              {!collapsed && <span>Back</span>}
             </Link>
           )}
 
-          <Link
-            href="/admin/settings"
-            className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100"
-          >
-            <Settings className="w-4 h-4" /> Settings
-          </Link>
+          {can("settings") && (
+            <Link
+              href="/admin/settings"
+              title={collapsed ? "Settings" : ""}
+              onClick={() => setMobileOpen(false)}
+              className={`
+                flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
+                ${isSettingsActive
+                  ? "bg-blue-50 text-blue-600"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"}
+              `}
+            >
+              <Settings
+                size={18}
+                className={`shrink-0 ${isSettingsActive ? "text-blue-600" : "text-slate-400"}`}
+              />
+              {!collapsed && <span>Settings</span>}
+            </Link>
+          )}
 
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-red-500 hover:bg-red-100"
+            title={collapsed ? "Logout" : ""}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors"
           >
-            <LogOut className="w-4 h-4" /> Logout
+            <LogOut size={18} className="shrink-0" />
+            {!collapsed && <span>Logout</span>}
           </button>
         </div>
       </aside>

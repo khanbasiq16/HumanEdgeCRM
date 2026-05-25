@@ -1,139 +1,130 @@
 "use client";
-import React, { useState } from "react";
-import { Input } from "@/components/ui/input";
-import { Bell, Search } from "lucide-react";
-import { usePathname } from "next/navigation";
+import React, { useState, useEffect } from "react";
+import { Bell, Search, Menu, X, UserCheck, Timer as TimerIcon } from "lucide-react";
 import { useSelector } from "react-redux";
-import Link from "next/link";
 import Timer from "../components/attendance/Timer";
+import { usePathname } from "next/navigation";
+import EmployeeCommandPalette from "../components/basecomponent/EmployeeCommandPalette";
 
-const Header = () => {
-  const pathname = usePathname();
-  const { user } = useSelector((state) => state.User);
+const Header = ({ onMobileMenu, mobileOpen }) => {
+  const { user }     = useSelector((state) => state.User);
+  const pathname     = usePathname();
+  const segments     = pathname.split("/");
+  const employeeSlug = segments[2] || "";
 
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const isSales = user?.department?.departmentName?.toLowerCase() === "sales";
 
-  const [query, setQuery] = useState("");
-  const [filtered, setFiltered] = useState([]);
-  const [showDropdown, setShowDropdown] = useState(false);
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        setPaletteOpen((o) => !o);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
-
-  const allItems = [
-    { label: "Dashboard", href: "/panel" },
-    { label: "Companies", href: "/companies" },
-    { label: "Attendance", href: "/attendance" },
-  ];
-
-
-  const handleSearch = (e) => {
-    const value = e.target.value;
-    setQuery(value);
-
-    if (value.trim().length > 0) {
-      const results = allItems.filter((item) =>
-        item.label.toLowerCase().includes(value.toLowerCase())
-      );
-      setFiltered(results);
-      setShowDropdown(true);
-    } else {
-      setFiltered([]);
-      setShowDropdown(false);
-    }
+  const initials = (name) => {
+    if (!name) return "E";
+    return name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
   };
 
   return (
-    <div className="fixed top-0 left-0 w-full bg-[#F6F6F6] pt-4 pb-2 z-30">
-      <header className="mx-auto bg-white px-4 md:px-6 py-3 rounded-xl shadow-sm w-[95%] md:w-[97%]">
-        <div className="flex justify-between items-center gap-4">
+    <>
+      <header className="fixed top-0 left-0 right-0 z-50 h-[73px] bg-white border-b border-slate-200 flex items-center px-3 md:px-5 gap-3">
 
-          {/* LEFT SECTION */}
-          <div className="flex items-center gap-3 sm:gap-6">
-            {/* Logo */}
-            <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16">
-              <img
-                src="https://brintor.com/assets/img/logo-icon.png"
-                alt="Logo"
-                className="w-full h-full object-contain"
-              />
+        {/* ── Mobile menu toggle ── */}
+        <button
+          onClick={onMobileMenu}
+          className="lg:hidden flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 shrink-0 transition-colors"
+        >
+          {mobileOpen ? <X size={17} /> : <Menu size={17} />}
+        </button>
+
+        {/* ── Brand / Logo ── */}
+        <div className="flex items-center gap-1 shrink-0 sm:w-52">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shadow-sm shrink-0">
+            <span className="text-white font-black text-sm tracking-tight select-none">HR</span>
+          </div>
+          <div className="hidden sm:flex flex-col leading-none gap-0.5">
+            <span className="font-extrabold text-slate-900 text-[15px] tracking-tight">HumanEdge</span>
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-50 border border-blue-200 rounded text-[10px] font-bold text-blue-700 uppercase tracking-wide w-fit">
+              <UserCheck size={9} strokeWidth={2.5} />
+              Employee
+            </span>
+          </div>
+        </div>
+
+        {/* ── Search: icon-only on mobile, full bar on sm+ ── */}
+        <button
+          onClick={() => setPaletteOpen(true)}
+          className="sm:hidden w-9 h-9 flex items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-400 hover:bg-slate-100 transition-colors shrink-0"
+        >
+          <Search size={15} />
+        </button>
+
+        <div className="hidden sm:block flex-1 max-w-md mx-auto">
+          <button
+            onClick={() => setPaletteOpen(true)}
+            className="w-full flex items-center gap-2.5 h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-400 text-sm hover:border-slate-300 hover:bg-slate-100 transition-colors"
+          >
+            <Search size={14} className="shrink-0" />
+            <span className="flex-1 text-left text-slate-400 text-sm">Search pages…</span>
+            <div className="hidden sm:flex items-center gap-0.5 shrink-0">
+              <kbd className="px-1.5 py-0.5 rounded bg-white border border-slate-200 text-[10px] text-slate-400 font-mono shadow-sm">Ctrl</kbd>
+              <kbd className="px-1.5 py-0.5 rounded bg-white border border-slate-200 text-[10px] text-slate-400 font-mono shadow-sm">K</kbd>
             </div>
+          </button>
+        </div>
 
-            {/* Timer */}
-            <span className="text-gray-600 font-medium text-sm sm:text-base md:text-lg">
+        {/* ── Right section ── */}
+        <div className="flex items-center gap-2 ml-auto shrink-0">
+
+          {/* Timer */}
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg">
+            <TimerIcon size={13} className="text-slate-400 shrink-0" />
+            <span className="text-xs font-bold text-blue-600 tabular-nums">
               <Timer />
             </span>
           </div>
 
-          {/* RIGHT SECTION */}
-          <div className="flex items-center gap-4 sm:gap-6 relative">
+          {/* Bell */}
+          <button className="relative w-9 h-9 flex items-center justify-center rounded-lg hover:bg-slate-100 transition-colors">
+            <Bell size={18} className="text-slate-500" />
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
+          </button>
 
-            {/* SEARCH BAR */}
-            <div className="relative w-32 sm:w-56 md:w-72">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
+          <div className="hidden sm:block w-px h-7 bg-slate-200 mx-1" />
 
-              <Input
-                type="search"
-                placeholder="Search"
-                value={query}
-                onChange={handleSearch}
-                onFocus={() => query && setShowDropdown(true)}
-                onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
-                className="pl-9 pr-4 py-2 bg-gray-100 rounded-full border-0 text-sm focus-visible:ring-1 focus-visible:ring-gray-300"
-              />
-
-              {/* DROPDOWN */}
-              {showDropdown && filtered.length > 0 && (
-                <ul className="absolute mt-2 w-full bg-white rounded-lg shadow-md border border-gray-200 max-h-48 overflow-y-auto z-50">
-                  {filtered.map((item, idx) => (
-                    <li key={idx}>
-                      <Link
-                        href={item.href}
-                        className="block px-4 py-2 hover:bg-gray-100 cursor-pointer text-gray-700 text-sm"
-                        onClick={() => {
-                          setQuery("");
-                          setShowDropdown(false);
-                        }}
-                      >
-                        {item.label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              )}
-
-              {showDropdown && filtered.length === 0 && (
-                <div className="absolute mt-2 w-full bg-white rounded-lg shadow-md border border-gray-200 text-center text-gray-500 text-sm py-2">
-                  No results found
-                </div>
-              )}
-            </div>
-
-            {/* NOTIFICATION ICON */}
-            <button className="relative">
-              <Bell className="w-5 h-5 text-gray-600" />
-              <span className="absolute top-0 right-0 block w-2 h-2 bg-red-500 rounded-full"></span>
-            </button>
-
-            {/* USER INFO */}
-            <div className="hidden lg:flex items-center gap-3">
-              <div className="leading-tight">
-                <p className="font-medium text-sm flex items-center gap-1">
-                  {user?.employeeName}
-                  {user?.role && (
-                    <span className="text-gray-500 text-xs">
-                      (
-                      {user?.role.charAt(0).toUpperCase() +
-                        user?.role.slice(1).replace(/\s+/g, "")}
-                      )
-                    </span>
-                  )}
-                </p>
-                <p className="text-xs text-gray-500">{user?.employeeemail}</p>
+          {/* User card */}
+          <div className="hidden sm:flex items-center gap-2.5">
+            <div className="relative shrink-0">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center text-xs font-bold shadow-sm">
+                {initials(user?.employeeName)}
               </div>
+              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-2 ring-white" />
             </div>
-
+            <div className="hidden md:block leading-tight">
+              <p className="text-sm font-bold text-slate-800 leading-none">
+                {user?.employeeName || "Employee"}
+              </p>
+              <p className="text-[11px] text-slate-400 mt-0.5 truncate max-w-[140px]">
+                {user?.department?.departmentName || user?.employeeemail}
+              </p>
+            </div>
           </div>
         </div>
       </header>
-    </div>
+
+      <EmployeeCommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        employeeSlug={employeeSlug}
+        isSales={isSales}
+      />
+    </>
   );
 };
 

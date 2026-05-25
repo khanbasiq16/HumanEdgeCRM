@@ -1,208 +1,3 @@
-// "use client";
-
-// import React, { useState, useMemo } from "react";
-// import {
-//     flexRender,
-//     getCoreRowModel,
-//     getFilteredRowModel,
-//     getPaginationRowModel,
-//     useReactTable,
-// } from "@tanstack/react-table";
-// import { Input } from "@/components/ui/input";
-// import { Button } from "@/components/ui/button";
-// import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
-// import {
-//     DropdownMenu,
-//     DropdownMenuTrigger,
-//     DropdownMenuContent,
-//     DropdownMenuCheckboxItem,
-// } from "@/components/ui/dropdown-menu";
-
-// export default function Expensetable({ expenses, expenseCategory }) {
-//     const [selectedCategories, setSelectedCategories] = useState([]);
-//     const [monthFilter, setMonthFilter] = useState("");
-//     const [searchValue, setSearchValue] = useState("");
-
-//     // Total Amount (filtered)
-//     const filteredExpenses = useMemo(() => {
-//         let filtered = expenses;
-
-//         // Category filter
-//         if (selectedCategories.length > 0) {
-//             filtered = filtered.filter(exp => selectedCategories.includes(exp.expensecategoryName));
-//         }
-
-//         // Month filter
-//         if (monthFilter) {
-//             filtered = filtered.filter(exp => {
-//                 const expMonth = new Date(exp.date).getMonth() + 1;
-//                 return expMonth === parseInt(monthFilter);
-//             });
-//         }
-
-//         // Search filter (by title or description)
-//         if (searchValue) {
-//             filtered = filtered.filter(exp =>
-//                 exp.title.toLowerCase().includes(searchValue.toLowerCase())
-//             );
-//         }
-
-//         return filtered;
-//     }, [expenses, selectedCategories, monthFilter, searchValue]);
-
-//     const totalAmount = useMemo(() => {
-//         return filteredExpenses.reduce((acc, curr) => acc + Number(curr.amount), 0);
-//     }, [filteredExpenses]);
-
-//     const columns = useMemo(
-//         () => [
-
-//             {
-//                 accessorKey: "expensecategoryName",
-//                 header: "Expense Category",
-//             },
-
-
-
-//             {
-//                 accessorKey: "amount",
-//                 header: "Amount",
-//                 cell: ({ row }) => <span>Rs {row.getValue("amount")}</span>,
-//             },
-//             {
-//                 accessorKey: "date",
-//                 header: "Date",
-//                 cell: ({ row }) => {
-//                     const d = new Date(row.getValue("date"));
-//                     return d.toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric" });
-//                 },
-//             },
-//         ],
-//         []
-//     );
-
-//     const table = useReactTable({
-//         data: filteredExpenses,
-//         columns,
-//         getCoreRowModel: getCoreRowModel(),
-//         getPaginationRowModel: getPaginationRowModel(),
-//         getFilteredRowModel: getFilteredRowModel(),
-//     });
-
-//     return (
-//         <div className="bg-white p-6 rounded-xl shadow-md flex flex-col space-y-4">
-//             {/* Total Amount */}
-//             <div className="text-right font-bold text-lg">Total Amount: Rs {totalAmount}</div>
-
-//             {/* Filters */}
-//             <div className="flex flex-wrap gap-4 items-center">
-//                 {/* Search */}
-//                 <Input
-//                     placeholder="Search by title..."
-//                     value={searchValue}
-//                     onChange={(e) => setSearchValue(e.target.value)}
-//                     className="max-w-sm"
-//                 />
-
-//                 {/* Month Filter */}
-//                 <select
-//                     className="border p-2 rounded"
-//                     value={monthFilter}
-//                     onChange={(e) => setMonthFilter(e.target.value)}
-//                 >
-//                     <option value="">All Months</option>
-//                     {Array.from({ length: 12 }, (_, i) => (
-//                         <option key={i + 1} value={i + 1}>
-//                             {new Date(0, i).toLocaleString("default", { month: "long" })}
-//                         </option>
-//                     ))}
-//                 </select>
-
-//                 {/* Category Filter */}
-//                 <DropdownMenu>
-//                     <DropdownMenuTrigger asChild>
-//                         <Button variant="outline">Filter Categories</Button>
-//                     </DropdownMenuTrigger>
-//                     <DropdownMenuContent className="max-h-60 overflow-auto">
-//                         {expenseCategory.map((cat) => (
-//                             <DropdownMenuCheckboxItem
-//                                 key={cat}
-//                                 checked={selectedCategories.includes(cat)}
-//                                 onCheckedChange={(checked) => {
-//                                     setSelectedCategories((prev) =>
-//                                         checked
-//                                             ? [...prev, cat]
-//                                             : prev.filter((c) => c !== cat)
-//                                     );
-//                                 }}
-//                             >
-//                                 {cat.expenseCategoryName}
-//                             </DropdownMenuCheckboxItem>
-//                         ))}
-//                     </DropdownMenuContent>
-//                 </DropdownMenu>
-//             </div>
-
-//             {/* Table */}
-//             <div className="overflow-auto rounded-md border">
-//                 <Table>
-//                     <TableHeader>
-//                         {table.getHeaderGroups().map((headerGroup) => (
-//                             <TableRow key={headerGroup.id}>
-//                                 {headerGroup.headers.map((header) => (
-//                                     <TableHead key={header.id}>
-//                                         {header.isPlaceholder
-//                                             ? null
-//                                             : flexRender(header.column.columnDef.header, header.getContext())}
-//                                     </TableHead>
-//                                 ))}
-//                             </TableRow>
-//                         ))}
-//                     </TableHeader>
-//                     <TableBody>
-//                         {table.getRowModel().rows.length > 0 ? (
-//                             table.getRowModel().rows.map((row) => (
-//                                 <TableRow key={row.id}>
-//                                     {row.getVisibleCells().map((cell) => (
-//                                         <TableCell key={cell.id}>
-//                                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
-//                                         </TableCell>
-//                                     ))}
-//                                 </TableRow>
-//                             ))
-//                         ) : (
-//                             <TableRow>
-//                                 <TableCell colSpan={columns.length} className="text-center h-24">
-//                                     No Expenses Found
-//                                 </TableCell>
-//                             </TableRow>
-//                         )}
-//                     </TableBody>
-//                 </Table>
-//             </div>
-
-//             {/* Pagination */}
-//             <div className="flex justify-end gap-2">
-//                 <Button
-//                     variant="outline"
-//                     onClick={() => table.previousPage()}
-//                     disabled={!table.getCanPreviousPage()}
-//                 >
-//                     Previous
-//                 </Button>
-//                 <Button
-//                     variant="outline"
-//                     onClick={() => table.nextPage()}
-//                     disabled={!table.getCanNextPage()}
-//                 >
-//                     Next
-//                 </Button>
-//             </div>
-//         </div>
-//     );
-// }
-
-
 "use client";
 
 import React, { useState, useMemo } from "react";
@@ -212,128 +7,104 @@ import {
   getPaginationRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@/components/ui/table";
-
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuCheckboxItem,
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
+import { ChevronLeft, ChevronRight, Search, SlidersHorizontal, Tag } from "lucide-react";
 import MonthPicker from "../basecomponent/MonthPicker";
-
 
 export default function Expensetable({ expenses, expenseCategory }) {
   const [selectedCategories, setSelectedCategories] = useState([]);
-  const [selectedMonth, setSelectedMonth] = useState(null); // YYYY-MM
-  const [expenseType, setExpenseType] = useState("all"); // all | fixed | variable
-  const [searchValue, setSearchValue] = useState("");
+  const [selectedMonth, setSelectedMonth]           = useState(null);
+  const [expenseType, setExpenseType]               = useState("all");
+  const [searchValue, setSearchValue]               = useState("");
 
-  // 🔹 FILTER LOGIC (ALL FEATURES)
   const filteredExpenses = useMemo(() => {
     return expenses.filter((exp) => {
-      let valid = true;
-
-      // 🔸 Category filter
-      if (selectedCategories.length > 0) {
-        valid =
-          valid &&
-          selectedCategories.includes(exp.expensecategoryName);
-      }
-
-      // 🔸 Month filter (YYYY-MM)
+      if (selectedCategories.length > 0 && !selectedCategories.includes(exp.expensecategoryName)) return false;
       if (selectedMonth) {
-        const expMonth = new Date(exp.date)
-          .toISOString()
-          .slice(0, 7);
-        valid = valid && expMonth === selectedMonth;
+        const expMonth = new Date(exp.date).toISOString().slice(0, 7);
+        if (expMonth !== selectedMonth) return false;
       }
-
-      // 🔸 Fixed / Variable filter
-      if (expenseType !== "all") {
-        valid =
-          valid &&
-          exp.expensecategoryType?.toLowerCase() === expenseType;
-      }
-
-      // 🔸 Search filter
-      if (searchValue) {
-        valid =
-          valid &&
-          exp.expensecategoryName?.toLowerCase().includes(
-            searchValue.toLowerCase()
-          );
-      }
-
-      return valid;
+      if (expenseType !== "all" && exp.expensecategoryType?.toLowerCase() !== expenseType) return false;
+      if (searchValue && !exp.expensecategoryName?.toLowerCase().includes(searchValue.toLowerCase())) return false;
+      return true;
     });
   }, [expenses, selectedCategories, selectedMonth, expenseType, searchValue]);
 
-  // 🔹 TOTAL (Filtered)
-  const totalAmount = useMemo(() => {
-    return filteredExpenses.reduce(
-      (sum, exp) => sum + Number(exp.amount || 0),
-      0
-    );
-  }, [filteredExpenses]);
-
-  // 🔹 TABLE COLUMNS
-  const columns = useMemo(
-    () => [
-      {
-        accessorKey: "expensecategoryName",
-        header: "Expense Category",
-      },
-      {
-        accessorKey: "expensecategoryType",
-        header: "Type",
-        cell: ({ row }) => (
-          <span className="capitalize">
-            {row.getValue("expensecategoryType")}
-          </span>
-        ),
-      },
-      {
-        accessorKey: "amount",
-        header: "Amount",
-        cell: ({ row }) => <span>Rs {row.getValue("amount")}</span>,
-      },
-      {
-        accessorKey: "Username",
-        header: "Created By",
-        cell: ({ row }) => <span> {row.getValue("Username")}</span>,
-      },
-
-      {
-        accessorKey: "paymentMethod",
-        header: "Payment Method",
-        cell: ({ row }) => <span>{row.getValue("paymentMethod")}</span>,
-      },
-      {
-        accessorKey: "date",
-        header: "Date",
-        cell: ({ row }) => {
-          const d = new Date(row.getValue("date"));
-          return d.toLocaleDateString("en-US", {
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-          });
-        },
-      },
-    ],
-    []
+  const totalAmount = useMemo(
+    () => filteredExpenses.reduce((sum, exp) => sum + Number(exp.amount || 0), 0),
+    [filteredExpenses]
   );
+
+  const columns = useMemo(() => [
+    {
+      accessorKey: "expensecategoryName",
+      header: "Category",
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+            <Tag size={12} className="text-blue-500" />
+          </div>
+          <span className="text-sm font-semibold text-slate-700">{row.getValue("expensecategoryName")}</span>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "expensecategoryType",
+      header: "Type",
+      cell: ({ row }) => {
+        const type = row.getValue("expensecategoryType") || "";
+        const isFixed = type.toLowerCase() === "fixed";
+        return (
+          <span className={`
+            inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold border capitalize
+            ${isFixed
+              ? "bg-violet-50 text-violet-700 border-violet-200"
+              : "bg-amber-50 text-amber-700 border-amber-200"}
+          `}>
+            {type}
+          </span>
+        );
+      },
+    },
+    {
+      accessorKey: "amount",
+      header: "Amount",
+      cell: ({ row }) => (
+        <span className="text-sm font-semibold text-slate-800 tabular-nums">
+          Rs {Number(row.getValue("amount")).toLocaleString()}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "Username",
+      header: "Created By",
+      cell: ({ row }) => (
+        <span className="text-sm text-slate-500">{row.getValue("Username") || "—"}</span>
+      ),
+    },
+    {
+      accessorKey: "paymentMethod",
+      header: "Payment",
+      cell: ({ row }) => (
+        <span className="text-sm text-slate-500">{row.getValue("paymentMethod") || "—"}</span>
+      ),
+    },
+    {
+      accessorKey: "date",
+      header: "Date",
+      cell: ({ row }) => {
+        const d = new Date(row.getValue("date"));
+        return (
+          <span className="text-sm text-slate-500">
+            {d.toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric" })}
+          </span>
+        );
+      },
+    },
+  ], []);
 
   const table = useReactTable({
     data: filteredExpenses,
@@ -343,152 +114,151 @@ export default function Expensetable({ expenses, expenseCategory }) {
   });
 
   return (
-    <div className="bg-white p-6 rounded-xl shadow-md flex flex-col space-y-4">
-      {/* 🔹 TOTAL */}
-      <div className="text-right font-bold text-lg">
-        Total Expense Amount: Rs {totalAmount}
-      </div>
-
-      {/* 🔹 FILTERS */}
-      <div className="flex flex-wrap gap-3 items-center">
+    <div>
+      {/* Toolbar */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 px-5 py-3.5 border-b border-slate-100">
         {/* Search */}
-        <Input
-          placeholder="Search by title..."
-          value={searchValue}
-          onChange={(e) => setSearchValue(e.target.value)}
-          className="max-w-sm"
-        />
-
-        {/* Month Picker */}
-        <MonthPicker
-          value={selectedMonth}
-          onChange={setSelectedMonth}
-        />
-
-        {/* Fixed / Variable */}
-        <div className="flex gap-2">
-          <Button
-            variant={expenseType === "all" ? "default" : "outline"}
-            onClick={() => setExpenseType("all")}
-          >
-            All
-          </Button>
-          <Button
-            variant={expenseType === "fixed" ? "default" : "outline"}
-            onClick={() => setExpenseType("fixed")}
-          >
-            Fixed
-          </Button>
-          <Button
-            variant={
-              expenseType === "variable"
-                ? "default"
-                : "outline"
-            }
-            onClick={() => setExpenseType("variable")}
-          >
-            Variable
-          </Button>
+        <div className="relative flex-1 w-full sm:max-w-xs">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <Input
+            placeholder="Search category…"
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
+            className="pl-8 h-8 text-sm bg-slate-50 border-slate-200 rounded-lg focus-visible:ring-blue-500 focus-visible:ring-1"
+          />
         </div>
 
-        {/* Category Filter */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline">
-              Filter Categories
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="max-h-60 overflow-auto">
-            {expenseCategory.map((cat) => (
-              <DropdownMenuCheckboxItem
-                key={cat.id}
-                checked={selectedCategories.includes(
-                  cat.expenseCategoryName
-                )}
-                onCheckedChange={(checked) => {
-                  setSelectedCategories((prev) =>
-                    checked
-                      ? [
-                        ...prev,
-                        cat.expenseCategoryName,
-                      ]
-                      : prev.filter(
-                        (c) =>
-                          c !==
-                          cat.expenseCategoryName
-                      )
-                  );
-                }}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Month picker */}
+          <MonthPicker value={selectedMonth} onChange={setSelectedMonth} />
+
+          {/* Type pills */}
+          <div className="flex items-center bg-slate-100 rounded-xl p-0.5 gap-0.5">
+            {[
+              { label: "All",      value: "all" },
+              { label: "Fixed",    value: "fixed" },
+              { label: "Variable", value: "variable" },
+            ].map(({ label, value }) => (
+              <button
+                key={value}
+                onClick={() => setExpenseType(value)}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                  expenseType === value
+                    ? "bg-white text-slate-800 shadow-sm"
+                    : "text-slate-500 hover:text-slate-700"
+                }`}
               >
-                {cat.expenseCategoryName}
-              </DropdownMenuCheckboxItem>
+                {label}
+              </button>
             ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+          </div>
+
+          {/* Category filter */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="h-8 inline-flex items-center gap-1.5 px-3 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+                <SlidersHorizontal size={12} />
+                Categories
+                {selectedCategories.length > 0 && (
+                  <span className="ml-1 w-4 h-4 flex items-center justify-center rounded-full bg-blue-600 text-white text-[10px] font-bold">
+                    {selectedCategories.length}
+                  </span>
+                )}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="rounded-xl max-h-60 overflow-auto">
+              {expenseCategory.map((cat) => (
+                <DropdownMenuCheckboxItem
+                  key={cat.id}
+                  className="text-sm"
+                  checked={selectedCategories.includes(cat.expenseCategoryName)}
+                  onCheckedChange={(checked) =>
+                    setSelectedCategories((prev) =>
+                      checked
+                        ? [...prev, cat.expenseCategoryName]
+                        : prev.filter((c) => c !== cat.expenseCategoryName)
+                    )
+                  }
+                >
+                  {cat.expenseCategoryName}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Total amount */}
+          <div className="ml-auto bg-emerald-50 border border-emerald-200 text-emerald-700 px-3 py-1.5 rounded-lg text-xs font-bold tabular-nums whitespace-nowrap">
+            Total: Rs {totalAmount.toLocaleString()}
+          </div>
+        </div>
       </div>
 
-      {/* 🔹 TABLE */}
-      <div className="overflow-auto rounded-md border">
-        <Table>
-          <TableHeader>
+      {/* Table */}
+      <div className="overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <table className="w-full text-sm">
+          <thead>
             {table.getHeaderGroups().map((hg) => (
-              <TableRow key={hg.id}>
+              <tr key={hg.id} className="border-b border-slate-100 bg-slate-50/60">
                 {hg.headers.map((header) => (
-                  <TableHead key={header.id}>
-                    {flexRender(
-                      header.column.columnDef.header,
-                      header.getContext()
-                    )}
-                  </TableHead>
+                  <th
+                    key={header.id}
+                    className="px-5 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap"
+                  >
+                    {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                  </th>
                 ))}
-              </TableRow>
+              </tr>
             ))}
-          </TableHeader>
-
-          <TableBody>
+          </thead>
+          <tbody>
             {table.getRowModel().rows.length > 0 ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
+                <tr
+                  key={row.id}
+                  className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60 transition-colors"
+                >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
+                    <td key={cell.id} className="px-5 py-3.5 align-middle">
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
                   ))}
-                </TableRow>
+                </tr>
               ))
             ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="text-center h-24"
-                >
-                  No Expenses Found
-                </TableCell>
-              </TableRow>
+              <tr>
+                <td colSpan={columns.length} className="h-24 text-center text-sm text-slate-400">
+                  No expenses found
+                </td>
+              </tr>
             )}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       </div>
 
-      {/* 🔹 PAGINATION */}
-      <div className="flex justify-end gap-2">
-        <Button
-          variant="outline"
-          onClick={() => table.previousPage()}
-          disabled={!table.getCanPreviousPage()}
-        >
-          Previous
-        </Button>
-        <Button
-          variant="outline"
-          onClick={() => table.nextPage()}
-          disabled={!table.getCanNextPage()}
-        >
-          Next
-        </Button>
+      {/* Pagination */}
+      <div className="flex items-center justify-between px-5 py-3.5 border-t border-slate-100">
+        <span className="text-xs text-slate-400">
+          {filteredExpenses.length} result{filteredExpenses.length !== 1 ? "s" : ""}
+        </span>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
+            className="h-8 w-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronLeft size={14} />
+          </button>
+          <span className="text-xs font-medium text-slate-500 px-2">
+            {table.getState().pagination.pageIndex + 1} / {table.getPageCount() || 1}
+          </span>
+          <button
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+            className="h-8 w-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronRight size={14} />
+          </button>
+        </div>
       </div>
     </div>
   );

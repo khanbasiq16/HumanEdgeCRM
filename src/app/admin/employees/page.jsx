@@ -47,15 +47,10 @@ const page = () => {
   }, []);
     
   return (
-    <>
-    
-     <SuperAdminlayout>
-  <section className="w-full p-6">
-            <Superbreadcrumb path={"Employees"}/>
-            <ListEmployees/>
-            </section>
-     </SuperAdminlayout>
-    </>
+    <SuperAdminlayout>
+      <Superbreadcrumb path={"Employees"} />
+      <ListEmployees />
+    </SuperAdminlayout>
   )
 }
 

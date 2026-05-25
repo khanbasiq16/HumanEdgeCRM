@@ -2,418 +2,490 @@
 
 import React, { useState } from "react";
 import Employeelayout from "@/app/utils/employees/layout/Employeelayout";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import toast from "react-hot-toast";
-import axios from "axios";
+import toast   from "react-hot-toast";
+import axios   from "axios";
 import { useDispatch, useSelector } from "react-redux";
 import { UpdateUser } from "@/features/Slice/UserSlice";
-// Import icons for better UI
-import { Eye, EyeOff, RefreshCcw, Lock } from "lucide-react";
+import {
+  User, Shield, Bell, Lock, Eye, EyeOff, RefreshCcw,
+  Save, Mail, Phone, Loader2, Check, ChevronRight, Building2, Hash, Briefcase,
+} from "lucide-react";
 
-// --- Utility function for password generation ---
-const generateRandomPassword = (length = 16) => {
-  const characters =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+";
-  let password = "";
-  let hasUpper = false;
-  let hasLower = false;
-  let hasNumber = false;
-  let hasSymbol = false;
+/* ── helpers ──────────────────────────────────────────────── */
+const getInitials = (name) =>
+  (name || "E").split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
 
-  // Ensure the password meets criteria (at least one of each type)
-  while (
-    password.length < length ||
-    !hasUpper ||
-    !hasLower ||
-    !hasNumber ||
-    !hasSymbol
-  ) {
-    password = "";
-    hasUpper = false;
-    hasLower = false;
-    hasNumber = false;
-    hasSymbol = false;
-
-    for (let i = 0; i < length; i++) {
-      const char = characters.charAt(
-        Math.floor(Math.random() * characters.length)
-      );
-      password += char;
-      if (/[A-Z]/.test(char)) hasUpper = true;
-      if (/[a-z]/.test(char)) hasLower = true;
-      if (/[0-9]/.test(char)) hasNumber = true;
-      if (/[!@#$%^&*()_+]/.test(char)) hasSymbol = true;
+const generatePassword = (len = 16) => {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+";
+  let p = "", U = false, L = false, N = false, S = false;
+  while (!U || !L || !N || !S || p.length < len) {
+    p = ""; U = L = N = S = false;
+    for (let i = 0; i < len; i++) {
+      const c = chars[Math.floor(Math.random() * chars.length)];
+      p += c;
+      if (/[A-Z]/.test(c)) U = true;
+      if (/[a-z]/.test(c)) L = true;
+      if (/[0-9]/.test(c)) N = true;
+      if (/[^A-Za-z0-9]/.test(c)) S = true;
     }
   }
-  return password;
+  return p;
 };
 
+const pwStrength = (pw) => {
+  if (!pw) return { score: 0, label: "", color: "bg-slate-100" };
+  let s = 0;
+  if (pw.length >= 8)  s++;
+  if (pw.length >= 12) s++;
+  if (/[A-Z]/.test(pw)) s++;
+  if (/[0-9]/.test(pw)) s++;
+  if (/[^A-Za-z0-9]/.test(pw)) s++;
+  if (s <= 1) return { score: s, label: "Weak",   color: "bg-red-400"    };
+  if (s <= 2) return { score: s, label: "Fair",   color: "bg-amber-400"  };
+  if (s <= 3) return { score: s, label: "Good",   color: "bg-blue-400"   };
+  return             { score: s, label: "Strong", color: "bg-emerald-500" };
+};
+
+/* ── reusable section header (matches admin theme) ────────── */
+const SectionHeader = ({ icon: Icon, title, action }) => (
+  <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+    <div className="flex items-center gap-2">
+      <Icon size={15} className="text-slate-400" />
+      <h2 className="text-sm font-bold text-slate-800">{title}</h2>
+    </div>
+    {action}
+  </div>
+);
+
+/* ── form field label ─────────────────────────────────────── */
+const FieldLabel = ({ children }) => (
+  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+    {children}
+  </p>
+);
+
+/* ── password field ───────────────────────────────────────── */
+const PwField = ({ label, value, show, onToggle, onChange, placeholder }) => (
+  <div>
+    <FieldLabel>{label}</FieldLabel>
+    <div className="relative">
+      <Input
+        type={show ? "text" : "password"}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        className="h-9 pr-10 rounded-xl border-slate-200 bg-slate-50 text-sm focus-visible:ring-blue-500 focus-visible:ring-1"
+      />
+      <button
+        type="button"
+        onClick={onToggle}
+        className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
+      >
+        {show ? <EyeOff size={14} /> : <Eye size={14} />}
+      </button>
+    </div>
+  </div>
+);
+
+/* ── nav items ────────────────────────────────────────────── */
+const NAV_ITEMS = [
+  { id: "profile",       icon: User,   label: "Profile"       },
+  { id: "security",      icon: Shield, label: "Security"      },
+  { id: "notifications", icon: Bell,   label: "Notifications" },
+];
+
+/* ══════════════════════════════════════════════════════════ */
 const EmployeeSettings = () => {
-  const [activeTab, setActiveTab] = useState("profile");
-  const [profileupdateloading, setProfileupdateloading] = useState(false);
-  const [passwordupdateloading, setPaswordupdateloading] = useState(false);
-  const { user } = useSelector((state) => state.User);
-  const dispatch = useDispatch();
+  const { user }   = useSelector((s) => s.User);
+  const dispatch   = useDispatch();
+  const [tab, setTab] = useState("profile");
 
-  const [profileData, setProfileData] = useState({
-    employeeName: user?.employeeName || "",
-    employeeemail: user?.employeeemail || "",
-    employeePhone: user?.employeePhone || "",
+  /* profile */
+  const [profile, setProfile] = useState({
+    employeeName:    user?.employeeName    || "",
+    employeeemail:   user?.employeeemail   || "",
+    employeePhone:   user?.employeePhone   || "",
     employeeAddress: user?.employeeAddress || "",
-    employeeCNIC: user?.employeeCNIC || "",
-    dateOfJoining: user?.dateOfJoining || "",
+    employeeCNIC:    user?.employeeCNIC    || "",
+    dateOfJoining:   user?.dateOfJoining   || "",
+    designation:     user?.designation     || "",
   });
+  const [profileLoading, setProfileLoading] = useState(false);
 
-  const [passwordData, setPasswordData] = useState({
-    oldPassword: "",
-    newPassword: "",
-    confirmPassword: "",
-  });
+  /* password */
+  const [pw, setPw]           = useState({ old: "", new: "", confirm: "" });
+  const [pwShow, setPwShow]   = useState({ old: false, new: false, confirm: false });
+  const [pwLoading, setPwLoading] = useState(false);
+  const strength = pwStrength(pw.new);
 
-  const [showPassword, setShowPassword] = useState({
-    old: false,
-    new: false,
-    confirm: false,
-  });
+  /* notifications */
+  const [notifs, setNotifs] = useState({ email: true, sms: false });
 
-  const handleProfileUpdate = async (e) => {
+  /* ── handlers ─────────────────────────────────────────── */
+  const onProfileChange = (e) =>
+    setProfile((p) => ({ ...p, [e.target.name]: e.target.value }));
+
+  const saveProfile = async (e) => {
     e.preventDefault();
+    setProfileLoading(true);
     try {
-      setProfileupdateloading(true);
-      const res = await axios.post(
-        `/api/employee/update-employee/${user.employeeId}`,
-        profileData
-      );
-
+      const res = await axios.post(`/api/employee/update-employee/${user.employeeId}`, profile);
       if (res.data.success) {
         toast.success(res.data.message);
         dispatch(UpdateUser(res.data.employee));
       }
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to update profile");
-    } finally {
-      setProfileupdateloading(false);
-    }
+    } catch { toast.error("Failed to update profile"); }
+    finally   { setProfileLoading(false); }
   };
 
-  const handlePasswordChange = async (e) => {
+  const savePassword = async (e) => {
     e.preventDefault();
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      return toast.error("New passwords do not match");
-    }
+    if (pw.new !== pw.confirm) return toast.error("Passwords do not match");
+    if (pw.new.length < 8)    return toast.error("Password must be at least 8 characters");
+    setPwLoading(true);
     try {
-      setPaswordupdateloading(true);
-
-      if (passwordData.newPassword.length < 8) {
-        return toast.error("New password must be at least 8 characters long.");
-      }
-
-      const res = await axios.post(
-        `/api/employee/update-password/${user.employeeId}`,
-        passwordData
-      );
-
+      const res = await axios.post(`/api/employee/update-password/${user.employeeId}`, {
+        oldPassword: pw.old, newPassword: pw.new, confirmPassword: pw.confirm,
+      });
       if (res.data.success) {
         toast.success(res.data.message);
-        setPasswordData({
-          oldPassword: "",
-          newPassword: "",
-          confirmPassword: "",
-        });
-
-        setPaswordupdateloading(false)
+        setPw({ old: "", new: "", confirm: "" });
       }
-    } catch (err) {
-      console.error(err?.response?.data?.error);
-      toast.error(err?.response?.data?.error);
-      setPaswordupdateloading(true);
-    } 
+    } catch (err) { toast.error(err?.response?.data?.error || "Failed to update password"); }
+    finally      { setPwLoading(false); }
   };
 
-  // Function to generate and set new password
-  const handleGeneratePassword = () => {
-    const newPass = generateRandomPassword();
-    setPasswordData((prev) => ({
-      ...prev,
-      newPassword: newPass,
-      confirmPassword: newPass,
-    }));
-    toast.success("Strong password generated and applied!");
-  };
-
-  // Handle input change for profile form (unchanged)
-  const handleProfileChange = (e) => {
-    const { name, value } = e.target;
-    setProfileData((prev) => ({ ...prev, [name]: value }));
-  };
-
+  /* ── render ───────────────────────────────────────────── */
   return (
     <Employeelayout>
-      <div className="max-w-4xl mx-auto p-6 space-y-6">
-        <h1 className="text-3xl font-bold mb-4">Settings</h1>
+      <div className="space-y-5">
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-3 w-full sm:w-[400px]">
-            <TabsTrigger value="profile">Profile Info</TabsTrigger>
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>
-            <TabsTrigger value="password">Update Password</TabsTrigger>
-          </TabsList>
+        {/* Page title */}
+        <div>
+          <h1 className="text-xl font-extrabold text-slate-900">Settings</h1>
+          <p className="text-sm text-slate-400 mt-0.5">
+            Manage your profile, security, and preferences
+          </p>
+        </div>
 
-          {/* Profile Settings (content unchanged) */}
-          <TabsContent value="profile">
-            <Card>
-              <CardHeader>
-                <CardTitle>Profile Information</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleProfileUpdate} className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 sm:grid-rows-3 gap-4">
-                    <div>
-                      <Label>Full Name</Label>
-                      <Input
-                        name="employeeName"
-                        value={profileData.employeeName}
-                        onChange={handleProfileChange}
-                        placeholder="Employee Name"
-                      />
+        <div className="flex flex-col lg:flex-row gap-5 items-start">
+
+          {/* ── Sidebar ─────────────────────────────────── */}
+          <div className="w-full lg:w-56 shrink-0 space-y-3">
+
+            {/* Profile card */}
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-4 flex items-center gap-3">
+              <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white text-sm font-extrabold shrink-0 shadow-sm">
+                {getInitials(user?.employeeName)}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-extrabold text-slate-900 truncate leading-tight">
+                  {user?.employeeName || "Employee"}
+                </p>
+                <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                  {user?.department?.departmentName || "—"}
+                </p>
+                <span className="inline-flex items-center gap-0.5 mt-1 px-1.5 py-0.5 bg-blue-50 border border-blue-200 rounded text-[9px] font-bold text-blue-700 uppercase tracking-wide">
+                  Employee
+                </span>
+              </div>
+            </div>
+
+            {/* Nav */}
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-1.5 space-y-0.5">
+              {NAV_ITEMS.map(({ id, icon: Icon, label }) => (
+                <button
+                  key={id}
+                  onClick={() => setTab(id)}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150
+                    ${tab === id
+                      ? "bg-blue-50 text-blue-700"
+                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                    }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0
+                      ${tab === id ? "bg-blue-100" : "bg-slate-100"}`}>
+                      <Icon size={13} className={tab === id ? "text-blue-600" : "text-slate-500"} />
                     </div>
-                    <div>
-                      <Label>Email</Label>
-                      <Input
-                        type="email"
-                        name="employeeemail"
-                        value={profileData.employeeemail}
-                        onChange={handleProfileChange}
-                        placeholder="Email Address"
-                      />
+                    {label}
+                  </div>
+                  <ChevronRight size={13} className={tab === id ? "text-blue-400" : "text-slate-300"} />
+                </button>
+              ))}
+            </div>
+
+          </div>
+
+          {/* ── Content area ────────────────────────────── */}
+          <div className="flex-1 min-w-0">
+
+            {/* ══ PROFILE ══════════════════════════════════ */}
+            {tab === "profile" && (
+              <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden">
+                <SectionHeader icon={User} title="Profile Information" />
+
+                {/* Identity strip */}
+                <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white text-base font-extrabold shrink-0 shadow-sm">
+                      {getInitials(user?.employeeName)}
                     </div>
-                    <div>
-                      <Label>Phone</Label>
-                      <Input
-                        name="employeePhone"
-                        value={profileData.employeePhone}
-                        onChange={handleProfileChange}
-                        placeholder="Phone Number"
-                      />
-                    </div>
-                    <div>
-                      <Label>CNIC</Label>
-                      <Input
-                        name="employeeCNIC"
-                        value={profileData.employeeCNIC}
-                        onChange={handleProfileChange}
-                        placeholder="CNIC Number"
-                      />
-                    </div>
-                    <div>
-                      <Label>Date of Joining</Label>
-                      <Input
-                        type="date"
-                        name="dateOfJoining"
-                        value={profileData.dateOfJoining}
-                        onChange={handleProfileChange}
-                      />
-                    </div>
-                    <div className="sm:col-span-2">
-                      <Label>Address</Label>
-                      <Input
-                        name="employeeAddress"
-                        value={profileData.employeeAddress}
-                        onChange={handleProfileChange}
-                        placeholder="Home Address"
-                      />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-base font-extrabold text-slate-900 leading-tight">
+                        {user?.employeeName || "—"}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
+                        <span className="flex items-center gap-1 text-xs text-slate-400">
+                          <Mail size={11} className="text-slate-300" />
+                          {user?.employeeemail || "—"}
+                        </span>
+                        <span className="flex items-center gap-1 text-xs text-slate-400">
+                          <Building2 size={11} className="text-slate-300" />
+                          {user?.department?.departmentName || "—"}
+                        </span>
+                        <span className="flex items-center gap-1 text-xs text-slate-400">
+                          <Hash size={11} className="text-slate-300" />
+                          {user?.employeeId || "—"}
+                        </span>
+                      </div>
                     </div>
                   </div>
-
-                  <Button
-                    type="submit"
-                    disabled={profileupdateloading}
-                    className={`mt-4 text-white ${
-                      profileupdateloading
-                        ? "bg-gray-400 cursor-not-allowed"
-                        : "bg-[#5965AB] hover:bg-[#4a5595]"
-                    }`}
-                  >
-                    {profileupdateloading ? "....Updating" : "Save Changes"}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Notification Settings (content unchanged) */}
-          <TabsContent value="notifications">
-            <Card>
-              <CardHeader>
-                <CardTitle>Notification Preferences</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label>Email Notifications</Label>
-                  <input type="checkbox" className="h-4 w-4" />
                 </div>
-                <div className="flex items-center justify-between">
-                  <Label>SMS Alerts</Label>
-                  <input type="checkbox" className="h-4 w-4" />
-                </div>
-                <Button className="mt-4 bg-[#5965AB] text-white">
-                  Save Preferences
-                </Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
 
-          {/* Update Password (MODIFIED) */}
-          <TabsContent value="password">
-            <Card>
-              <CardContent>
-                <form onSubmit={handlePasswordChange} className="space-y-4">
-                  {/* Generate Password Button */}
+                {/* Form */}
+                <form onSubmit={saveProfile} className="p-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-                  <div className="flex items-center justify-between">
-                    <CardTitle>Update Password</CardTitle>
-                    <Button
-                      type="button"
-                      onClick={handleGeneratePassword}
-                      className="bg-transparent hover:bg-transparent  text-black flex items-center gap-2"
+                    <div>
+                      <FieldLabel>Full Name</FieldLabel>
+                      <Input name="employeeName" value={profile.employeeName} onChange={onProfileChange}
+                        placeholder="Your full name"
+                        className="h-9 rounded-xl border-slate-200 bg-slate-50 text-sm focus-visible:ring-blue-500 focus-visible:ring-1" />
+                    </div>
+
+                    <div>
+                      <FieldLabel>Email Address</FieldLabel>
+                      <Input type="email" name="employeeemail" value={profile.employeeemail} onChange={onProfileChange}
+                        placeholder="you@company.com"
+                        className="h-9 rounded-xl border-slate-200 bg-slate-50 text-sm focus-visible:ring-blue-500 focus-visible:ring-1" />
+                    </div>
+
+                    <div>
+                      <FieldLabel>Phone Number</FieldLabel>
+                      <Input name="employeePhone" value={profile.employeePhone} onChange={onProfileChange}
+                        placeholder="+92 300 0000000"
+                        className="h-9 rounded-xl border-slate-200 bg-slate-50 text-sm focus-visible:ring-blue-500 focus-visible:ring-1" />
+                    </div>
+
+                    <div>
+                      <FieldLabel>CNIC</FieldLabel>
+                      <Input name="employeeCNIC" value={profile.employeeCNIC} onChange={onProfileChange}
+                        placeholder="00000-0000000-0"
+                        className="h-9 rounded-xl border-slate-200 bg-slate-50 text-sm focus-visible:ring-blue-500 focus-visible:ring-1" />
+                    </div>
+
+                    <div>
+                      <FieldLabel>Date of Joining</FieldLabel>
+                      <Input type="date" name="dateOfJoining" value={profile.dateOfJoining} onChange={onProfileChange}
+                        className="h-9 rounded-xl border-slate-200 bg-slate-50 text-sm focus-visible:ring-blue-500 focus-visible:ring-1" />
+                    </div>
+
+                    <div>
+                      <FieldLabel>
+                        <span className="flex items-center gap-1">
+                          <Briefcase size={11} className="text-slate-400" /> Designation / Job Title
+                        </span>
+                      </FieldLabel>
+                      <Input name="designation" value={profile.designation} onChange={onProfileChange}
+                        placeholder="e.g. Software Engineer"
+                        className="h-9 rounded-xl border-slate-200 bg-slate-50 text-sm focus-visible:ring-blue-500 focus-visible:ring-1" />
+                    </div>
+
+                    <div>
+                      <FieldLabel>Home Address</FieldLabel>
+                      <Input name="employeeAddress" value={profile.employeeAddress} onChange={onProfileChange}
+                        placeholder="Street, City"
+                        className="h-9 rounded-xl border-slate-200 bg-slate-50 text-sm focus-visible:ring-blue-500 focus-visible:ring-1" />
+                    </div>
+
+                  </div>
+
+                  <div className="flex justify-end mt-5 pt-5 border-t border-slate-100">
+                    <button
+                      type="submit"
+                      disabled={profileLoading}
+                      className="inline-flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white text-sm font-bold rounded-xl transition-colors"
                     >
-                      <RefreshCcw className="h-4 w-4" />
-                      Generate Strong Password
-                    </Button>
+                      {profileLoading
+                        ? <><Loader2 size={13} className="animate-spin" />Saving…</>
+                        : <><Save size={13} />Save Changes</>}
+                    </button>
                   </div>
-
-                  {/* Current Password Field */}
-                  <div>
-                    <Label htmlFor="oldPassword">Current Password</Label>
-                    <div className="relative">
-                      <Input
-                        id="oldPassword"
-                        type={showPassword.old ? "text" : "password"}
-                        value={passwordData.oldPassword}
-                        onChange={(e) =>
-                          setPasswordData({
-                            ...passwordData,
-                            oldPassword: e.target.value,
-                          })
-                        }
-                        placeholder="Enter current password"
-                        className="pr-18"
-                      />
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setShowPassword({
-                            ...showPassword,
-                            old: !showPassword.old,
-                          })
-                        }
-                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-                      >
-                        {showPassword.old ? (
-                          <EyeOff className="h-5 w-5" />
-                        ) : (
-                          <Eye className="h-5 w-5" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* New Password Field */}
-                  <div>
-                    <Label htmlFor="newPassword">New Password</Label>
-                    <div className="relative">
-                      <Input
-                        id="newPassword"
-                        type={showPassword.new ? "text" : "password"}
-                        value={passwordData.newPassword}
-                        onChange={(e) =>
-                          setPasswordData({
-                            ...passwordData,
-                            newPassword: e.target.value,
-                          })
-                        }
-                        placeholder="Enter new password"
-                        className="pr-10"
-                      />
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setShowPassword({
-                            ...showPassword,
-                            new: !showPassword.new,
-                          })
-                        }
-                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-                      >
-                        {showPassword.new ? (
-                          <EyeOff className="h-5 w-5" />
-                        ) : (
-                          <Eye className="h-5 w-5" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Confirm New Password Field */}
-                  <div>
-                    <Label htmlFor="confirmPassword">
-                      Confirm New Password
-                    </Label>
-                    <div className="relative">
-                      <Input
-                        id="confirmPassword"
-                        type={showPassword.confirm ? "text" : "password"}
-                        value={passwordData.confirmPassword}
-                        onChange={(e) =>
-                          setPasswordData({
-                            ...passwordData,
-                            confirmPassword: e.target.value,
-                          })
-                        }
-                        placeholder="Confirm new password"
-                        className="pr-10"
-                      />
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setShowPassword({
-                            ...showPassword,
-                            confirm: !showPassword.confirm,
-                          })
-                        }
-                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-                      >
-                        {showPassword.confirm ? (
-                          <EyeOff className="h-5 w-5" />
-                        ) : (
-                          <Eye className="h-5 w-5" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  <Button
-                    type="submit"
-                    disabled={passwordupdateloading}
-                    className={`mt-4 flex items-center gap-2 text-white ${
-                      passwordupdateloading
-                        ? "bg-gray-400 cursor-not-allowed"
-                        : "bg-[#5965AB] hover:bg-[#4a5595]"
-                    }`}
-                  >
-                    <Lock className="h-4 w-4" />
-                    {passwordupdateloading ? "Updating..." : "Update Password"}
-                  </Button>
                 </form>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+              </div>
+            )}
+
+            {/* ══ SECURITY ═════════════════════════════════ */}
+            {tab === "security" && (
+              <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden">
+                <SectionHeader
+                  icon={Shield}
+                  title="Change Password"
+                  action={
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const p = generatePassword();
+                        setPw((d) => ({ ...d, new: p, confirm: p }));
+                        toast.success("Strong password generated!");
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-100 transition-colors"
+                    >
+                      <RefreshCcw size={11} /> Generate
+                    </button>
+                  }
+                />
+
+                <form onSubmit={savePassword} className="p-5 space-y-4">
+
+                  {/* info banner */}
+                  <div className="flex items-start gap-3 p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+                    <Lock size={14} className="text-slate-400 mt-0.5 shrink-0" />
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      Use a strong password with uppercase, numbers, and symbols — at least 8 characters.
+                    </p>
+                  </div>
+
+                  <PwField label="Current Password"
+                    value={pw.old} show={pwShow.old}
+                    onToggle={() => setPwShow((s) => ({ ...s, old: !s.old }))}
+                    onChange={(e) => setPw((d) => ({ ...d, old: e.target.value }))}
+                    placeholder="Enter current password" />
+
+                  <PwField label="New Password"
+                    value={pw.new} show={pwShow.new}
+                    onToggle={() => setPwShow((s) => ({ ...s, new: !s.new }))}
+                    onChange={(e) => setPw((d) => ({ ...d, new: e.target.value }))}
+                    placeholder="Enter new password" />
+
+                  {/* Strength bar */}
+                  {pw.new && (
+                    <div className="space-y-1.5 -mt-2">
+                      <div className="flex gap-1">
+                        {[1, 2, 3, 4, 5].map((i) => (
+                          <div key={i}
+                            className={`h-1.5 flex-1 rounded-full transition-all duration-300
+                              ${i <= strength.score ? strength.color : "bg-slate-100"}`}
+                          />
+                        ))}
+                      </div>
+                      <p className={`text-[11px] font-semibold
+                        ${strength.score <= 1 ? "text-red-500"
+                          : strength.score <= 2 ? "text-amber-500"
+                          : strength.score <= 3 ? "text-blue-500"
+                          : "text-emerald-600"}`}>
+                        {strength.label}
+                      </p>
+                    </div>
+                  )}
+
+                  <PwField label="Confirm New Password"
+                    value={pw.confirm} show={pwShow.confirm}
+                    onToggle={() => setPwShow((s) => ({ ...s, confirm: !s.confirm }))}
+                    onChange={(e) => setPw((d) => ({ ...d, confirm: e.target.value }))}
+                    placeholder="Confirm new password" />
+
+                  {/* Match indicator */}
+                  {pw.confirm && (
+                    <p className={`text-[11px] font-semibold flex items-center gap-1 -mt-2
+                      ${pw.new === pw.confirm ? "text-emerald-600" : "text-red-500"}`}>
+                      {pw.new === pw.confirm
+                        ? <><Check size={11} />Passwords match</>
+                        : "Passwords do not match"}
+                    </p>
+                  )}
+
+                  <div className="flex justify-end pt-4 border-t border-slate-100">
+                    <button
+                      type="submit"
+                      disabled={pwLoading}
+                      className="inline-flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white text-sm font-bold rounded-xl transition-colors"
+                    >
+                      {pwLoading
+                        ? <><Loader2 size={13} className="animate-spin" />Updating…</>
+                        : <><Lock size={13} />Update Password</>}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* ══ NOTIFICATIONS ════════════════════════════ */}
+            {tab === "notifications" && (
+              <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden">
+                <SectionHeader icon={Bell} title="Notification Preferences" />
+
+                <div className="p-5 space-y-3">
+                  {[
+                    {
+                      id:    "email",
+                      icon:  Mail,
+                      label: "Email Notifications",
+                      sub:   "Receive alerts and updates via email",
+                      accent:"bg-blue-50 text-blue-500",
+                    },
+                    {
+                      id:    "sms",
+                      icon:  Phone,
+                      label: "SMS Alerts",
+                      sub:   "Get text messages for critical events",
+                      accent:"bg-emerald-50 text-emerald-500",
+                    },
+                  ].map(({ id, icon: Icon, label, sub, accent }) => (
+                    <div key={id}
+                      className="flex items-center justify-between p-4 rounded-xl bg-slate-50 border border-slate-200/80 hover:border-slate-300 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${accent}`}>
+                          <Icon size={15} />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-slate-800">{label}</p>
+                          <p className="text-xs text-slate-400 mt-0.5">{sub}</p>
+                        </div>
+                      </div>
+
+                      {/* Toggle */}
+                      <button
+                        type="button"
+                        onClick={() => setNotifs((n) => ({ ...n, [id]: !n[id] }))}
+                        className={`relative w-10 h-5 rounded-full transition-colors duration-200 shrink-0
+                          ${notifs[id] ? "bg-blue-600" : "bg-slate-200"}`}
+                      >
+                        <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200
+                          ${notifs[id] ? "translate-x-5" : "translate-x-0"}`}
+                        />
+                      </button>
+                    </div>
+                  ))}
+
+                  <div className="flex justify-end pt-4 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => toast.success("Preferences saved!")}
+                      className="inline-flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-colors"
+                    >
+                      <Save size={13} />Save Preferences
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+          </div>
+        </div>
       </div>
     </Employeelayout>
   );

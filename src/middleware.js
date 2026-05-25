@@ -20,7 +20,7 @@ export async function middleware(req) {
 
 
     if (pathname === "/" || pathname.startsWith("/superadmin/sign-in") || pathname.startsWith("/finance/sign-in")) {
-      if (role === "superAdmin") {
+      if (role === "superAdmin" || role === "admin") {
         return NextResponse.redirect(new URL("/admin", req.url));
       } else if (role === "employee") {
         return NextResponse.redirect(new URL(`/employee/${slug}`, req.url));
@@ -30,7 +30,7 @@ export async function middleware(req) {
       }
     }
 
-    if (pathname.startsWith("/admin") && role !== "superAdmin") {
+    if (pathname.startsWith("/admin") && role !== "superAdmin" && role !== "admin") {
       const referer = req.headers.get("referer");
       return NextResponse.redirect(referer ? referer : new URL(`/employee/${slug}`, req.url));
     }

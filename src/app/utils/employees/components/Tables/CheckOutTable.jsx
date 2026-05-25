@@ -1,227 +1,137 @@
-
-
-
 "use client";
 import React from "react";
 import axios from "axios";
 import {
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
+  flexRender, getCoreRowModel, getFilteredRowModel,
+  getPaginationRowModel, getSortedRowModel, useReactTable,
 } from "@tanstack/react-table";
-import { ChevronDown, MoreHorizontal } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ChevronDown, MoreHorizontal, Search, Calendar, SlidersHorizontal, ChevronLeft, ChevronRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent,
+  DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useSelector } from "react-redux";
 import toast from "react-hot-toast";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { useParams } from "next/navigation";
 
-// ✅ Status Badge
-const StatusBadge = ({ status }) => {
-  let colorClasses = "";
-
-  switch (status) {
-    case "On Time Check Out":
-      colorClasses =
-        "bg-green-500/20 text-green-700 border border-green-400 dark:bg-green-500/30 dark:text-green-300";
-      break;
-    case "Late Check Out":
-      colorClasses =
-        "bg-yellow-500/20 text-yellow-700 border border-yellow-400 dark:bg-yellow-500/30 dark:text-yellow-300";
-      break;
-    case "Early Check Out":
-      colorClasses =
-        "bg-blue-500/20 text-blue-700 border border-blue-400 dark:bg-blue-500/30 dark:text-blue-300";
-      break;
-    case "Absent":
-      colorClasses =
-        "bg-red-500/20 text-red-700 border border-red-400 dark:bg-red-500/30 dark:text-red-300";
-      break;
-    default:
-      colorClasses =
-        "bg-gray-500/20 text-gray-700 border border-gray-400 dark:bg-gray-700/40 dark:text-gray-300";
-      break;
-  }
-
-  return (
-    <span
-      className={`px-3 py-1 text-xs font-semibold rounded-full transition-all duration-200 shadow-sm ${colorClasses}`}
-    >
-      {status || "N/A"}
-    </span>
-  );
+/* ── Status badge ───────────────────────────────────────── */
+const STATUS_STYLES = {
+  "On Time Check Out": "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "Late Check Out":    "bg-amber-50  text-amber-700  border-amber-200",
+  "Early Check Out":   "bg-blue-50   text-blue-700   border-blue-200",
+  "Absent":            "bg-red-50    text-red-700    border-red-200",
 };
+const StatusBadge = ({ status }) => (
+  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${STATUS_STYLES[status] || "bg-slate-50 text-slate-600 border-slate-200"}`}>
+    {status || "N/A"}
+  </span>
+);
 
-// ✅ Main Component
+/* ── Main component ─────────────────────────────────────── */
 const CheckOutTable = ({ data = [], setemployee }) => {
-  const [sorting, setSorting] = React.useState([]);
+  const [sorting, setSorting]                   = React.useState([]);
   const [columnVisibility, setColumnVisibility] = React.useState({});
-  const [rowSelection, setRowSelection] = React.useState({});
-  const [searchDate, setSearchDate] = React.useState("");
-  const [searchMonth, setSearchMonth] = React.useState("");
-  const [searchYear, setSearchYear] = React.useState("");
-  const [loading, setLoading] = React.useState(false);
+  const [rowSelection, setRowSelection]         = React.useState({});
+  const [searchDate, setSearchDate]             = React.useState("");
+  const [searchMonth, setSearchMonth]           = React.useState("");
+  const [searchYear, setSearchYear]             = React.useState("");
+  const [loading, setLoading]                   = React.useState(false);
 
-  const { user } = useSelector((state) => state.User);
+  const { user }       = useSelector((s) => s.User);
   const { employeeid } = useParams();
 
-  // ✅ Process Data
-  const processedData = React.useMemo(() => {
-    return data.map((item, index) => {
+  const processedData = React.useMemo(() =>
+    data.map((item, idx) => {
       let dateObj;
-      if (item.date && item.date.includes("/")) {
-        const [day, month, year] = item.date.split("/");
-        dateObj = new Date(`${year}-${month}-${day}`);
+      if (item.date?.includes("/")) {
+        const [d, m, y] = item.date.split("/");
+        dateObj = new Date(`${y}-${m}-${d}`);
       } else {
         dateObj = new Date(item.date || item.createdAt || Date.now());
       }
-
-      const status =
-        item.status ||
-        item.checkout?.status ||
-        item.checkin?.status ||
-        "N/A";
-
       return {
-        id: item.id || item._id || index,
-        ip: item.ip || item.checkout?.ip || "N/A",
-        time: item.time || item.checkout?.time || "N/A",
-        stopwatchTime: item.stopwatchTime || item.checkout?.stopwatchTime || "—",
-        status,
-        note: item.note || item.checkout?.note || "—",
+        id: item.id || item._id || idx,
+        ip:            item.ip            || "N/A",
+        time:          item.time          || "N/A",
+        stopwatchTime: item.stopwatchTime || "—",
+        note:          item.note          || "—",
+        status:        item.status        || "N/A",
         dateObj,
         formattedDate: dateObj.toLocaleDateString("en-GB"),
-        month: dateObj.toLocaleString("default", { month: "long" }),
-        year: dateObj.getFullYear().toString(),
+        month:         dateObj.toLocaleString("default", { month: "long" }),
+        year:          dateObj.getFullYear().toString(),
       };
-    });
-  }, [data]);
+    }),
+  [data]);
 
-  // ✅ Filtered Data
-  const filteredData = React.useMemo(() => {
-    return processedData.filter((item) => {
-      const matchDate = searchDate
-        ? item.dateObj.toISOString().split("T")[0] === searchDate
-        : true;
-      const matchMonth = searchMonth
-        ? item.month.toLowerCase().includes(searchMonth.toLowerCase())
-        : true;
-      const matchYear = searchYear ? item.year.includes(searchYear) : true;
+  const filteredData = React.useMemo(() =>
+    processedData.filter((item) => {
+      const matchDate  = searchDate  ? item.dateObj.toISOString().split("T")[0] === searchDate : true;
+      const matchMonth = searchMonth ? item.month.toLowerCase().includes(searchMonth.toLowerCase()) : true;
+      const matchYear  = searchYear  ? item.year.includes(searchYear) : true;
       return matchDate && matchMonth && matchYear;
-    });
-  }, [processedData, searchDate, searchMonth, searchYear]);
+    }),
+  [processedData, searchDate, searchMonth, searchYear]);
 
-  // ✅ Columns
-  const columns = React.useMemo(
-    () => [
-      {
-        id: "select",
-        header: ({ table }) => (
-          <Checkbox
-            checked={
-              table.getIsAllPageRowsSelected() ||
-              (table.getIsSomePageRowsSelected() && "indeterminate")
-            }
-            onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-            aria-label="Select all"
-          />
-        ),
-        cell: ({ row }) => (
-          <Checkbox
-            checked={row.getIsSelected()}
-            onCheckedChange={(value) => row.toggleSelected(!!value)}
-            aria-label="Select row"
-          />
-        ),
-        enableSorting: false,
-        enableHiding: false,
+  const columns = React.useMemo(() => [
+    {
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")}
+          onCheckedChange={(v) => table.toggleAllPageRowsSelected(!!v)}
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox checked={row.getIsSelected()} onCheckedChange={(v) => row.toggleSelected(!!v)} />
+      ),
+      enableSorting: false, enableHiding: false,
+    },
+    { accessorKey: "formattedDate",  header: "Date"       },
+    { accessorKey: "time",           header: "Check Out"  },
+    { accessorKey: "stopwatchTime",  header: "Total Time" },
+    {
+      accessorKey: "status", header: "Status",
+      cell: ({ row }) => <StatusBadge status={row.getValue("status")} />,
+    },
+    { accessorKey: "ip",   header: "IP Address" },
+    {
+      accessorKey: "note", header: "Note",
+      cell: ({ row }) => <span className="text-slate-500 text-xs italic">{row.getValue("note")}</span>,
+    },
+    { accessorKey: "month", header: "Month" },
+    { accessorKey: "year",  header: "Year"  },
+    {
+      id: "actions", header: "",
+      cell: ({ row }) => {
+        const r = row.original;
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+                <MoreHorizontal size={15} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuLabel className="text-xs">Actions</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-xs" onClick={() => navigator.clipboard.writeText(r.ip)}>Copy IP</DropdownMenuItem>
+              <DropdownMenuItem className="text-xs" onClick={() => toast(`Note: ${r.note || "No note"}`)}>View Note</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
       },
-      { accessorKey: "ip", header: "IP Address" },
-      { accessorKey: "time", header: "Time" },
-      { accessorKey: "stopwatchTime", header: "Total Time" },
-      {
-        accessorKey: "status",
-        header: "Status",
-        cell: ({ row }) => <StatusBadge status={row.getValue("status")} />,
-      },
-      {
-        accessorKey: "note",
-        header: "Note",
-        cell: ({ row }) => (
-          <div className="italic text-gray-600 dark:text-gray-400">
-            {row.getValue("note")}
-          </div>
-        ),
-      },
-      { accessorKey: "formattedDate", header: "Date" },
-      { accessorKey: "month", header: "Month" },
-      { accessorKey: "year", header: "Year" },
-      {
-        id: "actions",
-        header: "Actions",
-        cell: ({ row }) => {
-          const record = row.original;
-          return (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0">
-                  <MoreHorizontal />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                <DropdownMenuItem
-                  onClick={() => navigator.clipboard.writeText(record.ip)}
-                >
-                  Copy IP
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => alert(`Note: ${record.note || "No note"}`)}
-                >
-                  View Note
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          );
-        },
-      },
-    ],
-    []
-  );
+    },
+  ], []);
 
-  // ✅ React Table
   const table = useReactTable({
-    data: filteredData,
-    columns,
+    data: filteredData, columns,
     state: { sorting, columnVisibility, rowSelection },
     onSortingChange: setSorting,
     onColumnVisibilityChange: setColumnVisibility,
@@ -232,144 +142,137 @@ const CheckOutTable = ({ data = [], setemployee }) => {
     getPaginationRowModel: getPaginationRowModel(),
   });
 
-  // ✅ Update Status Handler
   const handleStatusUpdate = async (newStatus) => {
-    const selectedRows = table.getSelectedRowModel().rows;
-    if (!selectedRows.length) {
-      toast.error("Please select at least one row");
-      return;
-    }
-
+    const rows = table.getSelectedRowModel().rows;
+    if (!rows.length) { toast.error("Select at least one row"); return; }
     try {
       setLoading(true);
-      const ids = selectedRows.map((r) => r.original.id);
-
-      const res = await axios.post("/api/attendance/updatestatuscheckout", {
-        ids,
-        status: newStatus,
-        employeeid,
-      });
-
+      const ids = rows.map((r) => r.original.id);
+      const res = await axios.post("/api/attendance/updatestatuscheckout", { ids, status: newStatus, employeeid });
       if (res.data.success) {
         toast.success(`Updated ${ids.length} record(s) to "${newStatus}"`);
         setemployee(res.data.employee);
       }
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to update status");
-    } finally {
-      setLoading(false);
-      table.resetRowSelection();
-    }
+    } catch { toast.error("Failed to update status"); }
+    finally { setLoading(false); table.resetRowSelection(); }
   };
 
-  return (
-    <div className="w-full">
-      {/* 🔍 Filters + Admin Controls */}
-      <div className="flex flex-wrap gap-2 items-center py-4">
-        <Input
-          type="date"
-          value={searchDate}
-          onChange={(e) => setSearchDate(e.target.value)}
-          className="max-w-[150px]"
-        />
-        <Input
-          placeholder="Month (e.g. March)"
-          value={searchMonth}
-          onChange={(e) => setSearchMonth(e.target.value)}
-          className="max-w-[200px]"
-        />
-        <Input
-          placeholder="Year (e.g. 2025)"
-          value={searchYear}
-          onChange={(e) => setSearchYear(e.target.value)}
-          className="max-w-[150px]"
-        />
+  const selectedCount = table.getFilteredSelectedRowModel().rows.length;
 
-        {user?.role === "superAdmin" && (
-          <Select
-            onValueChange={(value) => handleStatusUpdate(value)}
-            disabled={loading}
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue
-                placeholder={loading ? "Updating..." : "Change Status"}
-              />
+  return (
+    <div className="space-y-3">
+
+      {/* ── Filter toolbar ── */}
+      <div className="flex flex-wrap gap-2 items-center">
+
+        {/* Date */}
+        <div className="relative">
+          <Calendar size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <input
+            type="date"
+            value={searchDate}
+            onChange={(e) => setSearchDate(e.target.value)}
+            className="h-8 pl-8 pr-3 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 text-slate-600 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer w-36"
+          />
+        </div>
+
+        {/* Month */}
+        <div className="relative">
+          <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <Input
+            placeholder="Month…"
+            value={searchMonth}
+            onChange={(e) => setSearchMonth(e.target.value)}
+            className="h-8 pl-8 w-28 text-xs bg-white border-slate-200 rounded-lg focus-visible:ring-blue-500 focus-visible:ring-1"
+          />
+        </div>
+
+        {/* Year */}
+        <div className="relative">
+          <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <Input
+            placeholder="Year…"
+            value={searchYear}
+            onChange={(e) => setSearchYear(e.target.value)}
+            className="h-8 pl-8 w-24 text-xs bg-white border-slate-200 rounded-lg focus-visible:ring-blue-500 focus-visible:ring-1"
+          />
+        </div>
+
+        {/* Status update (superAdmin / admin only) */}
+        {(user?.role === "superAdmin" || user?.role === "admin") && (
+          <Select onValueChange={handleStatusUpdate} disabled={loading}>
+            <SelectTrigger className="h-8 w-44 text-xs bg-white border-slate-200 rounded-lg">
+              <SlidersHorizontal size={12} className="text-slate-400 mr-1.5" />
+              <SelectValue placeholder={loading ? "Updating…" : "Change Status"} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="On Time Check Out">On Time Check Out</SelectItem>
-              <SelectItem value="Late Check Out">Late Check Out</SelectItem>
-              <SelectItem value="Early Check Out">Early Check Out</SelectItem>
-              <SelectItem value="Absent">Absent</SelectItem>
+              <SelectItem value="On Time Check Out" className="text-xs">On Time Check Out</SelectItem>
+              <SelectItem value="Late Check Out"    className="text-xs">Late Check Out</SelectItem>
+              <SelectItem value="Early Check Out"   className="text-xs">Early Check Out</SelectItem>
+              <SelectItem value="Absent"            className="text-xs">Absent</SelectItem>
             </SelectContent>
           </Select>
         )}
 
+        {/* Column visibility */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto">
-              Columns <ChevronDown className="ml-1 h-4 w-4" />
-            </Button>
+            <button className="ml-auto h-8 px-3 inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+              <ChevronDown size={13} /> Columns
+            </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            {table
-              .getAllColumns()
-              .filter((column) => column.getCanHide())
-              .map((column) => (
-                <DropdownMenuCheckboxItem
-                  key={column.id}
-                  checked={column.getIsVisible()}
-                  onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                  className="capitalize"
-                >
-                  {column.id}
-                </DropdownMenuCheckboxItem>
-              ))}
+            {table.getAllColumns().filter((c) => c.getCanHide()).map((col) => (
+              <DropdownMenuCheckboxItem
+                key={col.id}
+                checked={col.getIsVisible()}
+                onCheckedChange={(v) => col.toggleVisibility(!!v)}
+                className="capitalize text-xs"
+              >
+                {col.id}
+              </DropdownMenuCheckboxItem>
+            ))}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
 
-      {/* 🧾 Table */}
-      <div className="overflow-hidden rounded-md border">
+      {/* ── Table ── */}
+      <div className="rounded-xl border border-slate-200 overflow-hidden">
         <Table>
           <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
+            {table.getHeaderGroups().map((hg) => (
+              <TableRow key={hg.id} className="bg-slate-50 hover:bg-slate-50 border-b border-slate-200">
+                {hg.headers.map((header) => (
+                  <TableHead key={header.id} className="text-[11px] font-bold text-slate-500 uppercase tracking-wider py-3">
+                    {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
                 ))}
               </TableRow>
             ))}
           </TableHeader>
-
           <TableBody>
             {table.getRowModel().rows.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
+                  className="hover:bg-slate-50/80 border-b border-slate-100 last:border-0 text-sm"
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
+                    <TableCell key={cell.id} className="py-3 text-slate-700">
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                  No results found.
+                <TableCell colSpan={columns.length} className="py-16 text-center">
+                  <div className="flex flex-col items-center gap-2 text-slate-400">
+                    <Calendar size={28} className="text-slate-200" />
+                    <p className="text-sm font-medium">No attendance records</p>
+                    <p className="text-xs">Try adjusting your filters</p>
+                  </div>
                 </TableCell>
               </TableRow>
             )}
@@ -377,29 +280,27 @@ const CheckOutTable = ({ data = [], setemployee }) => {
         </Table>
       </div>
 
-      {/* Pagination */}
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <div className="text-muted-foreground flex-1 text-sm">
-          {table.getFilteredSelectedRowModel().rows.length} of{" "}
-          {filteredData.length} selected.
-        </div>
-        <div className="space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
+      {/* ── Pagination ── */}
+      <div className="flex items-center justify-between pt-1">
+        <p className="text-xs text-slate-400 font-medium">
+          {selectedCount > 0 ? `${selectedCount} selected · ` : ""}
+          {filteredData.length} record{filteredData.length !== 1 ? "s" : ""}
+        </p>
+        <div className="flex items-center gap-1.5">
+          <button
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
+            className="h-8 px-3 inline-flex items-center gap-1 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
+            <ChevronLeft size={13} /> Prev
+          </button>
+          <button
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
+            className="h-8 px-3 inline-flex items-center gap-1 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
-            Next
-          </Button>
+            Next <ChevronRight size={13} />
+          </button>
         </div>
       </div>
     </div>

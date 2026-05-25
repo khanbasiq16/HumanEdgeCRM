@@ -17,7 +17,7 @@ const page = () => {
   return (
     <>
     <SuperAdminlayout>
-         <section className="w-full p-6">
+         <section className="w-full ">
             <Companybreadcumbs path={"Invoices"}/>
             <ListInvoices/>
             </section>

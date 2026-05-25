@@ -1,186 +1,180 @@
 "use client";
 import React, { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogFooter,
-    DialogTrigger,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { Plus } from "lucide-react";
+import { Upload, FileSpreadsheet, Loader2, CheckCircle2 } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { createemployees } from "@/features/Slice/EmployeeSlice";
 
 const AttendanceImportDialog = ({ selectedEmployee }) => {
-    const [open, setOpen] = useState(false);
-    const [file, setFile] = useState(null);
-    const [loading, setLoading] = useState(false);
-    const dispatch = useDispatch();
+  const [open, setOpen]                 = useState(false);
+  const [file, setFile]                 = useState(null);
+  const [loading, setLoading]           = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [done, setDone]                 = useState(false);
 
-    const { employees } = useSelector((state) => state.Employee);
-    const [uploadProgress, setUploadProgress] = useState(0);
-    const [importStatus, setImportStatus] = useState({
-        processed: 0,
-        total: 0,
-        progress: 0,
-        status: "",
-    });
+  const dispatch = useDispatch();
+  const { employees } = useSelector((s) => s.Employee);
 
-    const handleImport = async (e) => {
-        e.preventDefault();
-        if (!file) return toast.error("Please select an Excel file!");
+  const handleFileChange = (e) => {
+    setFile(e.target.files[0]);
+    setDone(false);
+    setUploadProgress(0);
+  };
 
-        setLoading(true);
-        setUploadProgress(0);
-        setImportStatus({ processed: 0, total: 0, progress: 0, status: "Uploading..." });
+  const handleImport = async (e) => {
+    e.preventDefault();
+    if (!file) return toast.error("Please select an Excel file");
+    setLoading(true);
+    setUploadProgress(0);
+    setDone(false);
 
-        try {
+    try {
+      const filteredEmployee = employees.find((emp) => emp.employeeName === selectedEmployee);
+      const resIp = await fetch("https://api.ipify.org?format=json");
+      const { ip: clientIp } = await resIp.json();
 
-            const filteredEmployee = employees.find(emp => emp.employeeName === selectedEmployee);
+      const formData = new FormData();
+      formData.append("file",       file);
+      formData.append("employeeId", filteredEmployee?.id);
+      formData.append("clientIp",   clientIp);
 
-            const resIp = await fetch("https://api.ipify.org?format=json");
-            const { ip: clientIp } = await resIp.json();
-            const formData = new FormData();
+      const response = await axios.post("/api/attendance/import", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+        onUploadProgress: (evt) => {
+          setUploadProgress(Math.round((evt.loaded * 100) / evt.total));
+        },
+      });
 
-            formData.append("file", file);
-            formData.append("employeeId", filteredEmployee?.id);
-            formData.append("clientIp", clientIp);
+      if (response.data.success) {
+        setDone(true);
+        dispatch(createemployees(response.data.allEmployees));
+        toast.success("Attendance imported successfully!");
+        setTimeout(() => {
+          setOpen(false);
+          setFile(null);
+          setDone(false);
+          setUploadProgress(0);
+        }, 1200);
+      } else {
+        throw new Error(response.data.error || "Import failed");
+      }
+    } catch (err) {
+      toast.error(err.message || "Error importing file");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-            const response = await axios.post("/api/attendance/import", formData, {
-                headers: { "Content-Type": "multipart/form-data" },
-                onUploadProgress: (progressEvent) => {
-                    const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-                    setUploadProgress(percent);
-                },
-            });
+  return (
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setFile(null); setDone(false); setUploadProgress(0); } }}>
+      <DialogTrigger asChild>
+        <button className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200">
+          <Upload size={13} />
+          Import Attendance
+        </button>
+      </DialogTrigger>
 
-            if (response.data.success) {
-                setImportStatus({
-                    processed: 100,
-                    total: 100,
-                    progress: 100,
-                    status: "Import Completed",
-                });
+      <DialogContent className="sm:max-w-[480px] p-0 gap-0 rounded-2xl overflow-hidden">
+        {/* Header */}
+        <DialogHeader className="px-6 py-4 border-b border-slate-100 bg-slate-50/60">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center shrink-0">
+              <FileSpreadsheet size={18} className="text-white" />
+            </div>
+            <div>
+              <DialogTitle className="text-base font-bold text-slate-900 leading-none">
+                Import Attendance
+              </DialogTitle>
+              <p className="text-xs text-slate-400 mt-0.5">Upload an Excel file (.xls, .xlsx)</p>
+            </div>
+          </div>
+        </DialogHeader>
 
-                dispatch(createemployees(response.data.allEmployees));
-                toast.success("Attendance imported successfully!");
+        <form onSubmit={handleImport}>
+          <div className="px-6 py-5 space-y-5">
 
-                setOpen(false);
-            } else {
-                throw new Error(response.data.error || "Import failed");
-            }
-        } catch (err) {
-            console.error(err);
-            toast.error(err.message || "Error importing file");
-        } finally {
-            setLoading(false);
-            setUploadProgress(0);
-        }
-    };
+            {/* File upload area */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-600">Excel File</Label>
+              <label
+                htmlFor="att-file-upload"
+                className="flex items-center gap-3 px-4 py-3 border-2 border-dashed border-slate-200 hover:border-blue-400 rounded-xl cursor-pointer bg-slate-50 hover:bg-blue-50 transition-colors group"
+              >
+                <FileSpreadsheet size={18} className="text-slate-400 group-hover:text-blue-500 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-slate-600 group-hover:text-blue-600 truncate">
+                    {file ? file.name : "Click to select Excel file"}
+                  </p>
+                  <p className="text-xs text-slate-400">.xls, .xlsx supported</p>
+                </div>
+                <input
+                  id="att-file-upload"
+                  type="file"
+                  accept=".xls,.xlsx"
+                  required
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+              </label>
+            </div>
 
-    return (
-        <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-                <Button className="bg-[#5965AB] text-white flex items-center gap-2">
-                    <Plus size={18} /> Import Attendance
-                </Button>
-            </DialogTrigger>
+            {/* Progress */}
+            {loading && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs font-medium text-slate-600">
+                  <span>Uploading…</span>
+                  <span>{uploadProgress}%</span>
+                </div>
+                <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-blue-600 rounded-full transition-all duration-300"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+              </div>
+            )}
 
-            <DialogContent className="sm:max-w-[600px]">
-                <DialogHeader>
-                    <DialogTitle>Import Attendance</DialogTitle>
-                    <p className="text-sm text-gray-500">
-                        Upload an Excel file (.xls, .xlsx)
-                    </p>
-                </DialogHeader>
+            {/* Done state */}
+            {done && (
+              <div className="flex items-center gap-2 text-emerald-600 text-sm font-semibold">
+                <CheckCircle2 size={16} />
+                Import completed successfully!
+              </div>
+            )}
 
-                <form onSubmit={handleImport} className="space-y-5">
-                    <Label>Select Excel File</Label>
-                    <Input
-                        type="file"
-                        accept=".xls,.xlsx"
-                        required
-                        onChange={(e) => setFile(e.target.files[0])}
-                    />
+          </div>
 
-                    {/* Upload Progress */}
-                    {loading && (
-                        <div className="flex flex-col items-center gap-3">
-                            <svg width="120" height="120">
-                                <circle
-                                    cx="60"
-                                    cy="60"
-                                    r="45"
-                                    stroke="#e5e7eb"
-                                    strokeWidth="6"
-                                    fill="none"
-                                />
-                                <circle
-                                    cx="60"
-                                    cy="60"
-                                    r="45"
-                                    stroke="#2563eb"
-                                    strokeWidth="6"
-                                    fill="none"
-                                    strokeLinecap="round"
-                                    strokeDasharray={2 * Math.PI * 45}
-                                    strokeDashoffset={
-                                        (2 * Math.PI * 45) -
-                                        (uploadProgress / 100) * (2 * Math.PI * 45)
-                                    }
-                                    style={{ transition: "stroke-dashoffset 0.4s" }}
-                                />
-                                <text
-                                    x="50%"
-                                    y="50%"
-                                    textAnchor="middle"
-                                    dy=".3em"
-                                    className="text-sm font-semibold fill-blue-600"
-                                >
-                                    {uploadProgress}%
-                                </text>
-                            </svg>
-
-                            <p className="text-sm text-gray-600">
-                                {uploadProgress < 100
-                                    ? "Uploading attendance..."
-                                    : "Upload completed ✅"}
-                            </p>
-                        </div>
-                    )}
-
-                    {/* Import Status */}
-                    {loading && importStatus.status && (
-                        <div className="text-sm font-semibold text-blue-600">
-                            <p>Status: {importStatus.status}</p>
-                            {importStatus.total > 0 && (
-                                <p>
-                                    Progress: {importStatus.processed} / {importStatus.total} (
-                                    {importStatus.progress}%)
-                                </p>
-                            )}
-                        </div>
-                    )}
-
-                    <DialogFooter>
-                        <Button
-                            disabled={loading}
-                            type="submit"
-                            className="bg-[#5965AB] text-white w-full"
-                        >
-                            {loading ? `Uploading ${uploadProgress}%` : "Upload File"}
-                        </Button>
-                    </DialogFooter>
-                </form>
-            </DialogContent>
-        </Dialog>
-    );
+          {/* Footer */}
+          <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/60 flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading || !file}
+              className="inline-flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm shadow-blue-200"
+            >
+              {loading ? (
+                <><Loader2 size={14} className="animate-spin" /> {uploadProgress}%</>
+              ) : (
+                <><Upload size={14} /> Upload File</>
+              )}
+            </button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
 };
 
 export default AttendanceImportDialog;

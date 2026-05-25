@@ -5,14 +5,10 @@ import React from 'react'
 
 const page = () => {
     return (
-        <>
-            <SuperAdminlayout>
-                <section className="w-full p-6">
-                    <Superbreadcrumb path={"Accountants"} />
-                    <ListAccountUser />
-                </section>
-            </SuperAdminlayout>
-        </>
+        <SuperAdminlayout>
+            <Superbreadcrumb path={"Accountants"} />
+            <ListAccountUser />
+        </SuperAdminlayout>
     )
 }
 

@@ -1,5 +1,5 @@
 import { db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { NextResponse } from "next/server";
 
 export async function GET(req, { params }) {
@@ -29,6 +29,31 @@ export async function GET(req, { params }) {
 
     return NextResponse.json({ success: true, template: templateData }, { status: 200 });
 
+  } catch (error) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(req, { params }) {
+  try {
+    const { id } = params;
+    const { deleteDoc } = await import("firebase/firestore");
+    await deleteDoc(doc(db, "templates", id));
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+export async function PATCH(req, { params }) {
+  try {
+    const { id } = params;
+    const { templateName, fields } = await req.json();
+    const updates = { updatedAt: new Date().toISOString() };
+    if (templateName !== undefined) updates.templateName = templateName;
+    if (fields       !== undefined) updates.fields       = fields;
+    await updateDoc(doc(db, "templates", id), updates);
+    return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

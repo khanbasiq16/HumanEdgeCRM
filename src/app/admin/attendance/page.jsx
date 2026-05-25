@@ -31,18 +31,10 @@ const page = () => {
 
 
   return (
-    <>
-      <SuperAdminlayout>
-        <section className="w-full p-6">
-          <Superbreadcrumb path={"Attendance"} />
-
-          <Listallattendance />
-
-
-
-        </section>
-      </SuperAdminlayout>
-    </>
+    <SuperAdminlayout>
+      <Superbreadcrumb path={"Attendance"} />
+      <Listallattendance />
+    </SuperAdminlayout>
   )
 }
 

@@ -10,16 +10,30 @@ import {
 } from "firebase/firestore";
 import { NextResponse } from "next/server";
 
+const getKarachiNow = () =>
+  new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Karachi" }));
+
+const fmt12srv = (d) => {
+  let h = d.getHours();
+  const m = d.getMinutes().toString().padStart(2, "0");
+  const ap = h >= 12 ? "PM" : "AM";
+  h = h % 12 || 12;
+  return `${h}:${m} ${ap}`;
+};
+
 export async function POST(req) {
   try {
     const body = await req.json();
     const {
       employeeId,
       ip,
-      time,
       note,
       stopwatchTime,
     } = body;
+
+    // Server-authoritative Karachi time — never trust client clock
+    const karachiNow = getKarachiNow();
+    const time       = fmt12srv(karachiNow);
 
 
     // 1️⃣ Validate Employee ID
@@ -44,24 +58,28 @@ export async function POST(req) {
     const whitelist = whitelistSnap.data()?.whitelist || [];
 
     if (whitelist.length > 0) {
-      const partialIp = ip.split(".").slice(0, 3).join(".");
+      const hasUniversal = whitelist.some((item) => item.ip === "0.0.0.0/0");
 
-      const isAllowed = whitelist.some((item) => {
-        const partialWhitelistIp = item.ip.split(".").slice(0, 3).join(".");
-        return partialIp === partialWhitelistIp;
-      });
+      if (!hasUniversal) {
+        const partialIp = ip.split(".").slice(0, 3).join(".");
 
-      if (!isAllowed) {
-        console.log("❌ Blocked IP:", ip);
+        const isAllowed = whitelist.some((item) => {
+          const partialWhitelistIp = item.ip.split(".").slice(0, 3).join(".");
+          return partialIp === partialWhitelistIp;
+        });
 
-        return NextResponse.json(
-          {
-            success: false,
-            error:
-              "Check In Failed. Please Connect With the Office Network Use Local Internet 5G",
-          },
-          { status: 403 }
-        );
+        if (!isAllowed) {
+          console.log("❌ Blocked IP:", ip);
+
+          return NextResponse.json(
+            {
+              success: false,
+              error:
+                "Check In Failed. Please Connect With the Office Network Use Local Internet 5G",
+            },
+            { status: 403 }
+          );
+        }
       }
     }
 
@@ -78,8 +96,26 @@ export async function POST(req) {
     }
 
     const userData = userDoc.data();
-    const attendanceArray = userData.Attendance || [];
 
+    /* ── Duplicate check-out guard ───────────────────────────────────
+       1. Not checked in → cannot check out
+       2. Already checked out this shift → block                       */
+
+    if (!userData.isCheckedin) {
+      return NextResponse.json(
+        { success: false, error: "You are not checked in." },
+        { status: 400 }
+      );
+    }
+
+    if (userData.isCheckedout === true) {
+      return NextResponse.json(
+        { success: false, error: "You have already checked out for this shift." },
+        { status: 400 }
+      );
+    }
+
+    const attendanceArray = userData.Attendance || [];
 
     const index = attendanceArray.findIndex(
       (item) => item.id === userData?.attendanceid
@@ -117,41 +153,25 @@ export async function POST(req) {
     }
 
 
-    function parseTime12Hour(timeStr) {
-      const [timePart, modifier] = timeStr.trim().split(" ");
-      let [hours, minutes] = timePart.split(":").map(Number);
+    // Status based on actual elapsed time vs employee's required working hours
+    const checkInStart = userData.startTime;
+    const workingHours = parseFloat(userData.totalWorkingHours) || 9;
+    const graceMs      = parseInt(departmentData.graceTime || 0) * 60 * 1000;
+    const workingMs    = workingHours * 3600 * 1000;
 
-      if (modifier === "PM" && hours !== 12) hours += 12;
-      if (modifier === "AM" && hours === 12) hours = 0;
-
-      const date = new Date();
-      date.setHours(hours, minutes, 0, 0);
-      return date;
+    if (!checkInStart) {
+      return NextResponse.json(
+        { success: false, error: "Check-in time not found. Please contact admin." },
+        { status: 400 }
+      );
     }
 
-    const deptCheckIn = parseTime12Hour(departmentData.checkInTime || "9:00 PM");
-    const deptCheckOut = parseTime12Hour(departmentData.checkOutTime || "6:00 AM");
-    const empCheckout = parseTime12Hour(time);
+    const elapsedMs = Date.now() - new Date(checkInStart).getTime();
 
-    // 🕐 Handle night shift (checkout next day after midnight)
-    if (deptCheckOut < deptCheckIn) {
-      // Department checkout occurs next day
-      deptCheckOut.setDate(deptCheckOut.getDate() + 1);
-      if (empCheckout < deptCheckIn) {
-        empCheckout.setDate(empCheckout.getDate() + 1);
-      }
-    }
-
-    // ⏰ Grace Time
-    const graceTime = departmentData.graceTime || 0; // in minutes
-    const graceMillis = graceTime * 60 * 1000;
-    const lateThreshold = new Date(deptCheckOut.getTime() + graceMillis);
-
-    // 🟩 Determine Status
     let status = "";
-    if (empCheckout < deptCheckOut) {
+    if (elapsedMs < workingMs - graceMs) {
       status = "Early Check Out";
-    } else if (empCheckout > lateThreshold) {
+    } else if (elapsedMs > workingMs + graceMs) {
       status = "Late Check Out";
     } else {
       status = "On Time Check Out";

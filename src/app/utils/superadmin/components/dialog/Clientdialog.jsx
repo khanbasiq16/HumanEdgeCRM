@@ -1,30 +1,43 @@
 "use client";
 import React, { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogTrigger,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { useParams } from "next/navigation";
 import { getallclients } from "@/features/Slice/ClientSlice";
 import { useDispatch } from "react-redux";
+import { Users, Loader2, Plus, Globe, Mail, Phone, MapPin, Briefcase, Package } from "lucide-react";
 
+const Field = ({ label, required, icon: Icon, children }) => (
+  <div className="space-y-1.5">
+    <Label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
+      {Icon && <Icon size={12} className="text-slate-400" />}
+      {label}
+      {required && <span className="text-red-500 ml-0.5">*</span>}
+    </Label>
+    {children}
+  </div>
+);
+
+const Section = ({ title }) => (
+  <div className="pb-2 border-b border-slate-100">
+    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{title}</p>
+  </div>
+);
+
+const inputCls = "h-9 text-sm bg-slate-50 border-slate-200 rounded-lg focus-visible:ring-blue-500 focus-visible:ring-1 placeholder:text-slate-400";
+const textareaCls = "w-full text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder:text-slate-400";
 
 const Clientdialog = () => {
-    const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
-
   const dispatch = useDispatch();
-
   const { id } = useParams();
+
   const capitalizedCompanyName = id
     ? id.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())
     : "";
@@ -32,10 +45,8 @@ const Clientdialog = () => {
   const formHandler = async (e) => {
     e.preventDefault();
     setLoading(true);
-
     try {
       const formData = new FormData();
-
       formData.append("companyName", id);
       formData.append("clientName", e.target.clientName.value);
       formData.append("clientAddress", e.target.clientAddress.value);
@@ -49,121 +60,118 @@ const Clientdialog = () => {
         headers: { "Content-Type": "application/json" },
       });
 
-      const data = res.data;
-
-      if (data.success) {
+      if (res.data.success) {
         toast.success("Client Created Successfully");
         e.target.reset();
-
-        dispatch(getallclients(data?.allclients));
+        dispatch(getallclients(res.data?.allclients));
         setOpen(false);
-      } 
+      }
     } catch (error) {
-      console.error(error);
-      toast.error(error.response.data.error);
+      toast.error(error.response?.data?.error || "Something went wrong");
     } finally {
       setLoading(false);
     }
   };
 
-
   return (
-        <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-[#5965AB] text-white">
-          + Create Client
-        </Button>
+        <button className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors shadow-sm shadow-blue-200">
+          <Plus size={13} />
+          Create Client
+        </button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-[700px]">
-        <DialogHeader>
-          <DialogTitle>Create New Client</DialogTitle>
-          {capitalizedCompanyName && (
-            <p className="text-sm text-gray-500 mt-1">
-              Company: <span className="font-semibold">{capitalizedCompanyName}</span>
-            </p>
-          )}
+      <DialogContent className="sm:max-w-[600px] p-0 gap-0 rounded-2xl overflow-hidden">
+        <DialogHeader className="px-6 py-4 border-b border-slate-100 bg-slate-50/60">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center shrink-0">
+              <Users size={17} className="text-white" />
+            </div>
+            <div>
+              <DialogTitle className="text-base font-bold text-slate-900 leading-none">
+                Create New Client
+              </DialogTitle>
+              {capitalizedCompanyName && (
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Company: <span className="font-semibold text-slate-600">{capitalizedCompanyName}</span>
+                </p>
+              )}
+            </div>
+          </div>
         </DialogHeader>
 
-       
+        <form onSubmit={formHandler}>
+          <div className="px-6 py-5 space-y-5 max-h-[60vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            <Section title="Contact Info" />
 
-        <form
-  onSubmit={formHandler}
-  className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4 max-h-[80vh] overflow-y-auto p-2"
->
-  {/* Left Column */}
-  <div className="space-y-4">
-    <div>
-      <Label htmlFor="clientName">Client Name</Label>
-      <Input id="clientName" name="clientName" placeholder="Enter client name" required />
-    </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Client Name" required icon={Users}>
+                <Input name="clientName" placeholder="Full name" required className={inputCls} />
+              </Field>
+              <Field label="Email" required icon={Mail}>
+                <Input name="clientEmail" type="email" placeholder="client@email.com" required className={inputCls} />
+              </Field>
+            </div>
 
-    <div>
-      <Label htmlFor="clientAddress">Address</Label>
-      <Input id="clientAddress" name="clientAddress" placeholder="Enter address" required />
-    </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Phone" required icon={Phone}>
+                <Input name="clientPhone" placeholder="+1 234 567 8900" required className={inputCls} />
+              </Field>
+              <Field label="Website" icon={Globe}>
+                <Input name="clientWebsite" placeholder="https://example.com" className={inputCls} />
+              </Field>
+            </div>
 
-    <div>
-      <Label htmlFor="clientEmail">Email</Label>
-      <Input id="clientEmail" name="clientEmail" type="email" placeholder="Enter email" required />
-    </div>
+            <Field label="Address" required icon={MapPin}>
+              <Input name="clientAddress" placeholder="Street, City, Country" required className={inputCls} />
+            </Field>
 
-  
-  </div>
+            <Section title="Project Details" />
 
-  {/* Right Column */}
-  <div className="space-y-4">
-    <div>
-      <Label htmlFor="clientWebsite">Website</Label>
-      <Input id="clientWebsite" name="clientWebsite" placeholder="Enter client website" />
-    </div>
+            <Field label="Projects Details" icon={Briefcase}>
+              <textarea
+                name="projectsDetails"
+                placeholder="Describe the projects..."
+                rows={3}
+                className={textareaCls}
+              />
+            </Field>
 
-      <div>
-      <Label htmlFor="clientPhone">Phone Number</Label>
-      <Input id="clientPhone" name="clientPhone" placeholder="Enter phone number" required />
-    </div>
-  </div>
+            <Field label="Package Details" icon={Package}>
+              <textarea
+                name="packageDetails"
+                placeholder="Describe the package..."
+                rows={3}
+                className={textareaCls}
+              />
+            </Field>
+          </div>
 
-  {/* Full-width description fields */}
-  <div className="col-span-2 space-y-4">
-    <div>
-      <Label htmlFor="projectsDetails">Projects Details</Label>
-      <textarea
-        id="projectsDetails"
-        name="projectsDetails"
-        placeholder="Enter project details"
-        rows={4}
-        className="w-full px-4 py-2 border border-gray-300 rounded-md resize-none"
-      />
-    </div>
-
-    <div>
-      <Label htmlFor="packageDetails">Package Details</Label>
-      <textarea
-        id="packageDetails"
-        name="packageDetails"
-        placeholder="Enter package details"
-        rows={4}
-        className="w-full px-4 py-2 border border-gray-300 rounded-md resize-none"
-      />
-    </div>
-  </div>
-
-  {/* Submit Button */}
-  <DialogFooter className="col-span-2 flex justify-end mt-2">
-    <Button
-      type="submit"
-      className="bg-[#5965AB] text-white font-semibold px-6 py-2"
-      disabled={loading}
-    >
-      {loading ? "Saving..." : "Save"}
-    </Button>
-  </DialogFooter>
-</form>
-
+          <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/60 flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="inline-flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm shadow-blue-200"
+            >
+              {loading ? (
+                <><Loader2 size={14} className="animate-spin" /> Saving…</>
+              ) : (
+                <><Users size={14} /> Save Client</>
+              )}
+            </button>
+          </div>
+        </form>
       </DialogContent>
     </Dialog>
-  )
-}
+  );
+};
 
-export default Clientdialog
+export default Clientdialog;

@@ -16,42 +16,43 @@ export async function POST(req) {
     const body = await req.json();
     const { role, company } = body;
 
-    if (!role || !company) {
-      return NextResponse.json({
-        success: false,
-        message: "Role and company are required",
-      });
+    if (!role) {
+      return NextResponse.json({ success: false, message: "Role is required" });
+    }
+
+    if (role === "Admin" && !company) {
+      return NextResponse.json({ success: false, message: "Company is required for Contract templates" });
     }
 
     const templateId = uuidv4();
 
-    const companyRef = doc(db, "companies", company);
-    const companySnap = await getDoc(companyRef);
+    let companyStoredId = null;
 
-    if (!companySnap.exists()) {
-      return NextResponse.json({
-        success: false,
-        message: `Company '${company}' does not exist`,
-      });
+    if (company) {
+      const companyRef  = doc(db, "companies", company);
+      const companySnap = await getDoc(companyRef);
+
+      if (!companySnap.exists()) {
+        return NextResponse.json({ success: false, message: `Company does not exist` });
+      }
+
+      const companydata = companySnap.data();
+      companyStoredId   = companydata?.companyId || company;
+
+      if (role === "Admin") {
+        await updateDoc(companyRef, { ContactTemplates: arrayUnion(templateId) });
+      }
     }
-
-    const companydata = companySnap.data();
 
     // Create template
     const templateRef = doc(db, "templates", templateId);
     await setDoc(templateRef, {
       templateId,
       role,
-      company: companydata?.companyId,
-      fields: [],
+      company: companyStoredId,
+      fields:  [],
       createdAt: new Date(),
     });
-
-    if (role === "Admin") {
-      await updateDoc(companyRef, {
-        ContactTemplates: arrayUnion(templateId),
-      });
-    }
 
 
 
@@ -92,7 +93,8 @@ export async function POST(req) {
 
     return NextResponse.json({
       success: true,
-      message: "Template created successfully ",
+      message: "Template created successfully",
+      templateId,
       templates: enrichedTemplates,
     });
 

@@ -1,211 +1,27 @@
-// import React, { useState } from "react";
-// import axios from "axios";
-// import toast from "react-hot-toast";
-// import { Button } from "@/components/ui/button";
-// import { Input } from "@/components/ui/input";
-// import { Label } from "@/components/ui/label";
-// import {
-//   Dialog,
-//   DialogContent,
-//   DialogHeader,
-//   DialogTitle,
-//   DialogFooter,
-//   DialogTrigger,
-// } from "@/components/ui/dialog";
-// import { Trash } from "lucide-react";
-// import { useSelector } from "react-redux";
-
-// const Ipwhitelistdialog = ({ open, setOpen }) => {
-  
-//   const [networkName, setNetworkName] = useState("");
-//   const [ip, setIp] = useState("");
-//   const [editIndex, setEditIndex] = useState(null);
-//   const [loading, setLoading] = useState(false);
-
-//    const {ipwhitelist} = useSelector((state)=>state.Ipwhitelist)
-
-//    const [entries, setEntries] = useState(ipwhitelist);
-
-//   const addOrUpdateEntry = () => {
-//     if (!networkName.trim() || !ip.trim()) {
-//       toast.error("Network Name and IP are required");
-//       return;
-//     }
-
-//     if (editIndex !== null) {
-//       const updated = [...entries];
-//       updated[editIndex] = { networkName, ip };
-//       setEntries(updated);
-//       setEditIndex(null);
-//       toast.success("Entry updated");
-//     } else {
-//       setEntries([...entries, { networkName, ip }]);
-//       toast.success("Entry added");
-//     }
-
-//     setNetworkName("");
-//     setIp("");
-//   };
-
-//   const editEntry = (index) => {
-//     setNetworkName(entries[index].networkName);
-//     setIp(entries[index].ip);
-//     setEditIndex(index);
-//   };
-
-//   const removeEntry = (index) => {
-//     setEntries(entries.filter((_, i) => i !== index));
-//     toast.success("Entry removed");
-//   };
-
-//   const submitHandler = async (e) => {
-//     e.preventDefault();
-
-//     if (entries.length === 0) {
-//       toast.error("Network Not found");
-//       return;
-//     }
-
-//     setLoading(true);
-//     try {
-//       const res = await axios.post(
-//         "/api/create-ip-whitelist",
-//         { whitelist: entries },
-//         { headers: { "Content-Type": "application/json" } }
-//       );
-
-//       if (res.data.success) {
-//         toast.success("✅ Whitelist saved successfully");
-//         setEntries([]);
-//         setOpen(false);
-//       } else {
-//         toast.error(res.data.error || "Failed to save");
-//       }
-//     } catch (error) {
-//       console.error(error);
-//       toast.error("Something went wrong");
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   return (
-//     <Dialog open={open} onOpenChange={setOpen}>
-//       <DialogTrigger asChild>
-//         <Button className="bg-[#5965AB] text-white">+ Add and Update IP Whitelist</Button>
-//       </DialogTrigger>
-
-//       <DialogContent className="sm:max-w-[600px]">
-//         <DialogHeader>
-//           <DialogTitle>Create IP Whitelist</DialogTitle>
-//         </DialogHeader>
-
-//         <form onSubmit={submitHandler} className="space-y-4 mt-2 p-2">
-//           {/* Modern Inline Inputs + Circular Add Button */}
-//           <div className="flex items-center gap-3">
-//             <Input
-//               placeholder="Network Name"
-//               className="flex-1  border-gray-300 focus:ring-2 focus:ring-[#5965AB]"
-//               value={networkName}
-//               onChange={(e) => setNetworkName(e.target.value)}
-//             />
-
-//             <Input
-//               placeholder="IP Address"
-//               className="flex-1  border-gray-300 focus:ring-2 focus:ring-[#5965AB]"
-//               value={ip}
-//               onChange={(e) => setIp(e.target.value)}
-//             />
-
-//             <button
-//               type="button"
-//               onClick={addOrUpdateEntry}
-//               className="w-10 h-10 flex items-center justify-center bg-[#5965AB] text-white text-xl rounded-full"
-//             >
-//               +
-//             </button>
-//           </div>
-
-//           {/* List of Added Entries */}
-//           {entries.length > 0 && (
-//             <div className="border p-2 rounded mt-4">
-//               <h4 className="font-medium mb-2">Added Entries:</h4>
-//               <ul className="space-y-2 h-56 overflow-y-auto">
-//                 {entries.map((item, index) => (
-//                   <li
-//                     key={index}
-//                     className="flex justify-between items-center bg-gray-100 p-2 rounded"
-//                   >
-//                     <span>
-//                       {item.networkName} - {item.ip}
-//                     </span>
-//                     <div className="flex gap-2">
-//                       <Button
-//                         type="button"
-//                         variant="secondary"
-//                         onClick={() => editEntry(index)}
-//                       >
-//                         Edit
-//                       </Button>
-//                       <Button
-//                         type="button"
-                       
-//                         onClick={() => removeEntry(index)}
-//                       >
-//                         <Trash/>
-//                       </Button>
-//                     </div>
-//                   </li>
-//                 ))}
-//               </ul>
-//             </div>
-//           )}
-
-//           <DialogFooter>
-//             <Button
-//               type="submit"
-//               className="bg-[#5965AB] text-white w-full"
-//               disabled={loading}
-//             >
-//               {loading ? "Saving..." : "Save Whitelist"}
-//             </Button>
-//           </DialogFooter>
-//         </form>
-//       </DialogContent>
-//     </Dialog>
-//   );
-// };
-
-// export default Ipwhitelistdialog;
-
+"use client";
 
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogTrigger,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
-import { Trash } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { getallipwhitelist } from "@/features/Slice/IpwhiteSlice";
+import {
+  Wifi, Plus, Loader2, Trash2, Pencil, Check, X, ShieldCheck,
+} from "lucide-react";
 
 const Ipwhitelistdialog = ({ open, setOpen }) => {
   const { ipwhitelist } = useSelector((state) => state.Ipwhitelist);
+  const dispatch = useDispatch();
 
-  const [entries, setEntries] = useState([]);
+  const [entries, setEntries]         = useState([]);
   const [networkName, setNetworkName] = useState("");
-  const [ip, setIp] = useState("");
-  const [editIndex, setEditIndex] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const dispatch = useDispatch()
-
+  const [ip, setIp]                   = useState("");
+  const [editIndex, setEditIndex]     = useState(null);
+  const [loading, setLoading]         = useState(false);
 
   useEffect(() => {
     if (open && Array.isArray(ipwhitelist)) {
@@ -213,12 +29,11 @@ const Ipwhitelistdialog = ({ open, setOpen }) => {
     }
   }, [open, ipwhitelist]);
 
-  const addOrUpdateEntry = () => {
+  const addOrUpdate = () => {
     if (!networkName.trim() || !ip.trim()) {
-      toast.error("Network Name and IP are required");
+      toast.error("Network name and IP are required");
       return;
     }
-
     if (editIndex !== null) {
       const updated = [...entries];
       updated[editIndex] = { networkName, ip };
@@ -229,132 +44,196 @@ const Ipwhitelistdialog = ({ open, setOpen }) => {
       setEntries([...entries, { networkName, ip }]);
       toast.success("Entry added");
     }
-
     setNetworkName("");
     setIp("");
   };
 
-  const editEntry = (index) => {
+  const startEdit = (index) => {
     setNetworkName(entries[index].networkName);
     setIp(entries[index].ip);
     setEditIndex(index);
   };
 
+  const cancelEdit = () => {
+    setNetworkName("");
+    setIp("");
+    setEditIndex(null);
+  };
+
   const removeEntry = (index) => {
     setEntries(entries.filter((_, i) => i !== index));
-    toast.success("Entry removed");
+    if (editIndex === index) cancelEdit();
   };
 
   const submitHandler = async (e) => {
     e.preventDefault();
-
-    // if (entries.length === 0) {
-    //   toast.error("Network Not found");
-    //   return;
-    // }
-
-    console.log(entries)
-
     setLoading(true);
     try {
       const res = await axios.post(
         "/api/create-ip-whitelist",
-        { whitelist: entries ? entries : [] },
+        { whitelist: entries ?? [] },
         { headers: { "Content-Type": "application/json" } }
       );
-
       if (res.data.success) {
-        toast.success("✅ Whitelist saved successfully");
-        dispatch(getallipwhitelist(res.data.whitelist))
+        toast.success("Whitelist saved successfully");
+        dispatch(getallipwhitelist(res.data.whitelist));
         setOpen(false);
-      } 
+      }
     } catch (error) {
-      console.error(error);
-      toast.error(error.response.data.error);
+      toast.error(error.response?.data?.error || "Something went wrong");
     } finally {
       setLoading(false);
     }
   };
 
+  const inputCls = "h-9 text-sm bg-slate-50 border-slate-200 rounded-lg focus-visible:ring-blue-500 focus-visible:ring-1 placeholder:text-slate-400";
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-[#5965AB] text-white">
-          + Add & Update IP Whitelist
-        </Button>
+        <button className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors shadow-sm shadow-blue-200">
+          <Plus size={13} />
+          Add IP
+        </button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
-          <DialogTitle>IP Whitelist</DialogTitle>
+      <DialogContent className="sm:max-w-[500px] p-0 gap-0 rounded-2xl overflow-hidden">
+        {/* Header */}
+        <DialogHeader className="px-6 py-4 border-b border-slate-100 bg-slate-50/60">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center shrink-0">
+              <ShieldCheck size={17} className="text-white" />
+            </div>
+            <div>
+              <DialogTitle className="text-base font-bold text-slate-900 leading-none">
+                IP Whitelist
+              </DialogTitle>
+              <p className="text-xs text-slate-400 mt-0.5">Manage allowed network IPs</p>
+            </div>
+          </div>
         </DialogHeader>
 
-        <form onSubmit={submitHandler} className="space-y-4 mt-2 p-2">
-          {/* Inputs + Add Button */}
-          <div className="flex items-center gap-3">
-            <Input
-              placeholder="Network Name"
-              className="flex-1 border-gray-300 focus:ring-2 focus:ring-[#5965AB]"
-              value={networkName}
-              onChange={(e) => setNetworkName(e.target.value)}
-            />
+        <form onSubmit={submitHandler}>
+          <div className="px-6 py-5 space-y-5">
 
-            <Input
-              placeholder="IP Address"
-              className="flex-1 border-gray-300 focus:ring-2 focus:ring-[#5965AB]"
-              value={ip}
-              onChange={(e) => setIp(e.target.value)}
-            />
+            {/* Input row */}
+            <div className="space-y-3">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-2">
+                {editIndex !== null ? "Edit Entry" : "Add New Entry"}
+              </p>
 
-            <button
-              type="button"
-              onClick={addOrUpdateEntry}
-              className="w-10 h-10 flex items-center justify-center bg-[#5965AB] text-white text-xl rounded-full"
-            >
-              +
-            </button>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Network Name"
+                  value={networkName}
+                  onChange={(e) => setNetworkName(e.target.value)}
+                  className={`${inputCls} flex-1`}
+                />
+                <Input
+                  placeholder="IP Address"
+                  value={ip}
+                  onChange={(e) => setIp(e.target.value)}
+                  className={`${inputCls} flex-1`}
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={addOrUpdate}
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 h-9 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors"
+                >
+                  {editIndex !== null ? (
+                    <><Check size={13} /> Update Entry</>
+                  ) : (
+                    <><Plus size={13} /> Add Entry</>
+                  )}
+                </button>
+                {editIndex !== null && (
+                  <button
+                    type="button"
+                    onClick={cancelEdit}
+                    className="h-9 px-4 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+                  >
+                    <X size={13} /> Cancel
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Entries list */}
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-2">
+                {entries.length} {entries.length === 1 ? "Entry" : "Entries"}
+              </p>
+
+              {entries.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 gap-2">
+                  <Wifi size={24} className="text-slate-200" />
+                  <p className="text-xs text-slate-400 font-medium">No IPs added yet</p>
+                </div>
+              ) : (
+                <div className="space-y-1.5 max-h-52 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  {entries.map((item, index) => (
+                    <div
+                      key={index}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-colors ${
+                        editIndex === index
+                          ? "bg-blue-50 border-blue-200"
+                          : "bg-slate-50 border-slate-200 hover:border-slate-300"
+                      }`}
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0">
+                        <Wifi size={13} className="text-blue-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-700 truncate">{item.networkName}</p>
+                        <p className="text-[11px] text-slate-400 font-mono truncate">{item.ip}</p>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => startEdit(index)}
+                          className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                        >
+                          <Pencil size={12} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeEntry(index)}
+                          className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Entries List */}
-          {entries.length > 0 && (
-            <div className="border p-2 rounded mt-4">
-              <h4 className="font-medium mb-2">Added Entries:</h4>
-              <ul className="space-y-2 h-56 overflow-y-auto">
-                {entries.map((item, index) => (
-                  <li
-                    key={index}
-                    className="flex justify-between items-center bg-gray-100 p-2 rounded"
-                  >
-                    <span>
-                      {item.networkName} - {item.ip}
-                    </span>
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        onClick={() => editEntry(index)}
-                      >
-                        Edit
-                      </Button>
-                      <Button type="button" onClick={() => removeEntry(index)}>
-                        <Trash />
-                      </Button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button
-              type="submit"
-              className="bg-[#5965AB] text-white w-full"
-              disabled={loading}
+          {/* Footer */}
+          <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/60 flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"
             >
-              {loading ? "Saving..." : "Save Whitelist"}
-            </Button>
-          </DialogFooter>
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="inline-flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm shadow-blue-200"
+            >
+              {loading ? (
+                <><Loader2 size={14} className="animate-spin" /> Saving…</>
+              ) : (
+                <><ShieldCheck size={14} /> Save Whitelist</>
+              )}
+            </button>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

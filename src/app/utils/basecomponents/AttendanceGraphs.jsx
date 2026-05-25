@@ -1,126 +1,130 @@
 "use client";
 import React from "react";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
+  BarChart, Bar, XAxis, YAxis, Tooltip,
+  ResponsiveContainer, Cell,
 } from "recharts";
+import { TrendingUp } from "lucide-react";
 
-const AttendanceGraphs = ({ data, activeTab = "checkin" }) => {
+const COLOR_MAP = {
+  "On Time":           "#22c55e",
+  "Late":              "#eab308",
+  "Half Day":          "#f97316",
+  "Short Day":         "#a855f7",
+  "Early Check Out":   "#3b82f6",
+  "Late Check Out":    "#a855f7",
+  "On Time Check Out": "#22c55e",
+  "Absent":            "#ef4444",
+};
+
+const LEGEND = [
+  { label: "On Time",      color: "#22c55e" },
+  { label: "Late",         color: "#eab308" },
+  { label: "Half / Short", color: "#a855f7" },
+  { label: "Absent",       color: "#ef4444" },
+];
+
+const MONTH_NAMES = [
+  "January","February","March","April","May","June",
+  "July","August","September","October","November","December",
+];
+
+const CustomTooltip = ({ active, payload, selMonth, selYear }) => {
+  if (!active || !payload?.length) return null;
+  const d = payload[0].payload;
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-lg text-xs">
+      <p className="font-bold text-slate-800">
+        {String(d.date).padStart(2, "0")}/{String(selMonth).padStart(2, "0")}/{selYear}
+      </p>
+      <p className="mt-0.5 font-semibold" style={{ color: d.color }}>
+        {d.status || "No Data"}
+      </p>
+    </div>
+  );
+};
+
+const AttendanceGraphs = ({ data, activeTab = "checkin", selMonth, selYear }) => {
   if (!data || data.length === 0) return null;
 
-  const colorMap = {
-    "On Time": "#22c55e",
-    Late: "#eab308",
-    "Half Day": "#3b82f6",
-    "Short Day": "#a855f7",
-    "Early Check Out": "#3b82f6",
-    "Late Check Out": "#a855f7",
-    "On Time Check Out": "#22c55e",
-    Absent: "#ef4444",
-  };
+  /* fall back to current month if props not provided */
+  const now   = new Date();
+  const month = selMonth ?? (now.getMonth() + 1);
+  const year  = selYear  ?? now.getFullYear();
 
-  const today = new Date();
-  const currentMonth = today.getMonth();
-  const currentYear = today.getFullYear();
-  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const monthName   = MONTH_NAMES[month - 1];
 
-  // Prepare chart data
   const chartData = Array.from({ length: daysInMonth }, (_, i) => {
     const day = i + 1;
-
-    const dayData = data.find((att) => {
-      const [d, m, y] = att.date.split("/").map(Number);
-      return d === day && m === currentMonth + 1 && y === currentYear;
+    const rec = data.find((a) => {
+      const [d, m, y] = a.date.split("/").map(Number);
+      return d === day && m === month && y === year;
     });
-
-    const status =
-      dayData && activeTab === "checkin"
-        ? dayData.checkin?.status
-        : dayData
-          ? dayData.checkout?.status
-          : null;
-
+    const status = rec
+      ? activeTab === "checkin" ? rec.checkin?.status : rec.checkout?.status
+      : null;
     return {
-      date: day,
+      date:  day,
       status,
       count: status ? 1 : 0,
-      color: status ? colorMap[status] : "#e5e7eb",
+      color: status ? (COLOR_MAP[status] || "#94a3b8") : "#e2e8f0",
     };
   });
 
-  const uniqueStatuses = [
-    ...new Set(
-      data
-        .map((att) =>
-          activeTab === "checkin" ? att.checkin?.status : att.checkout?.status
-        )
-        .filter(Boolean)
-    ),
-  ];
-
+  const presentDays = chartData.filter((d) => d.status && d.status !== "Absent").length;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
 
-
-      {/* Status Badges */}
-      <div className="flex flex-wrap gap-2">
-        {uniqueStatuses.map((status) => (
-          <span
-            key={status}
-            className="px-3 py-1 rounded-full text-white text-sm"
-            style={{ backgroundColor: colorMap[status] }}
-          >
-            {status}
+      {/* Header row */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <TrendingUp size={14} className="text-slate-400" />
+          <span className="text-sm font-bold text-slate-700">
+            {monthName} {year} &mdash; {activeTab === "checkin" ? "Check-In" : "Check-Out"} Overview
           </span>
-        ))}
+          <span className="text-[11px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+            {presentDays} / {daysInMonth} days
+          </span>
+        </div>
+
+        {/* Legend */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          {LEGEND.map(({ label, color }) => (
+            <span key={label} className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
+              {label}
+            </span>
+          ))}
+        </div>
       </div>
 
-      <div>
-        <h3 className="text-md font-semibold mb-2">
-          Daily Attendance ({activeTab === "checkin" ? "Check-In" : "Check-Out"}
-          )
-        </h3>
-
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={chartData} maxBarSize={30}>
-            <XAxis dataKey="date" />
-            <YAxis domain={[0, 1]} ticks={[0, 0.25, 0.5, 0.75, 1]} />
+      {/* Chart */}
+      <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+        <ResponsiveContainer width="100%" height={160}>
+          <BarChart data={chartData} maxBarSize={16} barCategoryGap="30%">
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 10, fill: "#94a3b8" }}
+              tickLine={false}
+              axisLine={false}
+              interval={1}
+            />
+            <YAxis hide domain={[0, 1]} />
             <Tooltip
-              formatter={(value, name, props) => {
-                return props.payload.status
-                  ? [props.payload.status, "Status"]
-                  : ["No Data", "Status"];
-              }}
-              labelFormatter={(label, payload) => {
-                const dataItem = payload?.[0]?.payload;
-                if (dataItem && dataItem.status) {
-                  return `Date: ${String(dataItem.date).padStart(
-                    2,
-                    "0"
-                  )}/${String(new Date().getMonth() + 1).padStart(
-                    2,
-                    "0"
-                  )}/${new Date().getFullYear()}`;
-                }
-                return `Date: ${String(label).padStart(2, "0")}/${String(
-                  new Date().getMonth() + 1
-                ).padStart(2, "0")}/${new Date().getFullYear()}`;
-              }}
+              cursor={{ fill: "rgba(148,163,184,0.08)" }}
+              content={<CustomTooltip selMonth={month} selYear={year} />}
             />
             <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-              {chartData.map((entry, index) => (
-                <Cell key={index} fill={entry.color} />
+              {chartData.map((entry, i) => (
+                <Cell key={i} fill={entry.color} />
               ))}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
+
     </div>
   );
 };
