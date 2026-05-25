@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import { Bell, Search, Menu, X, UserCheck, Timer as TimerIcon } from "lucide-react";
 import { useSelector } from "react-redux";
 import Timer from "../components/attendance/Timer";
@@ -45,8 +46,8 @@ const Header = ({ onMobileMenu, mobileOpen }) => {
 
         {/* ── Brand / Logo ── */}
         <div className="flex items-center gap-1 shrink-0 sm:w-52">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shadow-sm shrink-0">
-            <span className="text-white font-black text-sm tracking-tight select-none">HR</span>
+          <div className="w-9 h-9 rounded-xl bg-white shrink-0 shadow-sm flex items-center justify-center p-0.5">
+            <Image src="/logo.webp" alt="HumanEdge" width={36} height={36} className="w-full h-full object-contain" />
           </div>
           <div className="hidden sm:flex flex-col leading-none gap-0.5">
             <span className="font-extrabold text-slate-900 text-[15px] tracking-tight">HumanEdge</span>
