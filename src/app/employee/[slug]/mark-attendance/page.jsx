@@ -94,7 +94,7 @@ const Page = () => {
           `/api/attendance/get-attendance-status/${user.employeeId}`
         );
         setIsCheckedin(res.data.employee.isCheckedin);
-        setIsCheckedout(res.data.employee.isCheckedout);
+        setIsCheckedout(false);
       } catch (err) {
         toast.error(err.response?.data?.error || "Failed to fetch status");
       } finally {

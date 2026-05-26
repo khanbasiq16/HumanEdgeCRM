@@ -20,7 +20,7 @@ import { getallipwhitelist } from "@/features/Slice/IpwhiteSlice";
 import {
   Users, Layers, Building2, Wifi, Calendar, CheckCircle2,
   XCircle, Shield, ToggleLeft, ArrowRight, UserPlus, Mail,
-  ShieldCheck, Trash2, Pencil,
+  ShieldCheck, Trash2, Pencil, RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -74,6 +74,7 @@ const Page = () => {
   const [invitations, setInvitations] = useState([]);
   const [editMemberOpen, setEditMemberOpen]   = useState(false);
   const [editingMember, setEditingMember]     = useState(null);
+  const [fixingStuck,   setFixingStuck]       = useState(false);
   const router  = useRouter();
   const dispatch = useDispatch();
 
@@ -118,6 +119,21 @@ const Page = () => {
       toast.error("Failed to update employee registration setting");
     } finally {
       setEmpRegToggling(false);
+    }
+  };
+
+  const handleFixStuck = async () => {
+    setFixingStuck(true);
+    try {
+      const res = await axios.post("/api/attendance/fix-stuck");
+      if (res.data.success) {
+        const count = res.data.reset?.length || 0;
+        toast.success(count > 0 ? `Reset ${count} stuck employee(s)` : "No stuck employees found");
+      }
+    } catch {
+      toast.error("Failed to fix stuck employees");
+    } finally {
+      setFixingStuck(false);
     }
   };
 
@@ -488,6 +504,29 @@ const Page = () => {
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+
+        {/* ── System Maintenance ─────────────────────────── */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden">
+          <SectionHeader icon={RefreshCw} title="System Maintenance" />
+          <div className="p-5">
+            <div className="flex items-center justify-between gap-4 p-4 bg-red-50 border border-red-200 rounded-xl">
+              <div>
+                <p className="text-sm font-bold text-slate-800">Reset Stuck Attendance</p>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Fixes employees stuck as checked-in from a previous day so they can check in again.
+                </p>
+              </div>
+              <button
+                onClick={handleFixStuck}
+                disabled={fixingStuck}
+                className="shrink-0 flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white text-xs font-bold rounded-lg transition-colors"
+              >
+                <RefreshCw size={13} className={fixingStuck ? "animate-spin" : ""} />
+                {fixingStuck ? "Fixing…" : "Fix Now"}
+              </button>
+            </div>
           </div>
         </div>
 
