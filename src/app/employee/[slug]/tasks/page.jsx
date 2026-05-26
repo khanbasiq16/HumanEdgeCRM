@@ -119,6 +119,7 @@ export default function EmployeeTasksPage() {
   const [loading,        setLoading]        = useState(true);
   const [filter,         setFilter]         = useState("all");
   const [sourceFilter,   setSourceFilter]   = useState("all");
+  const [remarkTaskId,   setRemarkTaskId]   = useState(null);
 
   const [createOpen,     setCreateOpen]     = useState(false);
   const [creating,       setCreating]       = useState(false);
@@ -284,92 +285,103 @@ export default function EmployeeTasksPage() {
   /* ─────────────────────────────────────────────────── */
   return (
     <Employeelayout>
-      <div className="max-w-2xl mx-auto space-y-5">
+      <div className="max-w-2xl mx-auto space-y-4">
 
-        {/* Header */}
+        {/* ── Header ── */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-extrabold text-slate-900">My Tasks</h1>
-            <p className="text-sm text-slate-400 mt-0.5">{counts.all} total tasks</p>
+            <p className="text-sm text-slate-400 mt-0.5">{counts.completed} of {counts.all} completed</p>
           </div>
-          <Button
+          <button
             onClick={openCreate}
-            className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center gap-2"
+            className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors"
           >
             <Plus size={15} /> New Task
-          </Button>
+          </button>
         </div>
 
-        {/* Summary chips */}
-        <div className="grid grid-cols-2 gap-3">
+        {/* ── Stat chips ── */}
+        <div className="grid grid-cols-4 gap-2">
           {[
-            { label: "Pending",     val: counts.pending,        cls: "" },
-            { label: "In Progress", val: counts["in-progress"], cls: "bg-blue-50   border-blue-200"    },
-            { label: "Working",     val: counts.working,        cls: "bg-amber-50  border-amber-200"   },
-            { label: "Completed",   val: counts.completed,      cls: "bg-emerald-50 border-emerald-200" },
-          ].map(({ label, val, cls }) => (
-            <div key={label} className={`bg-white rounded-xl border border-slate-200 p-4 text-center ${cls}`}>
-              <p className="text-2xl font-extrabold text-slate-900">{val}</p>
-              <p className="text-xs text-slate-400 mt-0.5">{label}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Source filter */}
-        <div className="flex gap-2">
-          {[
-            ["all",      "All Tasks",  counts.self + counts.assigned],
-            ["assigned", "Assigned",   counts.assigned],
-            ["self",     "Self Tasks", counts.self],
-          ].map(([v, l, c]) => (
+            { label: "Pending",  val: counts.pending,        status: "pending",     bg: "bg-slate-50",   border: "border-slate-200",  num: "text-slate-700"   },
+            { label: "Progress", val: counts["in-progress"], status: "in-progress", bg: "bg-blue-50",    border: "border-blue-200",   num: "text-blue-600"    },
+            { label: "Working",  val: counts.working,        status: "working",     bg: "bg-amber-50",   border: "border-amber-200",  num: "text-amber-600"   },
+            { label: "Done",     val: counts.completed,      status: "completed",   bg: "bg-emerald-50", border: "border-emerald-200",num: "text-emerald-600" },
+          ].map(({ label, val, status, bg, border, num }) => (
             <button
-              key={v}
-              onClick={() => { setSourceFilter(v); setFilter("all"); }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
-                sourceFilter === v
-                  ? v === "self"
-                    ? "bg-violet-600 text-white border-violet-600"
-                    : "bg-blue-600 text-white border-blue-600"
-                  : "bg-white text-slate-600 border-slate-200 hover:border-blue-300"
+              key={label}
+              onClick={() => setFilter(filter === status ? "all" : status)}
+              className={`${bg} border ${border} rounded-xl p-3 text-center transition-all hover:shadow-sm ${
+                filter === status ? "ring-2 ring-offset-1 ring-blue-400" : ""
               }`}
             >
-              {l} <span className="opacity-60 ml-0.5">{c}</span>
+              <p className={`text-xl font-extrabold ${num}`}>{val}</p>
+              <p className="text-[10px] text-slate-400 mt-0.5 font-semibold">{label}</p>
             </button>
           ))}
         </div>
 
-        {/* Status filter tabs */}
-        <div className="flex gap-2 flex-wrap">
-          {[["all","All"],["pending","Pending"],["in-progress","In Progress"],["working","Working"],["completed","Completed"]].map(([v, l]) => (
-            <button
-              key={v}
-              onClick={() => setFilter(v)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
-                filter === v
-                  ? "bg-slate-700 text-white border-slate-700"
-                  : "bg-white text-slate-600 border-slate-200 hover:border-slate-400"
-              }`}
-            >
-              {l} <span className="opacity-60 ml-0.5">{counts[v] ?? ""}</span>
-            </button>
-          ))}
+        {/* ── Source + Status filters ── */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-3 space-y-2.5">
+          {/* Source segment */}
+          <div className="flex bg-slate-100 rounded-xl p-1 gap-1">
+            {[
+              ["all",      "All",      counts.self + counts.assigned],
+              ["assigned", "Assigned", counts.assigned],
+              ["self",     "Self",     counts.self],
+            ].map(([v, l, c]) => (
+              <button
+                key={v}
+                onClick={() => { setSourceFilter(v); setFilter("all"); }}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  sourceFilter === v
+                    ? v === "self"
+                      ? "bg-violet-600 text-white shadow-sm"
+                      : "bg-blue-600 text-white shadow-sm"
+                    : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                {l} <span className="opacity-70">{c}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Status pills */}
+          <div className="flex gap-1.5 flex-wrap">
+            {[["all","All"],["pending","Pending"],["in-progress","In Progress"],["working","Working"],["completed","Done"]].map(([v, l]) => (
+              <button
+                key={v}
+                onClick={() => setFilter(v)}
+                className={`px-3 py-1 rounded-full text-[11px] font-bold border transition-colors ${
+                  filter === v
+                    ? "bg-slate-800 text-white border-slate-800"
+                    : "bg-slate-50 text-slate-500 border-slate-200 hover:border-slate-400"
+                }`}
+              >
+                {l}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Task list */}
+        {/* ── Task list ── */}
         {loading ? (
-          <div className="flex justify-center py-10">
+          <div className="flex justify-center py-12">
             <Loader2 size={22} className="animate-spin text-blue-500" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center py-14 gap-3 bg-white rounded-2xl border border-slate-200">
-            <ClipboardList size={36} className="text-slate-200" />
-            <p className="text-sm text-slate-400 font-medium">No tasks here</p>
-            <Button onClick={openCreate} variant="outline" className="rounded-xl text-xs">
-              <Plus size={13} className="mr-1" /> Create your first task
-            </Button>
+          <div className="flex flex-col items-center py-16 gap-3 bg-white rounded-2xl border border-dashed border-slate-200">
+            <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center">
+              <ClipboardList size={28} className="text-slate-300" />
+            </div>
+            <p className="text-sm font-semibold text-slate-400">No tasks here</p>
+            <button onClick={openCreate} className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1">
+              <Plus size={12} /> Create your first task
+            </button>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {filtered.map((task) => {
               const sc      = TASK_STATUS[task.status] || TASK_STATUS.pending;
               const isSelf  = task.source === "employee";
@@ -377,45 +389,82 @@ export default function EmployeeTasksPage() {
               return (
                 <div
                   key={task.id}
-                  onClick={() => openTask(task)}
-                  className={`bg-white rounded-2xl border px-5 py-4 cursor-pointer hover:shadow-sm transition-all border-l-4 ${
-                    isSelf ? "border-l-violet-400" : "border-l-blue-400"
-                  } ${sc.border}`}
+                  onClick={() => { setRemarkTaskId(null); openTask(task); }}
+                  className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all"
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${sc.bg} ${sc.text}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />{sc.label}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      {task.source === "employee" && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-600">Self</span>
-                      )}
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${PRIORITY_STYLE[task.priority] || PRIORITY_STYLE.medium}`}>
-                        {task.priority?.toUpperCase()}
+                  {/* Top accent stripe */}
+                  <div className={`h-1 w-full ${
+                    isSelf
+                      ? "bg-gradient-to-r from-violet-400 to-purple-500"
+                      : "bg-gradient-to-r from-blue-400 to-indigo-500"
+                  }`} />
+
+                  <div className="px-4 py-3.5">
+                    {/* Row 1: status + badges */}
+                    <div className="flex items-center justify-between mb-2">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${sc.bg} ${sc.text}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />{sc.label}
                       </span>
+                      <div className="flex items-center gap-1.5">
+                        {isSelf && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-600">Self</span>
+                        )}
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${PRIORITY_STYLE[task.priority] || PRIORITY_STYLE.medium}`}>
+                          {task.priority?.toUpperCase()}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                  <p className="text-sm font-extrabold text-slate-900">{task.title}</p>
-                  {preview && (
-                    <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{preview}</p>
-                  )}
-                  <div className="flex items-center gap-3 mt-2 flex-wrap">
-                    {task.projectTitle ? (
-                      <span className="text-xs text-slate-400 flex items-center gap-1"><FolderOpen size={10} />{task.projectTitle}</span>
-                    ) : (
-                      <span className="text-xs text-slate-400">Personal Task</span>
+
+                    {/* Row 2: title */}
+                    <p className="text-sm font-bold text-slate-800 leading-snug">{task.title}</p>
+
+                    {/* Row 3: description preview */}
+                    {preview && (
+                      <p className="text-xs text-slate-400 mt-1 line-clamp-1 leading-relaxed">{preview}</p>
                     )}
-                    {task.dueDate && (
-                      <span className="text-xs text-slate-400 flex items-center gap-1">
-                        <Calendar size={10} />{new Date(task.dueDate).toLocaleDateString("en-US", { day: "numeric", month: "short" })}
-                      </span>
-                    )}
-                    {(task.comments?.length > 0) && (
-                      <span className="text-xs text-slate-400 flex items-center gap-1"><MessageSquare size={10} />{task.comments.length}</span>
-                    )}
-                    {task.adminRemark && (
-                      <span className="text-xs text-blue-600 font-bold">• Admin remark</span>
-                    )}
+
+                    {/* Row 4: meta */}
+                    <div className="flex items-center gap-3 mt-3 pt-2.5 border-t border-slate-50 flex-wrap">
+                      {task.projectTitle ? (
+                        <span className="text-[11px] text-slate-400 flex items-center gap-1 font-medium">
+                          <FolderOpen size={10} />{task.projectTitle}
+                        </span>
+                      ) : (
+                        <span className="text-[11px] text-slate-400 font-medium">Personal</span>
+                      )}
+                      {task.dueDate && (
+                        <span className="text-[11px] text-slate-400 flex items-center gap-1 font-medium">
+                          <Calendar size={10} />
+                          {new Date(task.dueDate).toLocaleDateString("en-US", { day: "numeric", month: "short" })}
+                        </span>
+                      )}
+                      {task.comments?.length > 0 && (
+                        <span className="text-[11px] text-slate-400 flex items-center gap-1 font-medium">
+                          <MessageSquare size={10} />{task.comments.length}
+                        </span>
+                      )}
+                      {task.adminRemark && (
+                        <div className="relative ml-auto">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setRemarkTaskId(remarkTaskId === task.id ? null : task.id);
+                            }}
+                            className="flex items-center gap-1 text-blue-500 hover:text-blue-700 transition-colors"
+                            title="Admin remark"
+                          >
+                            <MessageSquare size={13} className="fill-blue-100" />
+                            <span className="text-[10px] font-bold">Remark</span>
+                          </button>
+                          {remarkTaskId === task.id && (
+                            <div className="absolute bottom-7 right-0 z-20 bg-white border border-blue-200 rounded-xl p-3 shadow-xl w-60">
+                              <p className="text-[10px] font-extrabold text-blue-600 uppercase tracking-widest mb-1.5">Admin Remark</p>
+                              <p className="text-xs text-slate-700 leading-relaxed">{task.adminRemark}</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
