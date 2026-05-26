@@ -6,15 +6,92 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import {
   ClipboardList, Loader2, Calendar, MessageSquare, Send,
-  FolderOpen, CheckCircle2, Clock, AlertCircle, Plus,
-  Pencil, X, Save,
+  FolderOpen, Plus, Pencil, X, Save,
+  Bold, Italic, List, ListOrdered,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
 
+/* ── Tiptap rich editor ─────────────────────────────────── */
+const TaskRichEditor = ({ content, onChange, placeholder = "Task details…", minHeight = "80px" }) => {
+  const editor = useEditor({
+    extensions: [StarterKit],
+    content: content || "",
+    editorProps: {
+      attributes: {
+        class: `text-sm text-slate-700 focus:outline-none px-3 py-2`,
+        style: `min-height: ${minHeight}`,
+        "data-placeholder": placeholder,
+      },
+    },
+    onUpdate: ({ editor }) => onChange(editor.getHTML()),
+  });
+
+  if (!editor) return null;
+
+  const btn = (active, onClick, children, title) => (
+    <button
+      type="button"
+      title={title}
+      onMouseDown={(e) => { e.preventDefault(); onClick(); }}
+      className={`w-7 h-7 rounded flex items-center justify-center transition-colors ${
+        active ? "bg-blue-100 text-blue-600" : "text-slate-500 hover:bg-slate-200"
+      }`}
+    >
+      {children}
+    </button>
+  );
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+      <div className="flex items-center gap-0.5 px-2 py-1 border-b border-slate-100 bg-slate-50">
+        {btn(editor.isActive("bold"),        () => editor.chain().focus().toggleBold().run(),         <Bold size={12} />,        "Bold")}
+        {btn(editor.isActive("italic"),      () => editor.chain().focus().toggleItalic().run(),       <Italic size={12} />,      "Italic")}
+        <div className="w-px h-4 bg-slate-200 mx-0.5" />
+        {btn(editor.isActive("bulletList"),  () => editor.chain().focus().toggleBulletList().run(),   <List size={12} />,        "Bullet List")}
+        {btn(editor.isActive("orderedList"), () => editor.chain().focus().toggleOrderedList().run(),  <ListOrdered size={12} />, "Numbered List")}
+      </div>
+      <EditorContent editor={editor} />
+    </div>
+  );
+};
+
+/* ── Night-shift aware date helper ──────────────────────── */
+const getShiftDate = (checkInTime) => {
+  const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Karachi" }));
+  let useYesterday = false;
+
+  if (checkInTime) {
+    const match = checkInTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
+    if (match) {
+      let h = parseInt(match[1]);
+      const m = parseInt(match[2]);
+      const ap = match[3].toUpperCase();
+      if (ap === "PM" && h !== 12) h += 12;
+      if (ap === "AM" && h === 12) h = 0;
+      if (now.getHours() < h || (now.getHours() === h && now.getMinutes() < m)) {
+        useYesterday = true;
+      }
+    }
+  }
+
+  const d = new Date(now);
+  if (useYesterday) d.setDate(d.getDate() - 1);
+  return [
+    d.getFullYear(),
+    String(d.getMonth() + 1).padStart(2, "0"),
+    String(d.getDate()).padStart(2, "0"),
+  ].join("-");
+};
+
+/* ── Strip HTML for plain text preview ─────────────────── */
+const stripHtml = (html) => html?.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim() || "";
+
+/* ── Constants ──────────────────────────────────────────── */
 const TASK_STATUS = {
   pending:       { label: "Pending",     bg: "bg-slate-100",   text: "text-slate-600",   border: "border-slate-200",  dot: "bg-slate-400"   },
   "in-progress": { label: "In Progress", bg: "bg-blue-50",     text: "text-blue-700",    border: "border-blue-200",   dot: "bg-blue-500"    },
@@ -27,29 +104,27 @@ const PRIORITY_STYLE = {
   high:   "bg-red-100   text-red-600",
 };
 
+/* ── Page ───────────────────────────────────────────────── */
 export default function EmployeeTasksPage() {
   const { user } = useSelector((s) => s.User);
 
-  const [tasks,           setTasks]           = useState([]);
-  const [loading,         setLoading]         = useState(true);
-  const [filter,          setFilter]          = useState("all");
+  const [tasks,          setTasks]          = useState([]);
+  const [loading,        setLoading]        = useState(true);
+  const [filter,         setFilter]         = useState("all");
 
-  /* ── Create task ─────────────────────────────────── */
-  const [createOpen,   setCreateOpen]   = useState(false);
-  const [creating,     setCreating]     = useState(false);
-  const [createForm,   setCreateForm]   = useState({
-    title: "", description: "", priority: "medium", dueDate: "",
-  });
+  const [createOpen,     setCreateOpen]     = useState(false);
+  const [creating,       setCreating]       = useState(false);
+  const [createForm,     setCreateForm]     = useState({ title: "", description: "", priority: "medium", dueDate: "" });
+  const [createEditorKey, setCreateEditorKey] = useState(0);
 
-  /* ── Task detail / edit ──────────────────────────── */
-  const [selTask,         setSelTask]         = useState(null);
-  const [taskOpen,        setTaskOpen]        = useState(false);
-  const [editMode,        setEditMode]        = useState(false);
-  const [editForm,        setEditForm]        = useState({});
-  const [saving,          setSaving]          = useState(false);
-  const [updatingStatus,  setUpdatingStatus]  = useState(false);
-  const [newComment,      setNewComment]      = useState("");
-  const [addingComment,   setAddingComment]   = useState(false);
+  const [selTask,        setSelTask]        = useState(null);
+  const [taskOpen,       setTaskOpen]       = useState(false);
+  const [editMode,       setEditMode]       = useState(false);
+  const [editForm,       setEditForm]       = useState({});
+  const [saving,         setSaving]         = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [newComment,     setNewComment]     = useState("");
+  const [addingComment,  setAddingComment]  = useState(false);
 
   useEffect(() => {
     if (!user?.employeeId) return;
@@ -62,6 +137,14 @@ export default function EmployeeTasksPage() {
       setTasks(res.data.tasks || []);
     } catch { toast.error("Failed to load tasks"); }
     finally   { setLoading(false); }
+  };
+
+  /* ── Open create dialog with correct default date ─── */
+  const openCreate = () => {
+    const defaultDate = getShiftDate(user?.department?.checkInTime);
+    setCreateForm({ title: "", description: "", priority: "medium", dueDate: defaultDate });
+    setCreateEditorKey((k) => k + 1);
+    setCreateOpen(true);
   };
 
   /* ── Create ──────────────────────────────────────── */
@@ -85,7 +168,6 @@ export default function EmployeeTasksPage() {
         toast.success("Task created!");
         setTasks((p) => [res.data.task, ...p]);
         setCreateOpen(false);
-        setCreateForm({ title: "", description: "", priority: "medium", dueDate: "" });
       }
     } catch { toast.error("Failed to create task"); }
     finally   { setCreating(false); }
@@ -181,7 +263,7 @@ export default function EmployeeTasksPage() {
             <p className="text-sm text-slate-400 mt-0.5">{counts.all} total tasks</p>
           </div>
           <Button
-            onClick={() => setCreateOpen(true)}
+            onClick={openCreate}
             className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center gap-2"
           >
             <Plus size={15} /> New Task
@@ -229,7 +311,7 @@ export default function EmployeeTasksPage() {
           <div className="flex flex-col items-center py-14 gap-3 bg-white rounded-2xl border border-slate-200">
             <ClipboardList size={36} className="text-slate-200" />
             <p className="text-sm text-slate-400 font-medium">No tasks here</p>
-            <Button onClick={() => setCreateOpen(true)} variant="outline" className="rounded-xl text-xs">
+            <Button onClick={openCreate} variant="outline" className="rounded-xl text-xs">
               <Plus size={13} className="mr-1" /> Create your first task
             </Button>
           </div>
@@ -237,6 +319,7 @@ export default function EmployeeTasksPage() {
           <div className="space-y-3">
             {filtered.map((task) => {
               const sc = TASK_STATUS[task.status] || TASK_STATUS.pending;
+              const preview = stripHtml(task.description);
               return (
                 <div
                   key={task.id}
@@ -257,8 +340,8 @@ export default function EmployeeTasksPage() {
                     </div>
                   </div>
                   <p className="text-sm font-extrabold text-slate-900">{task.title}</p>
-                  {task.description && (
-                    <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{task.description}</p>
+                  {preview && (
+                    <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{preview}</p>
                   )}
                   <div className="flex items-center gap-3 mt-2 flex-wrap">
                     {task.projectTitle ? (
@@ -287,7 +370,7 @@ export default function EmployeeTasksPage() {
 
       {/* ── Create Task Dialog ──────────────────────────── */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="sm:max-w-sm rounded-2xl p-6">
+        <DialogContent className="sm:max-w-md rounded-2xl p-6">
           <DialogHeader>
             <DialogTitle className="text-base font-bold">New Task</DialogTitle>
           </DialogHeader>
@@ -299,8 +382,13 @@ export default function EmployeeTasksPage() {
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-600 block mb-1.5">Description</label>
-              <Textarea className="rounded-xl border-slate-200 resize-none" placeholder="Task details…" rows={2}
-                value={createForm.description} onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))} />
+              <TaskRichEditor
+                key={createEditorKey}
+                content={createForm.description}
+                onChange={(html) => setCreateForm((f) => ({ ...f, description: html }))}
+                placeholder="Task details…"
+                minHeight="90px"
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -365,15 +453,13 @@ export default function EmployeeTasksPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
-                  {/* Edit toggle */}
                   <button
-                    onClick={() => { setEditMode((v) => !v); }}
+                    onClick={() => setEditMode((v) => !v)}
                     className="p-1.5 rounded-lg hover:bg-white/60 text-slate-400 hover:text-slate-700 transition-colors"
                     title={editMode ? "Cancel edit" : "Edit task"}
                   >
                     {editMode ? <X size={15} /> : <Pencil size={15} />}
                   </button>
-                  {/* Status select */}
                   <Select value={selTask.status} onValueChange={(v) => handleStatusChange(selTask.id, v)} disabled={updatingStatus}>
                     <SelectTrigger className={`rounded-xl text-xs font-bold border w-30 bg-white ${TASK_STATUS[selTask.status]?.text}`}>
                       <SelectValue />
@@ -392,15 +478,30 @@ export default function EmployeeTasksPage() {
             {/* Scrollable body */}
             <div className="p-5 space-y-5 overflow-y-auto flex-1">
 
-              {/* Edit form (visible only in edit mode) */}
+              {/* Description view (non-edit) */}
+              {!editMode && selTask.description && (
+                <div>
+                  <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2">Description</p>
+                  <div
+                    className="task-desc text-sm text-slate-700 bg-slate-50 rounded-xl px-4 py-3 border border-slate-100"
+                    dangerouslySetInnerHTML={{ __html: selTask.description }}
+                  />
+                </div>
+              )}
+
+              {/* Edit form */}
               {editMode && (
                 <div className="space-y-3 bg-slate-50 rounded-xl p-4 border border-slate-200">
                   <p className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">Edit Task</p>
                   <div>
                     <label className="text-xs font-semibold text-slate-600 block mb-1">Description</label>
-                    <Textarea className="rounded-xl border-slate-200 resize-none text-sm bg-white" rows={2}
-                      value={editForm.description}
-                      onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))} />
+                    <TaskRichEditor
+                      key={selTask.id}
+                      content={editForm.description}
+                      onChange={(html) => setEditForm((f) => ({ ...f, description: html }))}
+                      placeholder="Task details…"
+                      minHeight="80px"
+                    />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
