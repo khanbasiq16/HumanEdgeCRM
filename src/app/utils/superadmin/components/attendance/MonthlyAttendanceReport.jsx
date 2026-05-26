@@ -3,7 +3,7 @@ import React, { useState, useMemo } from "react";
 import { useSelector } from "react-redux";
 import {
   Download, Calendar, CheckCircle2, XCircle,
-  AlertTriangle, TrendingDown, Search, FileSpreadsheet,
+  AlertTriangle, TrendingDown, Search, ChevronDown,
 } from "lucide-react";
 import MonthPicker from "../basecomponent/MonthPicker";
 import * as XLSX from "xlsx";
@@ -134,8 +134,9 @@ const exportXLSX = (rows, month) => {
 /* ── main component ───────────────────────────────────────── */
 export default function MonthlyAttendanceReport() {
   const { employees } = useSelector((s) => s.Employee);
-  const [month,  setMonth]  = useState("");
-  const [search, setSearch] = useState("");
+  const [month,      setMonth]      = useState("");
+  const [search,     setSearch]     = useState("");
+  const [exportOpen, setExportOpen] = useState(false);
 
   const rows = useMemo(() => {
     if (!employees?.length) return [];
@@ -194,20 +195,31 @@ export default function MonthlyAttendanceReport() {
         </div>
         <div className="ml-auto flex items-center gap-2">
           <span className="text-xs text-slate-400">{rows.length} employees</span>
-          <button
-            onClick={() => exportCSV(rows, month)}
-            disabled={rows.length === 0}
-            className="flex items-center gap-1.5 h-9 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors disabled:opacity-40"
-          >
-            <Download size={13} /> CSV
-          </button>
-          <button
-            onClick={() => exportXLSX(rows, month)}
-            disabled={rows.length === 0}
-            className="flex items-center gap-1.5 h-9 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors disabled:opacity-40"
-          >
-            <FileSpreadsheet size={13} /> Excel
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setExportOpen((v) => !v)}
+              disabled={rows.length === 0}
+              className="flex items-center gap-1.5 h-9 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors disabled:opacity-40"
+            >
+              <Download size={13} /> Export <ChevronDown size={12} />
+            </button>
+            {exportOpen && (
+              <div className="absolute right-0 top-11 z-20 bg-white border border-slate-200 rounded-xl shadow-lg w-44 overflow-hidden">
+                <button
+                  onClick={() => { exportXLSX(rows, month); setExportOpen(false); }}
+                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  <span className="text-emerald-600 font-bold text-xs">XLS</span> Export Excel
+                </button>
+                <button
+                  onClick={() => { exportCSV(rows, month); setExportOpen(false); }}
+                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors border-t border-slate-100"
+                >
+                  <span className="text-blue-600 font-bold text-xs">CSV</span> Export CSV
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
