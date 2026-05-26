@@ -82,7 +82,7 @@ const CheckOut = ({ isCheckedIn, isCheckedout, setIsCheckedout, setIsCheckedin }
 
   const fmtDate = (d) =>
     d.toLocaleDateString("en-US", {
-      weekday: "long", day: "numeric", month: "long", year: "numeric",
+      day: "numeric", month: "short", year: "numeric",
     });
 
   const fmtWorked = (secs) => {
@@ -298,105 +298,115 @@ const CheckOut = ({ isCheckedIn, isCheckedout, setIsCheckedout, setIsCheckedin }
       <Dialog open={dialogOpen} onOpenChange={(open) => {
         if (!open) { setDialogOpen(false); resetSlider(); }
       }}>
-        <DialogContent className="sm:max-w-sm rounded-2xl p-6">
-          <DialogHeader>
-            <DialogTitle className="text-base font-bold">
-              {checkoutType === "late" ? "Late Check-Out Reason" : "Early Check-Out Reason"}
+        <DialogContent className="w-[92vw] max-w-sm rounded-2xl p-4 overflow-y-auto max-h-[90vh]">
+          <DialogHeader className="mb-2">
+            <DialogTitle className="text-sm font-bold">
+              {checkoutType === "late" ? "Late Check-Out" : "Early Check-Out"}
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-2 my-1">
+          <div className="space-y-2">
 
-            {/* Check-in time */}
-            <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-100 rounded-xl">
-              <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
-                <Clock size={15} className="text-blue-600" />
+            {/* Check-in + Checkout time row */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex items-center gap-2 p-2.5 bg-blue-50 border border-blue-100 rounded-xl min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+                  <Clock size={13} className="text-blue-600" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-wide">Check In</p>
+                  <p className="text-xs font-extrabold text-slate-900 truncate">{checkoutInfo.checkinTime}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Checked In At</p>
-                <p className="text-sm font-extrabold text-slate-900">{checkoutInfo.checkinTime}</p>
+              <div className={`flex items-center gap-2 p-2.5 rounded-xl border min-w-0 ${checkoutType === "late" ? "bg-amber-50 border-amber-100" : "bg-red-50 border-red-100"}`}>
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${checkoutType === "late" ? "bg-amber-100" : "bg-red-100"}`}>
+                  <Clock size={13} className={checkoutType === "late" ? "text-amber-600" : "text-red-500"} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-wide">Check Out</p>
+                  <p className="text-xs font-extrabold text-slate-900 truncate">{checkoutInfo.time}</p>
+                </div>
               </div>
             </div>
 
-            {/* Worked so far + remaining — side by side */}
+            {/* Worked + Remaining row */}
             <div className="grid grid-cols-2 gap-2">
-              <div className="flex items-center gap-2.5 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+              <div className="flex items-center gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl min-w-0">
                 <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
                   <Timer size={13} className="text-slate-500" />
                 </div>
-                <div>
-                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Worked</p>
-                  <p className="text-xs font-extrabold text-slate-700">{checkoutInfo.worked}</p>
+                <div className="min-w-0">
+                  <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-wide">Worked</p>
+                  <p className="text-xs font-extrabold text-slate-700 truncate">{checkoutInfo.worked}</p>
                 </div>
               </div>
-              {checkoutType === "early" && (
-                <div className="flex items-center gap-2.5 p-3 bg-red-50 border border-red-100 rounded-xl">
+              {checkoutType === "early" ? (
+                <div className="flex items-center gap-2 p-2.5 bg-red-50 border border-red-100 rounded-xl min-w-0">
                   <div className="w-7 h-7 rounded-lg bg-red-100 flex items-center justify-center shrink-0">
                     <AlertCircle size={13} className="text-red-500" />
                   </div>
-                  <div>
-                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Remaining</p>
-                    <p className="text-xs font-extrabold text-red-600">{checkoutInfo.remaining}</p>
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-wide">Remaining</p>
+                    <p className="text-xs font-extrabold text-red-600 truncate">{checkoutInfo.remaining}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl min-w-0">
+                  <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                    <CalendarDays size={13} className="text-slate-500" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-wide">Date</p>
+                    <p className="text-xs font-bold text-slate-700 truncate">{checkoutInfo.date}</p>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Current checkout time + date */}
+            {/* Date (early only) + Employee */}
             <div className="grid grid-cols-2 gap-2">
-              <div className={`flex items-center gap-2.5 p-3 rounded-xl border ${checkoutType === "late" ? "bg-amber-50 border-amber-100" : "bg-red-50 border-red-100"}`}>
-                <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${checkoutType === "late" ? "bg-amber-100" : "bg-red-100"}`}>
-                  <Clock size={13} className={checkoutType === "late" ? "text-amber-600" : "text-red-500"} />
+              {checkoutType === "early" && (
+                <div className="flex items-center gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl min-w-0">
+                  <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                    <CalendarDays size={13} className="text-slate-500" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-wide">Date</p>
+                    <p className="text-xs font-bold text-slate-700 truncate">{checkoutInfo.date}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Checkout</p>
-                  <p className="text-xs font-extrabold text-slate-900">{checkoutInfo.time}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2.5 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+              )}
+              <div className={`flex items-center gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl min-w-0 ${checkoutType !== "early" ? "col-span-2" : ""}`}>
                 <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
-                  <CalendarDays size={13} className="text-slate-500" />
+                  <User size={13} className="text-slate-500" />
                 </div>
-                <div>
-                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Date</p>
-                  <p className="text-xs font-bold text-slate-700 truncate">{checkoutInfo.date}</p>
+                <div className="min-w-0">
+                  <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-wide">Employee</p>
+                  <p className="text-xs font-bold text-slate-700 truncate">{user?.employeeName}</p>
+                  <p className="text-[10px] text-slate-400 truncate">{user?.department?.departmentName || "—"}</p>
                 </div>
               </div>
             </div>
 
-            {/* Employee */}
-            <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
-              <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
-                <User size={15} className="text-slate-500" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Employee</p>
-                <p className="text-sm font-bold text-slate-700 truncate">{user?.employeeName}</p>
-                <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
-                  <Building2 size={10} />
-                  {user?.department?.departmentName || "—"}
-                </p>
-              </div>
-            </div>
           </div>
 
-          <p className={`text-xs font-medium mt-1 mb-1 ${checkoutType === "late" ? "text-amber-600" : "text-red-500"}`}>
+          <p className={`text-xs font-medium mt-3 mb-1.5 ${checkoutType === "late" ? "text-amber-600" : "text-red-500"}`}>
             {checkoutType === "late"
-              ? "You are checking out later than scheduled. Please provide a reason to proceed."
-              : `You have only worked ${checkoutInfo.worked} out of ${workingHours} required hours. Please provide a reason to proceed.`}
+              ? "Checking out later than scheduled. Please provide a reason."
+              : `Only ${checkoutInfo.worked} of ${workingHours}h worked. Please provide a reason.`}
           </p>
           <Textarea
             placeholder="Write your reason here…"
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            className="resize-none rounded-xl border-slate-200 focus-visible:ring-orange-500"
+            className="resize-none rounded-xl border-slate-200 focus-visible:ring-orange-500 text-sm"
             rows={3}
           />
-          <DialogFooter className="gap-2 mt-3">
+          <div className="flex gap-2 mt-3">
             <Button
               variant="outline"
               onClick={() => { setDialogOpen(false); resetSlider(); }}
-              className="rounded-xl"
+              className="rounded-xl flex-1"
               disabled={loading}
             >
               Cancel
@@ -404,13 +414,13 @@ const CheckOut = ({ isCheckedIn, isCheckedout, setIsCheckedout, setIsCheckedin }
             <Button
               onClick={() => doCheckout(note)}
               disabled={loading || !note.trim()}
-              className="bg-orange-500 hover:bg-orange-600 text-white rounded-xl"
+              className="bg-orange-500 hover:bg-orange-600 text-white rounded-xl flex-1"
             >
               {loading
-                ? <><Loader2 size={14} className="animate-spin mr-1.5" />Submitting…</>
-                : "Submit & Check Out"}
+                ? <><Loader2 size={14} className="animate-spin mr-1" />Wait…</>
+                : "Check Out"}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </>
