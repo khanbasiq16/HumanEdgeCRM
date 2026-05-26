@@ -33,7 +33,7 @@ const Sidebar = ({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) => {
     { href: "/admin/projects",      label: "Projects",      icon: FolderKanban,     perm: "employees"  },
     { href: "/admin/tasks",         label: "All Tasks",     icon: ClipboardList,    perm: "employees"  },
     { href: "/admin/attendance",    label: "Attendance",    icon: Calendar,         perm: "attendance" },
-    { href: "/admin/attendance/report", label: "Monthly Report", icon: BarChart3,    perm: "attendance" },
+    { href: "/admin/attendance/report", label: "Reports",        icon: BarChart3,    perm: "attendance" },
     { href: "/admin/accounts",      label: "Accounts",      icon: DollarSign,       perm: "accounts"   },
     { href: "/admin/banks",         label: "Bank Accounts", icon: Landmark,         perm: "accounts"   },
     { href: "/admin/taxes",         label: "Taxes",         icon: BadgeDollarSign,  perm: "accounts"   },

@@ -2,10 +2,11 @@
 import React, { useState, useMemo } from "react";
 import { useSelector } from "react-redux";
 import {
-  Download, Users, Calendar, CheckCircle2, XCircle,
-  Clock, AlertTriangle, TrendingDown, Search,
+  Download, Calendar, CheckCircle2, XCircle,
+  AlertTriangle, TrendingDown, Search, FileSpreadsheet,
 } from "lucide-react";
 import MonthPicker from "../basecomponent/MonthPicker";
+import * as XLSX from "xlsx";
 
 /* ── helpers ──────────────────────────────────────────────── */
 const getDaysInMonth = (monthStr) => {
@@ -98,6 +99,38 @@ const exportCSV = (rows, month) => {
   URL.revokeObjectURL(url);
 };
 
+const exportXLSX = (rows, month) => {
+  const data = rows.map((r) => ({
+    "Employee":          r.name,
+    "Department":        r.department,
+    "Total Days":        r.total,
+    "Present":           r.present,
+    "Absent":            r.absent,
+    "On Time":           r.onTime,
+    "Late":              r.late,
+    "Half Day":          r.halfDay,
+    "Short Day":         r.shortDay,
+    "Early Checkout":    r.earlyOut,
+    "Late Checkout":     r.lateOut,
+    "Effective Absent":  r.effectiveAbsent,
+    "Salary (PKR)":      r.salary,
+    "Deduction (PKR)":   r.deduction,
+    "Net Salary (PKR)":  r.netSalary,
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(data);
+
+  // Auto column widths
+  const colWidths = Object.keys(data[0] || {}).map((k) => ({
+    wch: Math.max(k.length, ...data.map((r) => String(r[k] ?? "").length)) + 2,
+  }));
+  ws["!cols"] = colWidths;
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Monthly Report");
+  XLSX.writeFile(wb, `attendance-report-${month || "all"}.xlsx`);
+};
+
 /* ── main component ───────────────────────────────────────── */
 export default function MonthlyAttendanceReport() {
   const { employees } = useSelector((s) => s.Employee);
@@ -163,9 +196,17 @@ export default function MonthlyAttendanceReport() {
           <span className="text-xs text-slate-400">{rows.length} employees</span>
           <button
             onClick={() => exportCSV(rows, month)}
-            className="flex items-center gap-1.5 h-9 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors"
+            disabled={rows.length === 0}
+            className="flex items-center gap-1.5 h-9 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors disabled:opacity-40"
           >
-            <Download size={13} /> Export CSV
+            <Download size={13} /> CSV
+          </button>
+          <button
+            onClick={() => exportXLSX(rows, month)}
+            disabled={rows.length === 0}
+            className="flex items-center gap-1.5 h-9 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors disabled:opacity-40"
+          >
+            <FileSpreadsheet size={13} /> Excel
           </button>
         </div>
       </div>
@@ -273,24 +314,6 @@ export default function MonthlyAttendanceReport() {
               ))}
             </tbody>
 
-            {/* Totals row */}
-            {rows.length > 0 && (
-              <tfoot>
-                <tr className="border-t-2 border-slate-200 bg-slate-50 font-bold">
-                  <td className="px-4 py-3 text-slate-700" colSpan={3}>Totals</td>
-                  <td className="px-4 py-3 text-center text-emerald-700">{totals.present}</td>
-                  <td className="px-4 py-3 text-center text-red-600">{totals.absent}</td>
-                  <td className="px-4 py-3" />
-                  <td className="px-4 py-3 text-center text-amber-700">{totals.late}</td>
-                  <td className="px-4 py-3 text-center text-blue-700">{totals.halfDay}</td>
-                  <td className="px-4 py-3" colSpan={3} />
-                  <td className="px-4 py-3 text-center text-orange-700">{totals.effectiveAbsent}</td>
-                  <td className="px-4 py-3" />
-                  <td className="px-4 py-3 text-right text-red-600">- {totals.deduction.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-right text-slate-900">{totals.netSalary.toLocaleString()}</td>
-                </tr>
-              </tfoot>
-            )}
           </table>
         </div>
       </div>
