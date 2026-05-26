@@ -1,10 +1,10 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import {
   Home, Calendar, LogOut, Users, PersonStanding, CardSim,
   NotepadTextDashed, Settings, ArrowLeft, Building, DollarSign,
   Receipt, BadgeDollarSign, ChevronLeft, ChevronRight, Landmark, Layers,
-  FolderKanban, ClipboardList, BarChart3,
+  FolderKanban, ClipboardList, BarChart3, ChevronDown,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
@@ -12,12 +12,16 @@ import Link from "next/link";
 import { logout } from "@/features/Slice/UserSlice";
 import axios from "axios";
 import { useDispatch, useSelector } from "react-redux";
+import { motion, AnimatePresence } from "framer-motion";
 
 const Sidebar = ({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) => {
   const pathname = usePathname();
   const router   = useRouter();
   const dispatch = useDispatch();
   const { user } = useSelector((s) => s.User);
+
+  const isAttendancePath = pathname.startsWith("/admin/attendance");
+  const [attendanceOpen, setAttendanceOpen] = useState(isAttendancePath);
 
   /* ── nav data ──────────────────────────────────────────── */
   const isSuperAdmin = user?.role === "superAdmin";
@@ -30,14 +34,18 @@ const Sidebar = ({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) => {
     { href: "/admin/employees",     label: "Employees",     icon: Users,            perm: "employees"  },
     { href: "/admin/departments",   label: "Departments",   icon: Layers,           perm: "employees"  },
     { href: "/admin/templates",     label: "Templates",     icon: NotepadTextDashed,perm: "templates"  },
+    { type: "attendance-group",     perm: "attendance"                                                 },
     { href: "/admin/projects",      label: "Projects",      icon: FolderKanban,     perm: "employees"  },
     { href: "/admin/tasks",         label: "All Tasks",     icon: ClipboardList,    perm: "employees"  },
-    { href: "/admin/attendance",    label: "Attendance",    icon: Calendar,         perm: "attendance" },
-    { href: "/admin/attendance/report", label: "Reports",        icon: BarChart3,    perm: "attendance" },
     { href: "/admin/accounts",      label: "Accounts",      icon: DollarSign,       perm: "accounts"   },
     { href: "/admin/banks",         label: "Bank Accounts", icon: Landmark,         perm: "accounts"   },
     { href: "/admin/taxes",         label: "Taxes",         icon: BadgeDollarSign,  perm: "accounts"   },
     { href: "/admin/expenses",      label: "Expenses",      icon: Receipt,          perm: "accounts"   },
+  ];
+
+  const attendanceSubLinks = [
+    { href: "/admin/attendance",        label: "All Employee Attendance" },
+    { href: "/admin/attendance/report", label: "Reports"                 },
   ];
 
   const dashboardLinks = allDashboardLinks.filter((l) => l.perm === null || can(l.perm));
@@ -121,6 +129,80 @@ const Sidebar = ({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) => {
         {/* ── Nav links ──────────────────────────────────── */}
         <nav className="flex-1 px-2 pt-3 pb-2 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {links.map((link) => {
+            /* ── Attendance expandable group (sentinel) ── */
+            if (link.type === "attendance-group") {
+              return (
+                <div key="attendance-group" className="mb-0.5">
+                  <button
+                    onClick={() => { if (!collapsed) setAttendanceOpen((o) => !o); }}
+                    title={collapsed ? "Attendance" : ""}
+                    className={`
+                      w-full group flex items-center gap-3 px-3 py-2.5 rounded-lg
+                      text-sm font-medium transition-all
+                      ${isAttendancePath
+                        ? "bg-blue-50 text-blue-600"
+                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"}
+                    `}
+                  >
+                    <Calendar
+                      size={18}
+                      className={`shrink-0 transition-colors ${
+                        isAttendancePath ? "text-blue-600" : "text-slate-400 group-hover:text-slate-600"
+                      }`}
+                    />
+                    {!collapsed && (
+                      <>
+                        <span className="flex-1 text-left truncate">Attendance</span>
+                        <motion.span
+                          animate={{ rotate: attendanceOpen ? 180 : 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="shrink-0"
+                        >
+                          <ChevronDown size={14} className={isAttendancePath ? "text-blue-500" : "text-slate-400"} />
+                        </motion.span>
+                      </>
+                    )}
+                  </button>
+
+                  <AnimatePresence initial={false}>
+                    {!collapsed && attendanceOpen && (
+                      <motion.div
+                        key="attendance-submenu"
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.22, ease: "easeInOut" }}
+                        className="overflow-hidden"
+                      >
+                        <div className="ml-4 pl-3 border-l border-slate-200 mt-0.5 space-y-0.5">
+                          {attendanceSubLinks.map((sub) => {
+                            const isSubActive = pathname === sub.href;
+                            return (
+                              <Link
+                                key={sub.href}
+                                href={sub.href}
+                                onClick={() => setMobileOpen(false)}
+                                className={`
+                                  flex items-center gap-2 px-2 py-2 rounded-lg text-xs font-medium transition-all
+                                  ${isSubActive
+                                    ? "bg-blue-50 text-blue-600"
+                                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"}
+                                `}
+                              >
+                                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isSubActive ? "bg-blue-500" : "bg-slate-300"}`} />
+                                {sub.label}
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              );
+            }
+
+            /* ── Regular link ── */
             const Icon     = link.icon;
             const isActive = pathname === link.href;
             return (
