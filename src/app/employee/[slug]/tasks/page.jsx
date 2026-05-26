@@ -19,6 +19,7 @@ import StarterKit from "@tiptap/starter-kit";
 /* ── Tiptap rich editor ─────────────────────────────────── */
 const TaskRichEditor = ({ content, onChange, placeholder = "Task details…", minHeight = "80px" }) => {
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [StarterKit],
     content: content || "",
     editorProps: {
