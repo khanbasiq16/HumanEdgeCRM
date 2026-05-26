@@ -63,27 +63,10 @@ const TaskRichEditor = ({ content, onChange, placeholder = "Task details…", mi
 
 /* ── Night-shift aware date helper ──────────────────────── */
 const getShiftDate = (checkInTime) => {
-  const fmt = new Intl.DateTimeFormat("en-US", {
-    timeZone: "Asia/Karachi",
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", hour12: false,
-  });
-  const parts = Object.fromEntries(fmt.formatToParts(new Date()).map((p) => [p.type, p.value]));
-
-  let { year, month, day } = parts;
-  let nowH = parseInt(parts.hour);
-  const nowM = parseInt(parts.minute);
-
-  // Some Intl implementations report midnight as hour=24 with the previous
-  // calendar day. Detect and correct: advance the day by 1 and set hour to 0.
-  if (nowH === 24) {
-    nowH = 0;
-    const d = new Date(`${year}-${month}-${day}T00:00:00`);
-    d.setDate(d.getDate() + 1);
-    year  = String(d.getFullYear());
-    month = String(d.getMonth() + 1).padStart(2, "0");
-    day   = String(d.getDate()).padStart(2, "0");
-  }
+  // Pakistan Standard Time = UTC+5, no DST — pure math, no Intl quirks
+  const k = new Date(Date.now() + 5 * 60 * 60 * 1000);
+  const nowH = k.getUTCHours();
+  const nowM = k.getUTCMinutes();
 
   let useYesterday = false;
   if (checkInTime) {
@@ -94,24 +77,22 @@ const getShiftDate = (checkInTime) => {
       const ap = match[3].toUpperCase();
       if (ap === "PM" && h !== 12) h += 12;
       if (ap === "AM" && h === 12) h = 0;
-      // Only apply night-shift adjustment for late shifts (≥ 6 PM) and
-      // only when current Karachi time is in the early-morning window (< noon).
-      const isNightShift  = h >= 18;
-      const isEarlyMorning = nowH < 12;
-      if (isNightShift && isEarlyMorning && (nowH < h || (nowH === h && nowM < m))) {
+      // Night-shift: only subtract a day when the shift starts at 6 PM or
+      // later AND current Karachi time is in the early-morning window (< noon),
+      // meaning the employee is still within that overnight shift.
+      if (h >= 18 && nowH < 12 && (nowH < h || (nowH === h && nowM < m))) {
         useYesterday = true;
       }
     }
   }
 
-  if (useYesterday) {
-    const d = new Date(`${year}-${month}-${day}T00:00:00`);
-    d.setDate(d.getDate() - 1);
-    year  = String(d.getFullYear());
-    month = String(d.getMonth() + 1).padStart(2, "0");
-    day   = String(d.getDate()).padStart(2, "0");
-  }
-  return `${year}-${month}-${day}`;
+  if (useYesterday) k.setUTCDate(k.getUTCDate() - 1);
+
+  return [
+    k.getUTCFullYear(),
+    String(k.getUTCMonth() + 1).padStart(2, "0"),
+    String(k.getUTCDate()).padStart(2, "0"),
+  ].join("-");
 };
 
 /* ── Strip HTML for plain text preview ─────────────────── */
