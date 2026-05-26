@@ -118,6 +118,7 @@ export default function EmployeeTasksPage() {
   const [tasks,          setTasks]          = useState([]);
   const [loading,        setLoading]        = useState(true);
   const [filter,         setFilter]         = useState("all");
+  const [sourceFilter,   setSourceFilter]   = useState("all");
 
   const [createOpen,     setCreateOpen]     = useState(false);
   const [creating,       setCreating]       = useState(false);
@@ -259,18 +260,26 @@ export default function EmployeeTasksPage() {
   };
 
   /* ── Derived ─────────────────────────────────────── */
+  const sourceTasks = useMemo(() => {
+    if (sourceFilter === "self")     return tasks.filter((t) => t.source === "employee");
+    if (sourceFilter === "assigned") return tasks.filter((t) => t.source !== "employee");
+    return tasks;
+  }, [tasks, sourceFilter]);
+
   const filtered = useMemo(() => {
-    if (filter === "all") return tasks;
-    return tasks.filter((t) => t.status === filter);
-  }, [tasks, filter]);
+    if (filter === "all") return sourceTasks;
+    return sourceTasks.filter((t) => t.status === filter);
+  }, [sourceTasks, filter]);
 
   const counts = useMemo(() => ({
-    all:           tasks.length,
-    pending:       tasks.filter((t) => t.status === "pending").length,
-    "in-progress": tasks.filter((t) => t.status === "in-progress").length,
-    working:       tasks.filter((t) => t.status === "working").length,
-    completed:     tasks.filter((t) => t.status === "completed").length,
-  }), [tasks]);
+    all:           sourceTasks.length,
+    pending:       sourceTasks.filter((t) => t.status === "pending").length,
+    "in-progress": sourceTasks.filter((t) => t.status === "in-progress").length,
+    working:       sourceTasks.filter((t) => t.status === "working").length,
+    completed:     sourceTasks.filter((t) => t.status === "completed").length,
+    self:          tasks.filter((t) => t.source === "employee").length,
+    assigned:      tasks.filter((t) => t.source !== "employee").length,
+  }), [tasks, sourceTasks]);
 
   /* ─────────────────────────────────────────────────── */
   return (
@@ -306,7 +315,30 @@ export default function EmployeeTasksPage() {
           ))}
         </div>
 
-        {/* Filter tabs */}
+        {/* Source filter */}
+        <div className="flex gap-2">
+          {[
+            ["all",      "All Tasks",  counts.self + counts.assigned],
+            ["assigned", "Assigned",   counts.assigned],
+            ["self",     "Self Tasks", counts.self],
+          ].map(([v, l, c]) => (
+            <button
+              key={v}
+              onClick={() => { setSourceFilter(v); setFilter("all"); }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
+                sourceFilter === v
+                  ? v === "self"
+                    ? "bg-violet-600 text-white border-violet-600"
+                    : "bg-blue-600 text-white border-blue-600"
+                  : "bg-white text-slate-600 border-slate-200 hover:border-blue-300"
+              }`}
+            >
+              {l} <span className="opacity-60 ml-0.5">{c}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Status filter tabs */}
         <div className="flex gap-2 flex-wrap">
           {[["all","All"],["pending","Pending"],["in-progress","In Progress"],["working","Working"],["completed","Completed"]].map(([v, l]) => (
             <button
@@ -314,8 +346,8 @@ export default function EmployeeTasksPage() {
               onClick={() => setFilter(v)}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
                 filter === v
-                  ? "bg-blue-600 text-white border-blue-600"
-                  : "bg-white text-slate-600 border-slate-200 hover:border-blue-300"
+                  ? "bg-slate-700 text-white border-slate-700"
+                  : "bg-white text-slate-600 border-slate-200 hover:border-slate-400"
               }`}
             >
               {l} <span className="opacity-60 ml-0.5">{counts[v] ?? ""}</span>
@@ -339,13 +371,16 @@ export default function EmployeeTasksPage() {
         ) : (
           <div className="space-y-3">
             {filtered.map((task) => {
-              const sc = TASK_STATUS[task.status] || TASK_STATUS.pending;
+              const sc      = TASK_STATUS[task.status] || TASK_STATUS.pending;
+              const isSelf  = task.source === "employee";
               const preview = stripHtml(task.description);
               return (
                 <div
                   key={task.id}
                   onClick={() => openTask(task)}
-                  className={`bg-white rounded-2xl border px-5 py-4 cursor-pointer hover:shadow-sm transition-all ${sc.border}`}
+                  className={`bg-white rounded-2xl border px-5 py-4 cursor-pointer hover:shadow-sm transition-all border-l-4 ${
+                    isSelf ? "border-l-violet-400" : "border-l-blue-400"
+                  } ${sc.border}`}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${sc.bg} ${sc.text}`}>
