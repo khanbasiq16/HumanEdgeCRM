@@ -63,9 +63,17 @@ const TaskRichEditor = ({ content, onChange, placeholder = "Task details…", mi
 
 /* ── Night-shift aware date helper ──────────────────────── */
 const getShiftDate = (checkInTime) => {
-  const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Karachi" }));
-  let useYesterday = false;
+  // Use Intl to reliably extract Karachi date/time parts
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Karachi",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: false,
+  });
+  const parts = Object.fromEntries(fmt.formatToParts(new Date()).map((p) => [p.type, p.value]));
+  const nowH = parseInt(parts.hour);
+  const nowM = parseInt(parts.minute);
 
+  let useYesterday = false;
   if (checkInTime) {
     const match = checkInTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
     if (match) {
@@ -74,19 +82,19 @@ const getShiftDate = (checkInTime) => {
       const ap = match[3].toUpperCase();
       if (ap === "PM" && h !== 12) h += 12;
       if (ap === "AM" && h === 12) h = 0;
-      if (now.getHours() < h || (now.getHours() === h && now.getMinutes() < m)) {
-        useYesterday = true;
-      }
+      if (nowH < h || (nowH === h && nowM < m)) useYesterday = true;
     }
   }
 
-  const d = new Date(now);
-  if (useYesterday) d.setDate(d.getDate() - 1);
-  return [
-    d.getFullYear(),
-    String(d.getMonth() + 1).padStart(2, "0"),
-    String(d.getDate()).padStart(2, "0"),
-  ].join("-");
+  let { year, month, day } = parts;
+  if (useYesterday) {
+    const d = new Date(`${year}-${month}-${day}`);
+    d.setDate(d.getDate() - 1);
+    year  = String(d.getFullYear());
+    month = String(d.getMonth() + 1).padStart(2, "0");
+    day   = String(d.getDate()).padStart(2, "0");
+  }
+  return `${year}-${month}-${day}`;
 };
 
 /* ── Strip HTML for plain text preview ─────────────────── */
