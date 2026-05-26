@@ -6,7 +6,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import {
   ClipboardList, Loader2, Calendar, MessageSquare, Send,
-  FolderOpen, Plus, Pencil, X, Save,
+  FolderOpen, Plus, Pencil, X, Save, Trash2,
   Bold, Italic, List, ListOrdered,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -129,6 +129,7 @@ export default function EmployeeTasksPage() {
   const [editMode,       setEditMode]       = useState(false);
   const [editForm,       setEditForm]       = useState({});
   const [saving,         setSaving]         = useState(false);
+  const [deleting,       setDeleting]       = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [newComment,     setNewComment]     = useState("");
   const [addingComment,  setAddingComment]  = useState(false);
@@ -220,6 +221,19 @@ export default function EmployeeTasksPage() {
       toast.success("Task updated!");
     } catch { toast.error("Failed to update task"); }
     finally   { setSaving(false); }
+  };
+
+  /* ── Delete (self-created only) ─────────────────── */
+  const handleDelete = async () => {
+    if (!selTask || !window.confirm("Delete this task?")) return;
+    setDeleting(true);
+    try {
+      await axios.delete("/api/tasks/delete", { data: { taskId: selTask.id, employeeId: user.employeeId } });
+      setTasks((p) => p.filter((t) => t.id !== selTask.id));
+      setTaskOpen(false);
+      toast.success("Task deleted.");
+    } catch { toast.error("Failed to delete task"); }
+    finally   { setDeleting(false); }
   };
 
   /* ── Add comment ─────────────────────────────────── */
@@ -460,6 +474,16 @@ export default function EmployeeTasksPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
+                  {selTask.source === "employee" && !editMode && (
+                    <button
+                      onClick={handleDelete}
+                      disabled={deleting}
+                      className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors"
+                      title="Delete task"
+                    >
+                      {deleting ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
+                    </button>
+                  )}
                   <button
                     onClick={() => setEditMode((v) => !v)}
                     className="p-1.5 rounded-lg hover:bg-white/60 text-slate-400 hover:text-slate-700 transition-colors"
