@@ -211,7 +211,11 @@ const ListTemplates = ({ loading }) => {
             <TemplateCard
               key={template.id}
               template={template}
-              onClick={() => router.push(`/template-editor/${template.id}`)}
+              onClick={() => router.push(
+                template.role === "Admin"
+                  ? `/contract-editor/${template.id}`
+                  : `/template-editor/${template.id}`
+              )}
             />
           ))}
         </div>

@@ -48,10 +48,14 @@ export async function DELETE(req, { params }) {
 export async function PATCH(req, { params }) {
   try {
     const { id } = params;
-    const { templateName, fields } = await req.json();
+    const { templateName, fields, theme, fontStack, canvasData, bgColor } = await req.json();
     const updates = { updatedAt: new Date().toISOString() };
     if (templateName !== undefined) updates.templateName = templateName;
     if (fields       !== undefined) updates.fields       = fields;
+    if (theme        !== undefined) updates.theme        = theme;
+    if (fontStack    !== undefined) updates.fontStack    = fontStack;
+    if (canvasData   != null)       updates.canvasData   = canvasData; // != null excludes both null and undefined
+    if (bgColor      !== undefined) updates.bgColor      = bgColor;
     await updateDoc(doc(db, "templates", id), updates);
     return NextResponse.json({ success: true });
   } catch (error) {

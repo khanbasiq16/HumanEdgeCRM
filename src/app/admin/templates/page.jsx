@@ -640,7 +640,11 @@ const Page = () => {
               <TemplateCard
                 key={t.id}
                 template={t}
-                onEdit={tmpl => router.push(`/template-editor/${tmpl.id}`)}
+                onEdit={tmpl => router.push(
+                  tmpl.role === "Admin"
+                    ? `/contract-editor/${tmpl.id}`
+                    : `/template-editor/${tmpl.id}`
+                )}
                 onAssign={openAssign}
                 onDelete={openDelete}
                 onDownload={handleDownloadTemplate}

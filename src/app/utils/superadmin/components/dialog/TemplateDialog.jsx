@@ -89,7 +89,10 @@ const TemplateDialog = () => {
         setOpen(false);
         setRole("Employee");
         setCompany("");
-        router.push(`/template-editor/${res.data.templateId}`);
+        const editorPath = role === "Admin"
+          ? `/contract-editor/${res.data.templateId}`
+          : `/template-editor/${res.data.templateId}`;
+        router.push(editorPath);
       } else {
         toast.error("Failed to create template");
       }

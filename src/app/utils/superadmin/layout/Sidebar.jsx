@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Home, Calendar, LogOut, Users, PersonStanding, CardSim,
   NotepadTextDashed, Settings, ArrowLeft, Building, DollarSign,
@@ -22,6 +22,8 @@ const Sidebar = ({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) => {
 
   const isAttendancePath = pathname.startsWith("/admin/attendance");
   const [attendanceOpen, setAttendanceOpen] = useState(isAttendancePath);
+  // FIX 7: sync accordion state when pathname changes (e.g. browser back/forward, direct URL)
+  useEffect(() => { if (isAttendancePath) setAttendanceOpen(true); }, [isAttendancePath]);
 
   /* ── nav data ──────────────────────────────────────────── */
   const isSuperAdmin = user?.role === "superAdmin";
@@ -133,9 +135,25 @@ const Sidebar = ({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) => {
             if (link.type === "attendance-group") {
               return (
                 <div key="attendance-group" className="mb-0.5">
+                  {/* FIX 8: collapsed state → Link navigates directly; expanded → button toggles submenu */}
+                  {collapsed ? (
+                    <Link
+                      href="/admin/attendance"
+                      title="Attendance"
+                      onClick={() => setMobileOpen(false)}
+                      className={`
+                        group flex items-center gap-3 px-3 py-2.5 rounded-lg
+                        text-sm font-medium transition-all
+                        ${isAttendancePath
+                          ? "bg-blue-50 text-blue-600"
+                          : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"}
+                      `}
+                    >
+                      <Calendar size={18} className={`shrink-0 ${isAttendancePath ? "text-blue-600" : "text-slate-400 group-hover:text-slate-600"}`} />
+                    </Link>
+                  ) : (
                   <button
-                    onClick={() => { if (!collapsed) setAttendanceOpen((o) => !o); }}
-                    title={collapsed ? "Attendance" : ""}
+                    onClick={() => setAttendanceOpen((o) => !o)}
                     className={`
                       w-full group flex items-center gap-3 px-3 py-2.5 rounded-lg
                       text-sm font-medium transition-all
@@ -150,19 +168,16 @@ const Sidebar = ({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) => {
                         isAttendancePath ? "text-blue-600" : "text-slate-400 group-hover:text-slate-600"
                       }`}
                     />
-                    {!collapsed && (
-                      <>
-                        <span className="flex-1 text-left truncate">Attendance</span>
-                        <motion.span
-                          animate={{ rotate: attendanceOpen ? 180 : 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="shrink-0"
-                        >
-                          <ChevronDown size={14} className={isAttendancePath ? "text-blue-500" : "text-slate-400"} />
-                        </motion.span>
-                      </>
-                    )}
+                    <span className="flex-1 text-left truncate">Attendance</span>
+                    <motion.span
+                      animate={{ rotate: attendanceOpen ? 180 : 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="shrink-0"
+                    >
+                      <ChevronDown size={14} className={isAttendancePath ? "text-blue-500" : "text-slate-400"} />
+                    </motion.span>
                   </button>
+                  )}
 
                   <AnimatePresence initial={false}>
                     {!collapsed && attendanceOpen && (
