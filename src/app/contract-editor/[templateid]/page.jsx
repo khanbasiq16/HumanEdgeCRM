@@ -47,6 +47,7 @@ const SIDEBAR_ITEMS = [
   { id:"images",   icon:ImageIcon, label:"Images"    },
   { id:"vars",     icon:Tag,       label:"Variables" },
   { id:"design",   icon:Palette,   label:"Design"    },
+  { id:"company",  icon:Building2, label:"Company"   },
 ];
 
 /* ────────────── Elements Panel ─────── */
@@ -281,6 +282,117 @@ const DesignPanel = ({ bgColor, onBgChange, onApplyTemplate }) => {
           ))}
         </div>
       </div>
+    </div>
+  );
+};
+
+/* ────────────── Company Panel ──────────── */
+const CompanyPanel = ({ company, onAddText, onAddImage }) => {
+  if (!company) return (
+    <div className="p-6 flex flex-col items-center justify-center gap-3 text-center">
+      <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center">
+        <Building2 size={20} className="text-slate-300"/>
+      </div>
+      <p className="text-sm text-slate-400 font-medium">No company linked</p>
+      <p className="text-[11px] text-slate-300">Assign a company to this template first.</p>
+    </div>
+  );
+
+  const logo  = company.companylogo || company.companyLogo;
+  const email = company.companyEmail || company.companyemail;
+  const web   = company.companyWebsite?.replace(/^https?:\/\/(www\.)?/, "");
+
+  const AddBtn = ({ label, value, onClick, icon: Icon }) => (
+    <button
+      onClick={onClick}
+      className="w-full flex items-center gap-3 px-3 py-2.5 bg-white border border-slate-200 rounded-xl hover:bg-blue-50 hover:border-blue-300 transition-all group text-left"
+    >
+      <div className="w-7 h-7 rounded-lg bg-slate-100 group-hover:bg-blue-100 flex items-center justify-center shrink-0">
+        <Icon size={13} className="text-slate-400 group-hover:text-blue-500"/>
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none mb-0.5">{label}</p>
+        <p className="text-xs text-slate-700 font-medium truncate">{value}</p>
+      </div>
+      <span className="text-[10px] text-slate-300 group-hover:text-blue-400 shrink-0">+ add</span>
+    </button>
+  );
+
+  return (
+    <div className="p-4 space-y-4">
+      {/* Company card */}
+      <div className="bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 rounded-xl p-4 flex items-start gap-3">
+        {logo ? (
+          <img src={logo} alt={company.name} className="w-10 h-10 rounded-lg object-contain bg-white border border-slate-200 shrink-0"/>
+        ) : (
+          <div className="w-10 h-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0">
+            <Building2 size={16} className="text-slate-400"/>
+          </div>
+        )}
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-slate-900 leading-tight">{company.name}</p>
+          {company.companyAddress && <p className="text-[11px] text-slate-500 mt-0.5">{company.companyAddress}</p>}
+        </div>
+      </div>
+
+      {/* Add to canvas */}
+      <div>
+        <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2">Add to Canvas</p>
+        <div className="space-y-1.5">
+          {/* Logo */}
+          {logo && (
+            <button
+              onClick={() => onAddImage(logo)}
+              className="w-full flex items-center gap-3 px-3 py-2.5 bg-white border border-slate-200 rounded-xl hover:bg-violet-50 hover:border-violet-300 transition-all group text-left"
+            >
+              <img src={logo} alt="" className="w-7 h-7 rounded object-contain border border-slate-100 shrink-0"/>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none mb-0.5">Logo</p>
+                <p className="text-xs text-slate-700 font-medium truncate">Company Logo</p>
+              </div>
+              <span className="text-[10px] text-slate-300 group-hover:text-violet-400 shrink-0">+ add</span>
+            </button>
+          )}
+          {/* Name */}
+          {company.name && (
+            <AddBtn label="Company Name" value={company.name}
+              icon={Type} onClick={() => onAddText(company.name, { fontSize:22, fontWeight:"bold" })} />
+          )}
+          {/* Address */}
+          {company.companyAddress && (
+            <AddBtn label="Address" value={company.companyAddress}
+              icon={Type} onClick={() => onAddText(company.companyAddress, { fontSize:12 })} />
+          )}
+          {/* Phone */}
+          {company.companyPhoneNumber && (
+            <AddBtn label="Phone" value={company.companyPhoneNumber}
+              icon={Type} onClick={() => onAddText(company.companyPhoneNumber, { fontSize:12 })} />
+          )}
+          {/* Email */}
+          {email && (
+            <AddBtn label="Email" value={email}
+              icon={Type} onClick={() => onAddText(email, { fontSize:12 })} />
+          )}
+          {/* Website */}
+          {web && (
+            <AddBtn label="Website" value={web}
+              icon={Type} onClick={() => onAddText(web, { fontSize:12 })} />
+          )}
+        </div>
+      </div>
+
+      {/* Add full header block */}
+      <button
+        onClick={() => {
+          if (company.name)             onAddText(company.name,             { fontSize:20, fontWeight:"bold",   top:60  });
+          if (company.companyAddress)   onAddText(company.companyAddress,   { fontSize:11, top:90  });
+          if (email)                    onAddText(email,                    { fontSize:11, top:108 });
+          if (company.companyPhoneNumber) onAddText(company.companyPhoneNumber, { fontSize:11, top:126 });
+        }}
+        className="w-full flex items-center justify-center gap-2 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-colors"
+      >
+        <Building2 size={13}/> Add Full Company Header
+      </button>
     </div>
   );
 };
@@ -539,10 +651,11 @@ export default function ContractEditorPage() {
   const [savedCanvasData, setSavedCanvasData] = useState(null);
 
   /* ── Refs ── */
-  const canvasElRef = useRef(null);
-  const fabricRef   = useRef(null);
-  const exportRef   = useRef(null);
-  const dirty       = useRef(false);
+  const canvasElRef       = useRef(null);
+  const fabricRef         = useRef(null);
+  const exportRef         = useRef(null);
+  const dirty             = useRef(false);
+  const initAttemptedRef  = useRef(false);   // prevent double-init in StrictMode
 
   /* ── Google Fonts ── */
   useEffect(() => {
@@ -562,57 +675,82 @@ export default function ContractEditorPage() {
 
   /* ── Init Fabric.js canvas ── */
   useEffect(() => {
+    // isMounted guards against StrictMode double-invocation and navigation races
+    let isMounted = true;
     let fc = null;
-    // FIX 6: cancellation flag prevents double-init (React StrictMode mounts twice)
-    let cancelled = false;
+
+    const readProps = (obj) => {
+      if (!obj) { setSelProps(null); return; }
+      setSelProps({
+        type:        obj.type,
+        fill:        typeof obj.fill === "string" ? obj.fill : "#3b82f6",
+        stroke:      obj.stroke || "transparent",
+        strokeWidth: obj.strokeWidth || 0,
+        opacity:     Math.round((obj.opacity ?? 1) * 100),
+        left:        Math.round(obj.left ?? 0),
+        top:         Math.round(obj.top  ?? 0),
+        width:       Math.round(obj.getScaledWidth?.()  ?? (obj.width  ?? 0)),
+        height:      Math.round(obj.getScaledHeight?.() ?? (obj.height ?? 0)),
+        angle:       Math.round(obj.angle ?? 0),
+        fontSize:    obj.fontSize   ?? 16,
+        fontFamily:  obj.fontFamily ?? "Arial",
+        fontWeight:  obj.fontWeight ?? "normal",
+        fontStyle:   obj.fontStyle  ?? "normal",
+        underline:   obj.underline  ?? false,
+        textAlign:   obj.textAlign  ?? "left",
+      });
+    };
+
     const init = async () => {
       if (!canvasElRef.current) return;
-      const { Canvas } = await getFab();
-      if (cancelled) return;              // guard after every await
-      fc = new Canvas(canvasElRef.current, {
-        width: A4_W, height: A4_H,
-        backgroundColor: "#ffffff",
-        preserveObjectStacking: true,
-        selection: true,
-      });
-      fabricRef.current = fc;
-      setFabricCanvas(fc);               // FIX 1: update state so PropertiesPanel gets real instance
-      setCanvasReady(true);
 
-      const readProps = (obj) => {
-        if (!obj) { setSelProps(null); return; }
-        setSelProps({
-          type:         obj.type,
-          fill:         typeof obj.fill === "string" ? obj.fill : "#3b82f6",
-          stroke:       obj.stroke || "transparent",
-          strokeWidth:  obj.strokeWidth || 0,
-          opacity:      Math.round((obj.opacity ?? 1) * 100),
-          left:         Math.round(obj.left ?? 0),
-          top:          Math.round(obj.top  ?? 0),
-          width:        Math.round(obj.getScaledWidth?.() ?? (obj.width ?? 0)),
-          height:       Math.round(obj.getScaledHeight?.() ?? (obj.height ?? 0)),
-          angle:        Math.round(obj.angle ?? 0),
-          fontSize:     obj.fontSize  ?? 16,
-          fontFamily:   obj.fontFamily ?? "Arial",
-          fontWeight:   obj.fontWeight ?? "normal",
-          fontStyle:    obj.fontStyle  ?? "normal",
-          underline:    obj.underline  ?? false,
-          textAlign:    obj.textAlign  ?? "left",
+      try {
+        // Dynamic import so Fabric never runs server-side
+        const { Canvas } = await import("fabric");
+        if (!isMounted || !canvasElRef.current) return;   // unmounted while awaiting
+
+        // Pass width + height in constructor — most reliable across Fabric v5/v6
+        fc = new Canvas(canvasElRef.current, {
+          width:                  A4_W,
+          height:                 A4_H,
+          backgroundColor:        "#ffffff",
+          preserveObjectStacking: true,
+          selection:              true,
+          renderOnAddRemove:      true,
+          enableRetinaScaling:    false,  // prevents CSS size being halved on HiDPI displays
         });
-      };
 
-      fc.on("selection:created", (e) => readProps(e.selected?.[0]));
-      fc.on("selection:updated", (e) => readProps(e.selected?.[0]));
-      fc.on("selection:cleared", ()  => setSelProps(null));
-      fc.on("object:modified",   (e) => { readProps(e.target); dirty.current = true; });
-      fc.on("object:added",      ()  => { dirty.current = true; });
-      fc.on("object:removed",    ()  => { dirty.current = true; });
+        if (!isMounted) { fc.dispose(); fc = null; return; }  // cleaned up already
+
+        fc.on("selection:created", (e) => readProps(e.selected?.[0]));
+        fc.on("selection:updated", (e) => readProps(e.selected?.[0]));
+        fc.on("selection:cleared", ()  => setSelProps(null));
+        fc.on("object:modified",   (e) => { readProps(e.target); dirty.current = true; });
+        fc.on("object:added",      ()  => { dirty.current = true; });
+        fc.on("object:removed",    ()  => { dirty.current = true; });
+
+        fabricRef.current = fc;
+        setFabricCanvas(fc);
+        setCanvasReady(true);
+      } catch (err) {
+        console.error("[ContractEditor] Fabric init failed:", err);
+        if (isMounted) toast.error(`Canvas error: ${err?.message || err}`);
+      }
     };
 
     init();
+
     return () => {
-      cancelled = true;                  // FIX 6: prevent in-flight init from completing
-      if (fc) { try { fc.dispose(); } catch{} fabricRef.current = null; setFabricCanvas(null); }
+      isMounted = false;
+      if (fc) {
+        try { fc.off(); fc.dispose(); } catch {}
+        fc = null;
+      }
+      fabricRef.current = null;
+      setFabricCanvas(null);
+      setSelProps(null);
+      setCanvasReady(false);
+      initAttemptedRef.current = false;
     };
   }, []);
 
@@ -636,27 +774,36 @@ export default function ContractEditorPage() {
   }, []);
 
   /* ── Load canvas data once BOTH canvas is ready AND data has arrived ── */
-  // FIX 2: both canvasReady and savedCanvasData in deps — fires regardless of which resolves first
   useEffect(() => {
-    if (!canvasReady || !fabricRef.current || !savedCanvasData) return;
-    fabricRef.current.loadFromJSON(savedCanvasData).then(() => {
-      fabricRef.current?.renderAll();
-    }).catch(() => {});
+    const fc = fabricRef.current;
+    if (!canvasReady || !fc || !savedCanvasData) return;
+    const load = async () => {
+      try {
+        await fc.loadFromJSON(savedCanvasData);
+        fc.requestRenderAll();
+      } catch (err) {
+        console.error("[ContractEditor] loadFromJSON failed:", err);
+      }
+    };
+    load();
   }, [canvasReady, savedCanvasData]);
 
   /* ── Apply bg color ── */
   useEffect(() => {
-    if (!canvasReady || !fabricRef.current) return;
-    fabricRef.current.backgroundColor = bgColor;
-    fabricRef.current.renderAll();
+    const fc = fabricRef.current;
+    if (!canvasReady || !fc) return;
+    // setBackgroundColor is the correct Fabric v6 API
+    if (typeof fc.setBackgroundColor === "function") {
+      fc.setBackgroundColor(bgColor, () => fc.requestRenderAll());
+    } else {
+      fc.backgroundColor = bgColor;
+      fc.requestRenderAll();
+    }
   }, [bgColor, canvasReady]);
 
   /* ── Save ── */
   const handleSave = async () => {
-    // FIX 10: skip if nothing changed (dirty flag check)
-    if (!dirty.current && !saving) {
-      toast("No changes to save", { icon: "✓" }); return;
-    }
+    if (saving) return;
     setSaving(true);
     try {
       // FIX 4: use undefined (not null) when canvas isn't ready — undefined is excluded by API guard
@@ -671,8 +818,10 @@ export default function ContractEditorPage() {
   /* ── Add shape ── */
   const handleAddShape = async (shapeId) => {
     const fc = fabricRef.current;
-    if (!fc) return;
-    const { Rect, Circle, Line, Triangle, Polyline, Polygon } = await getFab();
+    if (!fc) { toast.error("Canvas not ready — wait a moment and try again"); return; }
+    let fabric;
+    try { fabric = await import("fabric"); } catch { toast.error("Failed to load drawing library"); return; }
+    const { Rect, Circle, Line, Triangle, Polygon } = fabric;
     let obj;
     const cx = A4_W / 2, cy = A4_H / 3;
 
@@ -696,7 +845,7 @@ export default function ContractEditorPage() {
         // FIX 3: Fabric v6 add() takes one object at a time
         const l1 = new Line([0,0,300,0], { left:cx-150, top:cy-3, stroke:"#374151", strokeWidth:2 });
         const l2 = new Line([0,0,300,0], { left:cx-150, top:cy+3, stroke:"#374151", strokeWidth:2 });
-        fc.add(l1); fc.add(l2); fc.setActiveObject(l2); fc.renderAll();
+        fc.add(l1); fc.add(l2); fc.setActiveObject(l2); fc.requestRenderAll();
         return;
       }
       case "triangle":
@@ -719,35 +868,40 @@ export default function ContractEditorPage() {
       }
       default: return;
     }
-    if (obj) { fc.add(obj); fc.setActiveObject(obj); fc.renderAll(); }
+    if (obj) { fc.add(obj); fc.setActiveObject(obj); fc.requestRenderAll(); }
   };
 
   /* ── Add text ── */
   const handleAddText = async (text, opts = {}) => {
     const fc = fabricRef.current;
-    if (!fc) return;
-    const { IText } = await getFab();
-    const obj = new IText(text, {
-      left: A4_W / 2, top: 200,
-      fontSize:   opts.fontSize  || 16,
-      fontFamily: opts.fontFamily || "Arial",
-      fontWeight: opts.fontWeight || "normal",
-      fill: "#1a1a1a",
-      originX: "center",
-    });
-    fc.add(obj); fc.setActiveObject(obj); fc.renderAll();
+    if (!fc) { toast.error("Canvas not ready — wait a moment and try again"); return; }
+    try {
+      const { IText } = await import("fabric");
+      const obj = new IText(text, {
+        left:       A4_W / 2,
+        top:        Math.min(200, A4_H / 4),
+        fontSize:   opts.fontSize   || 16,
+        fontFamily: opts.fontFamily || "Arial",
+        fontWeight: opts.fontWeight || "normal",
+        fill:       "#1a1a1a",
+        originX:    "center",
+      });
+      fc.add(obj); fc.setActiveObject(obj); fc.requestRenderAll();
+    } catch (err) {
+      toast.error("Failed to add text: " + err.message);
+    }
   };
 
   /* ── Add image ── */
   const handleAddImage = async (url) => {
     const fc = fabricRef.current;
-    if (!fc) return false;
+    if (!fc) { toast.error("Canvas not ready"); return false; }
     try {
-      const { FabricImage } = await getFab();
-      const img = await FabricImage.fromURL(url, { crossOrigin:"anonymous" });
-      const scale = Math.min(300/img.width, 300/img.height, 1);
-      img.set({ left:A4_W/2-150, top:200, scaleX:scale, scaleY:scale });
-      fc.add(img); fc.setActiveObject(img); fc.renderAll();
+      const { FabricImage } = await import("fabric");
+      const img = await FabricImage.fromURL(url, { crossOrigin: "anonymous" });
+      const scale = Math.min(300 / img.width, 300 / img.height, 1);
+      img.set({ left: A4_W / 2 - 150, top: 200, scaleX: scale, scaleY: scale });
+      fc.add(img); fc.setActiveObject(img); fc.requestRenderAll();
       return true;
     } catch { return false; }
   };
@@ -761,7 +915,7 @@ export default function ContractEditorPage() {
       toast.error("Select a text element first"); return;
     }
     obj.set("text", (obj.text||"") + ` [${varName}]`);
-    fc.renderAll(); dirty.current = true;
+    fc.requestRenderAll(); dirty.current = true;
     toast.success(`[${varName}] inserted`);
   };
 
@@ -772,7 +926,7 @@ export default function ContractEditorPage() {
     const obj = fc.getActiveObject();
     if (!obj) return;
     obj.set(key, value);
-    fc.renderAll(); dirty.current = true;
+    fc.requestRenderAll(); dirty.current = true;
     setSelProps(prev => prev ? { ...prev, [key]: value } : null);
   };
 
@@ -782,7 +936,7 @@ export default function ContractEditorPage() {
     if (!fc) return;
     const obj = fc.getActiveObject();
     if (!obj) return;
-    fc.remove(obj); fc.discardActiveObject(); fc.renderAll();
+    fc.remove(obj); fc.discardActiveObject(); fc.requestRenderAll();
     setSelProps(null);
   };
 
@@ -794,12 +948,12 @@ export default function ContractEditorPage() {
     if (!obj) return;
     const clone = await obj.clone();
     clone.set({ left:(obj.left||0)+20, top:(obj.top||0)+20 });
-    fc.add(clone); fc.setActiveObject(clone); fc.renderAll();
+    fc.add(clone); fc.setActiveObject(clone); fc.requestRenderAll();
   };
 
   /* ── Layer order ── */
-  const handleMoveUp   = () => { const fc=fabricRef.current; if(!fc)return; const o=fc.getActiveObject(); if(o){fc.bringObjectForward(o); fc.renderAll();} };
-  const handleMoveDown = () => { const fc=fabricRef.current; if(!fc)return; const o=fc.getActiveObject(); if(o){fc.sendObjectBackwards(o); fc.renderAll();} };
+  const handleMoveUp   = () => { const fc=fabricRef.current; if(!fc)return; const o=fc.getActiveObject(); if(o){fc.bringObjectForward(o); fc.requestRenderAll();} };
+  const handleMoveDown = () => { const fc=fabricRef.current; if(!fc)return; const o=fc.getActiveObject(); if(o){fc.sendObjectBackwards(o); fc.requestRenderAll();} };
 
   /* ── Apply bg theme ── */
   const handleApplyTemplate = (t) => {
@@ -813,7 +967,7 @@ export default function ContractEditorPage() {
         if (obj.stroke && obj.stroke !== "transparent") obj.set("stroke", t.accent);
       }
     });
-    fc.renderAll();
+    fc.requestRenderAll();
   };
 
   /* ── Export PDF ── */
@@ -822,7 +976,7 @@ export default function ContractEditorPage() {
     try {
       const fc = fabricRef.current;
       if (!fc) return;
-      fc.discardActiveObject(); fc.renderAll();
+      fc.discardActiveObject(); fc.requestRenderAll();
       await new Promise(r => setTimeout(r, 100));
       const dataUrl = fc.toDataURL({ format:"jpeg", quality:0.95, multiplier:2 });
       const jsPDF = (await import("jspdf")).default;
@@ -840,7 +994,7 @@ export default function ContractEditorPage() {
     try {
       const fc = fabricRef.current;
       if (!fc) return;
-      fc.discardActiveObject(); fc.renderAll();
+      fc.discardActiveObject(); fc.requestRenderAll();
       await new Promise(r => setTimeout(r, 100));
       const dataUrl = fc.toDataURL({ format:"png", multiplier:1.5 });
       const { default: pptxgen } = await import("pptxgenjs");
@@ -888,11 +1042,12 @@ export default function ContractEditorPage() {
   const company = template?.company;
   const logoSrc = company?.companylogo || company?.companyLogo;
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-screen bg-[#f1f3f5]">
-      <Loader2 size={28} className="animate-spin text-blue-500" />
-    </div>
-  );
+  // ─── CRITICAL: never early-return before the canvas element renders.
+  // The canvas useEffect fires on mount. If the canvas <element> isn't in
+  // the DOM yet (because we returned a spinner instead), canvasElRef.current
+  // is null, initCanvas returns early, and fabricRef stays null forever.
+  // Solution: always render the full layout; show a loading overlay ON TOP
+  // of the canvas wrapper instead.
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-[#f1f3f5]">
@@ -1000,6 +1155,7 @@ export default function ContractEditorPage() {
                 {activePanel==="images"    && <ImagesPanel onAddImage={handleAddImage} />}
                 {activePanel==="vars"      && <VariablesPanel onInsert={handleInsertVar} />}
                 {activePanel==="design"    && <DesignPanel bgColor={bgColor} onBgChange={setBgColor} onApplyTemplate={handleApplyTemplate} />}
+                {activePanel==="company"   && <CompanyPanel company={template?.company} onAddText={handleAddText} onAddImage={handleAddImage} />}
               </div>
             </div>
           )}
@@ -1016,33 +1172,60 @@ export default function ContractEditorPage() {
         </div>
 
         {/* ─── CANVAS AREA ─── */}
-        <main className="flex-1 overflow-auto bg-[#f1f3f5] flex flex-col items-center py-8 px-6 gap-4">
+        <main className="flex-1 overflow-auto bg-[#f1f3f5] py-8 px-6">
+          {/* min-width so horizontal scroll appears rather than squashing the canvas */}
+          <div style={{ minWidth: A4_W + 48 }} className="mx-auto flex flex-col items-center gap-4">
 
-          {/* Company header bar */}
-          {company && (
-            <div className="w-full max-w-[750px] bg-white rounded-xl border border-slate-200 px-6 py-3 flex items-center gap-3 shadow-sm shrink-0">
-              {logoSrc
-                ? <img src={logoSrc} alt={company.name} className="h-9 object-contain shrink-0"/>
-                : <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center shrink-0"><Building2 size={15} className="text-slate-400"/></div>
-              }
-              <div>
-                <p className="text-sm font-bold text-slate-900">{company.name}</p>
-                {company.companyAddress && <p className="text-[11px] text-slate-400">{company.companyAddress}</p>}
+            {/* Company header bar — only once template has loaded */}
+            {!loading && company && (
+              <div style={{ width: A4_W }} className="bg-white rounded-xl border border-slate-200 px-6 py-3 flex items-center gap-3 shadow-sm shrink-0">
+                {logoSrc
+                  ? <img src={logoSrc} alt={company.name} className="h-9 object-contain shrink-0"/>
+                  : <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center shrink-0"><Building2 size={15} className="text-slate-400"/></div>
+                }
+                <div>
+                  <p className="text-sm font-bold text-slate-900">{company.name}</p>
+                  {company.companyAddress && <p className="text-[11px] text-slate-400">{company.companyAddress}</p>}
+                </div>
+                <span className="ml-auto text-[10px] text-slate-300 font-medium italic">Company header preview</span>
               </div>
-              <span className="ml-auto text-[10px] text-slate-300 font-medium italic">Company header preview</span>
+            )}
+
+            {/* Canvas wrapper — ALWAYS rendered so canvasElRef is set before useEffect fires.
+                A loading overlay sits on top while template data is in-flight. */}
+            <div
+              style={{ width: A4_W, height: A4_H, position: "relative" }}
+              className="rounded-sm shadow-[0_4px_40px_rgba(0,0,0,0.12)] bg-white shrink-0 overflow-hidden"
+            >
+              {/* Fabric.js canvas — width/height attributes give it correct pixel dimensions
+                  before Fabric initialises so the constructor never sees a 0×0 element */}
+              <canvas ref={canvasElRef} width={A4_W} height={A4_H} />
+
+              {/* Loading overlay — covers canvas while template fetch is in-flight */}
+              {loading && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-white gap-3 z-10">
+                  <Loader2 size={32} className="animate-spin text-blue-400" />
+                  <p className="text-sm text-slate-400 font-medium">Loading template…</p>
+                </div>
+              )}
+
+              {/* Canvas-not-ready overlay — shows only if init took too long */}
+              {!loading && !canvasReady && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-white gap-3 z-10">
+                  <Loader2 size={28} className="animate-spin text-blue-300" />
+                  <p className="text-xs text-slate-400">Initialising canvas…</p>
+                </div>
+              )}
             </div>
-          )}
 
-          {/* Fabric canvas wrapper */}
-          <div className="rounded-sm shadow-[0_4px_40px_rgba(0,0,0,0.12)] overflow-hidden shrink-0">
-            <canvas ref={canvasElRef} />
-          </div>
-
-          {/* Keyboard shortcuts hint */}
-          <div className="flex items-center gap-4 text-[11px] text-slate-400">
-            <span><kbd className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-mono">Del</kbd> delete</span>
-            <span><kbd className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-mono">Ctrl+D</kbd> duplicate</span>
-            <span><kbd className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-mono">Ctrl+S</kbd> save</span>
+            {/* Keyboard shortcuts hint */}
+            {!loading && (
+              <div className="flex items-center gap-4 text-[11px] text-slate-400 pb-4">
+                <span><kbd className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-mono">Del</kbd> delete</span>
+                <span><kbd className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-mono">Ctrl+D</kbd> duplicate</span>
+                <span><kbd className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-mono">Ctrl+S</kbd> save</span>
+              </div>
+            )}
           </div>
         </main>
 
