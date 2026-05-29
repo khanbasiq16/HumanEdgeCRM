@@ -161,20 +161,86 @@ const TextPanel = ({ onAddText }) => (
 
 /* ────────────── Images Panel ──────────── */
 const ImagesPanel = ({ onAddImage }) => {
-  const [url, setUrl] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [url,        setUrl]        = useState("");
+  const [urlLoading, setUrlLoading] = useState(false);
+  const [uploading,  setUploading]  = useState(false);
+  const fileInputRef = useRef(null);
 
-  const handleAdd = async () => {
+  /* ── Add from URL ── */
+  const handleAddUrl = async () => {
     if (!url.trim()) { toast.error("Paste an image URL first"); return; }
-    setLoading(true);
+    setUrlLoading(true);
     const ok = await onAddImage(url.trim());
     if (ok) { setUrl(""); toast.success("Image added!"); }
-    else      toast.error("Could not load image. Check the URL.");
-    setLoading(false);
+    else      toast.error("Could not load image — check the URL.");
+    setUrlLoading(false);
+  };
+
+  /* ── Upload from computer ── */
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { toast.error("Please select an image file"); return; }
+    setUploading(true);
+    try {
+      // Read file as data URL (base64) — works offline, no server needed
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload  = (ev) => resolve(ev.target.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const ok = await onAddImage(dataUrl);
+      if (ok) toast.success(`${file.name} added!`);
+      else     toast.error("Could not add image.");
+    } catch {
+      toast.error("Failed to read file.");
+    } finally {
+      setUploading(false);
+      // reset so same file can be re-selected
+      e.target.value = "";
+    }
   };
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-4 space-y-5">
+
+      {/* ── Upload from computer ── */}
+      <div>
+        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Upload from Computer</p>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="w-full flex flex-col items-center justify-center gap-2 py-6 border-2 border-dashed border-slate-300 hover:border-blue-400 hover:bg-blue-50 rounded-xl transition-all disabled:opacity-60 group"
+        >
+          {uploading ? (
+            <Loader2 size={24} className="animate-spin text-blue-500"/>
+          ) : (
+            <ImageIcon size={24} className="text-slate-300 group-hover:text-blue-400 transition-colors"/>
+          )}
+          <div className="text-center">
+            <p className="text-sm font-semibold text-slate-600 group-hover:text-blue-600">
+              {uploading ? "Adding…" : "Click to upload"}
+            </p>
+            <p className="text-[11px] text-slate-400 mt-0.5">PNG, JPG, SVG, WEBP</p>
+          </div>
+        </button>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <div className="flex-1 h-px bg-slate-200"/>
+        <span className="text-[11px] text-slate-400 font-medium">or</span>
+        <div className="flex-1 h-px bg-slate-200"/>
+      </div>
+
+      {/* ── Add from URL ── */}
       <div>
         <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Add from URL</p>
         <div className="space-y-2">
@@ -183,20 +249,17 @@ const ImagesPanel = ({ onAddImage }) => {
             value={url}
             onChange={e => setUrl(e.target.value)}
             placeholder="https://example.com/image.jpg"
-            onKeyDown={e => e.key==="Enter" && handleAdd()}
+            onKeyDown={e => e.key==="Enter" && handleAddUrl()}
           />
           <button
-            onClick={handleAdd}
-            disabled={loading}
-            className="w-full flex items-center justify-center gap-2 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-xl text-sm font-semibold transition-colors"
+            onClick={handleAddUrl}
+            disabled={urlLoading}
+            className="w-full flex items-center justify-center gap-2 py-2.5 bg-slate-700 hover:bg-slate-800 disabled:opacity-60 text-white rounded-xl text-sm font-semibold transition-colors"
           >
-            {loading ? <Loader2 size={14} className="animate-spin"/> : <ImageIcon size={14}/>}
-            {loading ? "Loading…" : "Add Image"}
+            {urlLoading ? <Loader2 size={14} className="animate-spin"/> : <ImageIcon size={14}/>}
+            {urlLoading ? "Loading…" : "Add from URL"}
           </button>
         </div>
-      </div>
-      <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
-        <p className="text-[11px] text-blue-700 font-medium">Tip: Use direct image links ending in .jpg, .png, .svg or .webp</p>
       </div>
     </div>
   );
@@ -397,8 +460,79 @@ const CompanyPanel = ({ company, onAddText, onAddImage }) => {
   );
 };
 
+/* ────────────── Shared color palette ──────────── */
+const PALETTE = [
+  "#000000","#ffffff","#1e293b","#475569","#94a3b8",
+  "#ef4444","#f97316","#eab308","#22c55e","#14b8a6",
+  "#3b82f6","#6366f1","#8b5cf6","#ec4899","#f43f5e",
+  "#78350f","#166534","#1e3a8a","#4c1d95","#831843",
+];
+
+/* Inline colour picker — no OS dialog, lives entirely inside the panel */
+const InlinePicker = ({ value, onChange, allowNone = false }) => {
+  const nativeRef = useRef(null);
+  const current = (!value || value === "transparent") ? "#000000" : value;
+
+  return (
+    <div className="space-y-2">
+      {/* Swatch grid */}
+      <div className="grid grid-cols-10 gap-1">
+        {PALETTE.map(c => (
+          <button
+            key={c}
+            onClick={() => onChange(c)}
+            title={c}
+            className={`w-5 h-5 rounded transition-all border-2 ${
+              value === c ? "border-blue-500 scale-110 shadow" : "border-transparent hover:border-slate-400"
+            }`}
+            style={{ background: c, boxShadow: c === "#ffffff" ? "inset 0 0 0 1px #e2e8f0" : undefined }}
+          />
+        ))}
+      </div>
+
+      {/* Current colour + hex input + native eyedropper */}
+      <div className="flex items-center gap-2">
+        {/* coloured square that opens native picker */}
+        <div
+          className="relative w-7 h-7 rounded-lg border border-slate-200 cursor-pointer shrink-0 overflow-hidden"
+          style={{ background: current }}
+          title="Custom colour"
+        >
+          <input
+            ref={nativeRef}
+            type="color"
+            value={current}
+            onChange={e => onChange(e.target.value)}
+            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+          />
+        </div>
+        {/* hex text */}
+        <input
+          type="text"
+          value={value === "transparent" ? "none" : (value || "#000000")}
+          onChange={e => {
+            const v = e.target.value.trim();
+            if (v === "none" || v === "") { if (allowNone) onChange("transparent"); return; }
+            if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(v)) onChange(v);
+          }}
+          maxLength={7}
+          className="flex-1 text-[11px] font-mono border border-slate-200 rounded-lg px-2 py-1 bg-slate-50 outline-none focus:border-blue-400"
+        />
+        {allowNone && (
+          <button
+            onClick={() => onChange("transparent")}
+            className={`text-[10px] px-2 py-1 rounded-lg border transition-all ${
+              value === "transparent" ? "bg-slate-200 font-bold border-slate-400" : "border-slate-200 hover:bg-slate-50"
+            }`}
+          >None</button>
+        )}
+      </div>
+    </div>
+  );
+};
+
 /* ────────────── Properties Panel ──────────── */
-const PropertiesPanel = ({ props: p, onUpdate, onDelete, onDuplicate, onMoveUp, onMoveDown, onClose, canvas }) => {
+const PropertiesPanel = ({ props: p, onUpdate, onAlignH, onAlignV, onDelete, onDuplicate, onMoveUp, onMoveDown, onClose }) => {
   if (!p) return null;
 
   const isText  = p.type === "i-text" || p.type === "textbox" || p.type === "text";
@@ -423,26 +557,7 @@ const PropertiesPanel = ({ props: p, onUpdate, onDelete, onDuplicate, onMoveUp, 
     </div>
   );
 
-  const alignHCanvasFn = (align) => {
-    if (!canvas) return;
-    const obj = canvas.getActiveObject();
-    if (!obj) return;
-    if (align === "left")   obj.set("left", 0);
-    if (align === "center") obj.set("left", (A4_W - obj.getScaledWidth()) / 2);
-    if (align === "right")  obj.set("left", A4_W - obj.getScaledWidth());
-    canvas.renderAll();
-    onUpdate("left", obj.left);
-  };
-  const alignVCanvasFn = (align) => {
-    if (!canvas) return;
-    const obj = canvas.getActiveObject();
-    if (!obj) return;
-    if (align === "top")    obj.set("top", 0);
-    if (align === "middle") obj.set("top", (A4_H - obj.getScaledHeight()) / 2);
-    if (align === "bottom") obj.set("top", A4_H - obj.getScaledHeight());
-    canvas.renderAll();
-    onUpdate("top", obj.top);
-  };
+  // Alignment handlers now received as props (defined in main component with fabricRef access)
 
   return (
     <aside className="w-[250px] shrink-0 bg-white border-l border-[#e6e6e6] flex flex-col overflow-y-auto [&::-webkit-scrollbar]:hidden">
@@ -503,13 +618,10 @@ const PropertiesPanel = ({ props: p, onUpdate, onDelete, onDuplicate, onMoveUp, 
             </div>
 
             {/* Text color */}
-            <Row label="Color">
-              <div className="flex items-center gap-2">
-                <input type="color" value={p.fill||"#000000"} onChange={e=>onUpdate("fill",e.target.value)}
-                  className="w-8 h-8 rounded-lg border border-slate-200 cursor-pointer p-0.5" />
-                <span className="text-[10px] text-slate-500 font-mono">{p.fill||"#000000"}</span>
-              </div>
-            </Row>
+            <div>
+              <p className="text-[11px] text-slate-400 font-semibold mb-1.5">Color</p>
+              <InlinePicker value={p.fill||"#000000"} onChange={v=>onUpdate("fill",v)} />
+            </div>
           </div>
         )}
 
@@ -517,34 +629,29 @@ const PropertiesPanel = ({ props: p, onUpdate, onDelete, onDuplicate, onMoveUp, 
         {isShape && (
           <div className="space-y-3">
             <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Shape</p>
-            <Row label="Fill">
-              <div className="flex items-center gap-2">
-                <input type="color" value={p.fill==="transparent"||!p.fill?"#3b82f6":p.fill}
-                  onChange={e=>onUpdate("fill",e.target.value)}
-                  className="w-8 h-8 rounded-lg border border-slate-200 cursor-pointer p-0.5" />
-                <button onClick={()=>onUpdate("fill","transparent")}
-                  className={`text-[10px] px-2 py-1 rounded border transition-all ${p.fill==="transparent"||!p.fill?"bg-slate-200 font-bold":"border-slate-200 hover:bg-slate-50"}`}
-                >None</button>
+            <div>
+              <p className="text-[11px] text-slate-400 font-semibold mb-1.5">Fill</p>
+              <InlinePicker value={p.fill||"#3b82f6"} onChange={v=>onUpdate("fill",v)} allowNone />
+            </div>
+            <div>
+              <p className="text-[11px] text-slate-400 font-semibold mb-1.5">Stroke</p>
+              <InlinePicker value={p.stroke||"transparent"} onChange={v=>onUpdate("stroke",v)} allowNone />
+              <div className="mt-1.5">
+                <Row label="Width">
+                  <NumInput val={p.strokeWidth} onChange={v=>onUpdate("strokeWidth",v)} min={0} max={20} suffix="px" />
+                </Row>
               </div>
-            </Row>
-            <Row label="Stroke">
-              <div className="flex items-center gap-2">
-                <input type="color" value={p.stroke==="transparent"||!p.stroke?"#374151":p.stroke}
-                  onChange={e=>onUpdate("stroke",e.target.value)}
-                  className="w-8 h-8 rounded-lg border border-slate-200 cursor-pointer p-0.5" />
-                <NumInput val={p.strokeWidth} onChange={v=>onUpdate("strokeWidth",v)} min={0} max={20} suffix="px" />
-              </div>
-            </Row>
+            </div>
           </div>
         )}
 
-        {/* ALIGNMENT */}
+        {/* ALIGNMENT ON PAGE */}
         <div className="space-y-2">
           <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Align on Page</p>
           <div className="flex items-center gap-1">
             <span className="text-[10px] text-slate-400 w-10 shrink-0">Horiz</span>
             {[["left","Left"],["center","Center"],["right","Right"]].map(([v,l])=>(
-              <button key={v} onClick={()=>alignHCanvasFn(v)}
+              <button key={v} onClick={()=>onAlignH(v)}
                 className="flex-1 text-[10px] font-semibold py-1.5 border border-slate-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-all"
               >{l}</button>
             ))}
@@ -552,7 +659,7 @@ const PropertiesPanel = ({ props: p, onUpdate, onDelete, onDuplicate, onMoveUp, 
           <div className="flex items-center gap-1">
             <span className="text-[10px] text-slate-400 w-10 shrink-0">Vert</span>
             {[["top","Top"],["middle","Mid"],["bottom","Bot"]].map(([v,l])=>(
-              <button key={v} onClick={()=>alignVCanvasFn(v)}
+              <button key={v} onClick={()=>onAlignV(v)}
                 className="flex-1 text-[10px] font-semibold py-1.5 border border-slate-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-all"
               >{l}</button>
             ))}
@@ -656,6 +763,7 @@ export default function ContractEditorPage() {
   const exportRef         = useRef(null);
   const dirty             = useRef(false);
   const initAttemptedRef  = useRef(false);   // prevent double-init in StrictMode
+  const activeObjRef      = useRef(null);    // survives panel-button clicks that lose canvas focus
 
   /* ── Google Fonts ── */
   useEffect(() => {
@@ -722,10 +830,10 @@ export default function ContractEditorPage() {
 
         if (!isMounted) { fc.dispose(); fc = null; return; }  // cleaned up already
 
-        fc.on("selection:created", (e) => readProps(e.selected?.[0]));
-        fc.on("selection:updated", (e) => readProps(e.selected?.[0]));
-        fc.on("selection:cleared", ()  => setSelProps(null));
-        fc.on("object:modified",   (e) => { readProps(e.target); dirty.current = true; });
+        fc.on("selection:created", (e) => { activeObjRef.current = e.selected?.[0] ?? null; readProps(activeObjRef.current); });
+        fc.on("selection:updated", (e) => { activeObjRef.current = e.selected?.[0] ?? null; readProps(activeObjRef.current); });
+        fc.on("selection:cleared", ()  => { activeObjRef.current = null; setSelProps(null); });
+        fc.on("object:modified",   (e) => { activeObjRef.current = e.target; readProps(e.target); dirty.current = true; });
         fc.on("object:added",      ()  => { dirty.current = true; });
         fc.on("object:removed",    ()  => { dirty.current = true; });
 
@@ -893,14 +1001,17 @@ export default function ContractEditorPage() {
   };
 
   /* ── Add image ── */
-  const handleAddImage = async (url) => {
+  const handleAddImage = async (src) => {
     const fc = fabricRef.current;
     if (!fc) { toast.error("Canvas not ready"); return false; }
     try {
       const { FabricImage } = await import("fabric");
-      const img = await FabricImage.fromURL(url, { crossOrigin: "anonymous" });
-      const scale = Math.min(300 / img.width, 300 / img.height, 1);
-      img.set({ left: A4_W / 2 - 150, top: 200, scaleX: scale, scaleY: scale });
+      // base64 data URLs (local uploads) don't need crossOrigin
+      const opts = src.startsWith("data:") ? {} : { crossOrigin: "anonymous" };
+      const img = await FabricImage.fromURL(src, opts);
+      const maxSize = 300;
+      const scale   = Math.min(maxSize / img.width, maxSize / img.height, 1);
+      img.set({ left: A4_W / 2 - (img.width * scale) / 2, top: 180, scaleX: scale, scaleY: scale });
       fc.add(img); fc.setActiveObject(img); fc.requestRenderAll();
       return true;
     } catch { return false; }
@@ -921,13 +1032,50 @@ export default function ContractEditorPage() {
 
   /* ── Update selected object property ── */
   const handleUpdateProp = (key, value) => {
-    const fc = fabricRef.current;
+    const fc  = fabricRef.current;
     if (!fc) return;
-    const obj = fc.getActiveObject();
+    const obj = fc.getActiveObject() ?? activeObjRef.current;
     if (!obj) return;
-    obj.set(key, value);
-    fc.requestRenderAll(); dirty.current = true;
+
+    // opacity: UI stores 0-100, Fabric needs 0-1
+    const fabricValue = key === "opacity" ? value / 100 : value;
+
+    obj.set(key, fabricValue);
+    obj.dirty = true;
+    obj.setCoords();           // update bounding box for position/size changes
+    fc.setActiveObject(obj);
+    fc.requestRenderAll();
+    dirty.current = true;
+    // always store display-friendly value in state (opacity stays 0-100)
     setSelProps(prev => prev ? { ...prev, [key]: value } : null);
+  };
+
+  /* ── Align on canvas ── */
+  const handleAlignH = (align) => {
+    const fc  = fabricRef.current;
+    const obj = fc?.getActiveObject() ?? activeObjRef.current;
+    if (!fc || !obj) return;
+    const w = obj.getScaledWidth();
+    if (align === "left")   obj.set("left", 0);
+    if (align === "center") obj.set("left", (A4_W - w) / 2);
+    if (align === "right")  obj.set("left", A4_W - w);
+    obj.setCoords();
+    fc.requestRenderAll();
+    dirty.current = true;
+    setSelProps(prev => prev ? { ...prev, left: Math.round(obj.left) } : null);
+  };
+  const handleAlignV = (align) => {
+    const fc  = fabricRef.current;
+    const obj = fc?.getActiveObject() ?? activeObjRef.current;
+    if (!fc || !obj) return;
+    const h = obj.getScaledHeight();
+    if (align === "top")    obj.set("top", 0);
+    if (align === "middle") obj.set("top", (A4_H - h) / 2);
+    if (align === "bottom") obj.set("top", A4_H - h);
+    obj.setCoords();
+    fc.requestRenderAll();
+    dirty.current = true;
+    setSelProps(prev => prev ? { ...prev, top: Math.round(obj.top) } : null);
   };
 
   /* ── Delete selected ── */
@@ -1176,20 +1324,6 @@ export default function ContractEditorPage() {
           {/* min-width so horizontal scroll appears rather than squashing the canvas */}
           <div style={{ minWidth: A4_W + 48 }} className="mx-auto flex flex-col items-center gap-4">
 
-            {/* Company header bar — only once template has loaded */}
-            {!loading && company && (
-              <div style={{ width: A4_W }} className="bg-white rounded-xl border border-slate-200 px-6 py-3 flex items-center gap-3 shadow-sm shrink-0">
-                {logoSrc
-                  ? <img src={logoSrc} alt={company.name} className="h-9 object-contain shrink-0"/>
-                  : <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center shrink-0"><Building2 size={15} className="text-slate-400"/></div>
-                }
-                <div>
-                  <p className="text-sm font-bold text-slate-900">{company.name}</p>
-                  {company.companyAddress && <p className="text-[11px] text-slate-400">{company.companyAddress}</p>}
-                </div>
-                <span className="ml-auto text-[10px] text-slate-300 font-medium italic">Company header preview</span>
-              </div>
-            )}
 
             {/* Canvas wrapper — ALWAYS rendered so canvasElRef is set before useEffect fires.
                 A loading overlay sits on top while template data is in-flight. */}
@@ -1232,13 +1366,14 @@ export default function ContractEditorPage() {
         {/* ─── PROPERTIES PANEL (right) ─── */}
         <PropertiesPanel
           props={selProps}
-          canvas={fabricCanvas}
           onUpdate={handleUpdateProp}
+          onAlignH={handleAlignH}
+          onAlignV={handleAlignV}
           onDelete={handleDelete}
           onDuplicate={handleDuplicate}
           onMoveUp={handleMoveUp}
           onMoveDown={handleMoveDown}
-          onClose={()=>{ fabricRef.current?.discardActiveObject(); fabricRef.current?.renderAll(); setSelProps(null); }}
+          onClose={()=>{ fabricRef.current?.discardActiveObject(); activeObjRef.current = null; fabricRef.current?.requestRenderAll(); setSelProps(null); }}
         />
       </div>
     </div>
