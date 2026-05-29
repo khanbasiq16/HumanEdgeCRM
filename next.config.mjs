@@ -3,7 +3,8 @@ import withPWA from 'next-pwa';
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-      images: {
+  transpilePackages: ["konva"],
+  images: {
     remotePatterns: [
       {
         protocol: "https",
@@ -14,10 +15,9 @@ const nextConfig = {
 };
 
 const pwaConfig = withPWA({
-  dest: 'public', // Destination directory for PWA files
-  register: true, // Register the service worker
-  skipWaiting: true, // Skip waiting for service worker activation
-  
+  dest: 'public',
+  register: true,
+  skipWaiting: true,
 });
 
 // export default nextConfig;
