@@ -203,9 +203,13 @@ const Page = () => {
   const [assignOpen,     setAssignOpen]     = useState(false);
   const [assignTmpl,     setAssignTmpl]     = useState(null);
   const [employees,      setEmployees]      = useState([]);
-  const [selEmployees,   setSelEmployees]   = useState([]); // multi-select
+  const [selEmployees,   setSelEmployees]   = useState([]); // multi-select (letters)
   const [empSearch,      setEmpSearch]      = useState("");
   const [assigning,      setAssigning]      = useState(false);
+  // Contract mode: "send" = direct to client, "assign" = assign to sales employee
+  const [contractMode,   setContractMode]   = useState("send");
+  const [selSalesEmp,    setSelSalesEmp]    = useState("");   // single sales employee id
+  const [salesEmpSearch, setSalesEmpSearch] = useState("");
   // Contract-specific fields
   const [clientName,     setClientName]     = useState("");
   const [clientEmail,    setClientEmail]    = useState("");
@@ -245,8 +249,18 @@ const Page = () => {
     setSelEmployees([]); setEmpSearch("");
     setClientName(""); setClientEmail(""); setClientPhone("");
     setClientAddress(""); setContractDate(""); setContractMsg("");
+    setContractMode("send"); setSelSalesEmp(""); setSalesEmpSearch("");
     setAssignOpen(true);
   };
+
+  // Employees filtered by sales — checks department, designation, or role
+  const salesEmployees = employees.filter(e => {
+    const dept = typeof e.department === "object"
+      ? (e.department?.departmentName || "")
+      : (e.department || "");
+    const fields = [dept, e.designation || "", e.role || "", e.employeeRole || ""];
+    return fields.some(f => f.toLowerCase().includes("sales"));
+  });
 
   const toggleEmployee = (id) =>
     setSelEmployees(prev =>
@@ -257,7 +271,22 @@ const Page = () => {
     setAssigning(true);
     try {
       if (isContract(assignTmpl)) {
-        if (!clientEmail) return toast.error("Client email is required");
+        /* ── Assign to sales employee ── */
+        if (contractMode === "assign") {
+          if (!selSalesEmp) { setAssigning(false); return toast.error("Please select a sales employee"); }
+          const res = await axios.post("/api/letters/assign", {
+            templateId:  assignTmpl.id,
+            employeeIds: [selSalesEmp],
+            assignedBy:  user?.employeeName || user?.name || "Admin",
+          });
+          if (res.data.success) {
+            toast.success("Contract assigned to sales employee!");
+            setAssignOpen(false);
+          } else toast.error(res.data.error || "Failed to assign");
+          return;
+        }
+        /* ── Send directly to client ── */
+        if (!clientEmail) { setAssigning(false); return toast.error("Client email is required"); }
         const res = await axios.post("/api/templates/assign-contract", {
           templateId:   assignTmpl.id,
           clientName, clientEmail, clientPhone, clientAddress,
@@ -680,46 +709,158 @@ const Page = () => {
               </div>
 
               {isContract(assignTmpl) ? (
-                /* ── Contract fields ── */
+                /* ── Contract section ── */
                 <>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs font-semibold text-slate-600 block mb-1">Client Name</label>
-                      <Input value={clientName} onChange={e => setClientName(e.target.value)} placeholder="e.g. Acme Corp" className="rounded-xl border-slate-200 text-sm h-9" />
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold text-slate-600 block mb-1">Client Email *</label>
-                      <Input type="email" value={clientEmail} onChange={e => setClientEmail(e.target.value)} placeholder="client@example.com" className="rounded-xl border-slate-200 text-sm h-9" />
-                    </div>
+                  {/* Mode tabs */}
+                  <div className="flex gap-1 p-1 bg-slate-100 rounded-xl">
+                    <button
+                      onClick={() => setContractMode("send")}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all ${
+                        contractMode === "send"
+                          ? "bg-white text-violet-700 shadow-sm border border-slate-200"
+                          : "text-slate-500 hover:text-slate-700"
+                      }`}
+                    >
+                      <Send size={12}/> Send to Client
+                    </button>
+                    <button
+                      onClick={() => setContractMode("assign")}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all ${
+                        contractMode === "assign"
+                          ? "bg-white text-emerald-700 shadow-sm border border-slate-200"
+                          : "text-slate-500 hover:text-slate-700"
+                      }`}
+                    >
+                      <UserPlus size={12}/> Assign to Sales
+                    </button>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs font-semibold text-slate-600 block mb-1">Client Phone</label>
-                      <Input value={clientPhone} onChange={e => setClientPhone(e.target.value)} placeholder="+92 300 0000000" className="rounded-xl border-slate-200 text-sm h-9" />
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold text-slate-600 block mb-1">Contract Date</label>
-                      <Input type="date" value={contractDate} onChange={e => setContractDate(e.target.value)} className="rounded-xl border-slate-200 text-sm h-9" />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-slate-600 block mb-1">Client Address</label>
-                    <Input value={clientAddress} onChange={e => setClientAddress(e.target.value)} placeholder="123 Business Ave, City, Country" className="rounded-xl border-slate-200 text-sm h-9" />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-slate-600 block mb-1">Message to Client (optional)</label>
-                    <Textarea
-                      value={contractMsg}
-                      onChange={e => setContractMsg(e.target.value)}
-                      placeholder="Please review the attached contract and let us know if you have any questions…"
-                      className="rounded-xl border-slate-200 text-sm resize-none"
-                      rows={3}
-                    />
-                  </div>
-                  <p className="text-xs text-violet-700 bg-violet-50 border border-violet-200 rounded-xl px-3 py-2 flex items-start gap-2">
-                    <Mail size={12} className="mt-0.5 shrink-0" />
-                    The contract will be sent to the client's email with all variables substituted. A copy is saved in your dashboard.
-                  </p>
+
+                  {contractMode === "send" ? (
+                    /* ── Send directly to client ── */
+                    <>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs font-semibold text-slate-600 block mb-1">Client Name</label>
+                          <Input value={clientName} onChange={e => setClientName(e.target.value)} placeholder="e.g. Acme Corp" className="rounded-xl border-slate-200 text-sm h-9" />
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-slate-600 block mb-1">Client Email *</label>
+                          <Input type="email" value={clientEmail} onChange={e => setClientEmail(e.target.value)} placeholder="client@example.com" className="rounded-xl border-slate-200 text-sm h-9" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs font-semibold text-slate-600 block mb-1">Client Phone</label>
+                          <Input value={clientPhone} onChange={e => setClientPhone(e.target.value)} placeholder="+92 300 0000000" className="rounded-xl border-slate-200 text-sm h-9" />
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-slate-600 block mb-1">Contract Date</label>
+                          <Input type="date" value={contractDate} onChange={e => setContractDate(e.target.value)} className="rounded-xl border-slate-200 text-sm h-9" />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600 block mb-1">Client Address</label>
+                        <Input value={clientAddress} onChange={e => setClientAddress(e.target.value)} placeholder="123 Business Ave, City, Country" className="rounded-xl border-slate-200 text-sm h-9" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600 block mb-1">Message to Client (optional)</label>
+                        <Textarea
+                          value={contractMsg}
+                          onChange={e => setContractMsg(e.target.value)}
+                          placeholder="Please review the attached contract and let us know if you have any questions…"
+                          className="rounded-xl border-slate-200 text-sm resize-none"
+                          rows={3}
+                        />
+                      </div>
+                      <p className="text-xs text-violet-700 bg-violet-50 border border-violet-200 rounded-xl px-3 py-2 flex items-start gap-2">
+                        <Mail size={12} className="mt-0.5 shrink-0" />
+                        The contract will be sent to the client&apos;s email with all variables substituted.
+                      </p>
+                    </>
+                  ) : (
+                    /* ── Assign to sales employee ── */
+                    <>
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600 block mb-1">
+                          Select Sales Employee *
+                          {salesEmployees.length > 0 && (
+                            <span className="ml-2 text-[10px] text-slate-400 font-normal">
+                              ({salesEmployees.length} available)
+                            </span>
+                          )}
+                        </label>
+
+                        {/* Search */}
+                        <div className="relative mb-2">
+                          <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
+                          <Input
+                            placeholder="Search sales employees…"
+                            value={salesEmpSearch}
+                            onChange={e => setSalesEmpSearch(e.target.value)}
+                            className="pl-8 h-8 text-xs rounded-lg border-slate-200"
+                          />
+                        </div>
+
+                        {/* List */}
+                        <div className="max-h-52 overflow-y-auto space-y-1 border border-slate-200 rounded-xl p-2">
+                          {salesEmployees.length === 0 ? (
+                            <p className="text-xs text-slate-400 text-center py-6">
+                              No employees with Sales role found
+                            </p>
+                          ) : (
+                            salesEmployees
+                              .filter(e =>
+                                !salesEmpSearch.trim() ||
+                                (e.employeeName || "").toLowerCase().includes(salesEmpSearch.toLowerCase())
+                              )
+                              .map(emp => {
+                                const checked = selSalesEmp === emp.id;
+                                const dept = typeof emp.department === "object"
+                                  ? emp.department?.departmentName
+                                  : emp.department || "";
+                                const role = emp.role || emp.employeeRole || emp.designation || "";
+                                return (
+                                  <div
+                                    key={emp.id}
+                                    onClick={() => setSelSalesEmp(emp.id)}
+                                    className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg cursor-pointer transition-colors ${
+                                      checked
+                                        ? "bg-emerald-50 border border-emerald-300"
+                                        : "hover:bg-slate-50 border border-transparent"
+                                    }`}
+                                  >
+                                    {/* Radio circle */}
+                                    <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 border-2 ${
+                                      checked ? "border-emerald-600 bg-emerald-600" : "border-slate-300"
+                                    }`}>
+                                      {checked && <div className="w-1.5 h-1.5 rounded-full bg-white"/>}
+                                    </div>
+                                    {/* Avatar */}
+                                    <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                                      <span className="text-[11px] font-bold text-emerald-700">
+                                        {(emp.employeeName || "?")[0].toUpperCase()}
+                                      </span>
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-xs font-semibold text-slate-800 truncate">{emp.employeeName || "—"}</p>
+                                      <p className="text-[10px] text-slate-400 truncate">
+                                        {role && <span className="text-emerald-600 font-medium">{role}</span>}
+                                        {dept && <span className="ml-1">· {dept}</span>}
+                                      </p>
+                                    </div>
+                                  </div>
+                                );
+                              })
+                          )}
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 flex items-start gap-2">
+                        <UserPlus size={12} className="mt-0.5 shrink-0"/>
+                        This contract will be assigned to the selected sales employee. They can then process and send it to the client.
+                      </p>
+                    </>
+                  )}
                 </>
               ) : (
                 /* ── Employee letter multi-select ── */
@@ -802,15 +943,27 @@ const Page = () => {
             <DialogFooter className="gap-2">
               <Button variant="outline" className="rounded-xl" onClick={() => setAssignOpen(false)} disabled={assigning}>Cancel</Button>
               {isContract(assignTmpl) ? (
-                <Button
-                  className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl"
-                  onClick={handleAssign}
-                  disabled={assigning || !clientEmail}
-                >
-                  {assigning
-                    ? <><Loader2 size={14} className="animate-spin mr-1.5" />Sending…</>
-                    : <><Send size={14} className="mr-1.5" />Send Contract</>}
-                </Button>
+                contractMode === "assign" ? (
+                  <Button
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl"
+                    onClick={handleAssign}
+                    disabled={assigning || !selSalesEmp}
+                  >
+                    {assigning
+                      ? <><Loader2 size={14} className="animate-spin mr-1.5" />Assigning…</>
+                      : <><UserPlus size={14} className="mr-1.5" />Assign to Sales Employee</>}
+                  </Button>
+                ) : (
+                  <Button
+                    className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl"
+                    onClick={handleAssign}
+                    disabled={assigning || !clientEmail}
+                  >
+                    {assigning
+                      ? <><Loader2 size={14} className="animate-spin mr-1.5" />Sending…</>
+                      : <><Send size={14} className="mr-1.5" />Send Contract</>}
+                  </Button>
+                )
               ) : (
                 <Button
                   className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl"

@@ -1,6 +1,11 @@
 "use client";
 import React, { useRef, useEffect, useState, useCallback } from "react";
 
+/* ── Axis-aligned bounding box intersection ── */
+function intersects(a, b) {
+  return !(b.x > a.x + a.width || b.x + b.width < a.x || b.y > a.y + a.height || b.y + b.height < a.y);
+}
+
 /* ── Custom draw-tool cursors ── */
 const _svg = (s, hx, hy) =>
   `url("data:image/svg+xml,${encodeURIComponent(s)}") ${hx} ${hy}, crosshair`;
@@ -141,7 +146,7 @@ function buildNode(K, shape, draggable, onChange, onSelect, onTextDblClick) {
         width:          shape.width,
         wrap:           "word",
       });
-      node.on("dblclick dbltap", (e) => { e.cancelBubble = true; onTextDblClick(shape); });
+      // dblclick is handled at stage level (see init) — node rebuilds would break per-node dblclick
       break;
     case "image":
       node = new K.Image({ ...base, width: shape.width || 200, height: shape.height || 200 });
@@ -169,7 +174,7 @@ function buildNode(K, shape, draggable, onChange, onSelect, onTextDblClick) {
   }
 
   if (node && !shape._eraser) {
-    node.on("click tap", (e) => { e.cancelBubble = true; onSelect(shape.id); });
+    // click/dblclick handled at stage level — only transform/drag here
     node.on("dragend",   (e) => onChange(shape.id, { x: e.target.x(), y: e.target.y() }));
     node.on("transformend", (e) => {
       const n = e.target;
@@ -187,7 +192,9 @@ export default function KonvaCanvas({
   stageRef,
   shapes,
   selectedId,
+  selectedIds,
   onSelect,
+  onSelectMultiple,
   onChange,
   drawTool,
   brushColor,
@@ -200,28 +207,37 @@ export default function KonvaCanvas({
   setShapes,
   dirty,
 }) {
-  const containerRef  = useRef(null);
-  const layerRef      = useRef(null);
-  const bgLayerRef    = useRef(null);   // separate layer for bg rect (so destination-out works)
-  const trRef         = useRef(null);
-  const bgRef         = useRef(null);
-  const KRef          = useRef(null);   // Konva module, set after dynamic import
-  const liveStrokeRef = useRef(null);   // the in-progress drawing Line node
+  const containerRef     = useRef(null);
+  const layerRef         = useRef(null);
+  const bgLayerRef       = useRef(null);
+  const selLayerRef      = useRef(null);   // top layer — only the marquee rect lives here
+  const selRectRef       = useRef(null);   // the blue dashed selection rectangle
+  const isSelectingRef   = useRef(false);  // true while drag-selecting
+  const selStartRef      = useRef({ x:0, y:0 });
+  const trRef            = useRef(null);
+  const bgRef            = useRef(null);
+  const KRef             = useRef(null);
+  const liveStrokeRef    = useRef(null);
+  const onSelectMultipleRef = useRef(onSelectMultiple);
 
   // Keep latest values in refs so event handlers (set up once) see current values
   const drawToolRef   = useRef(drawTool);
   const brushColorRef = useRef(brushColor);
   const brushSizeRef  = useRef(brushSize);
   const bgColorRef    = useRef(bgColor);
-  const onSelectRef   = useRef(onSelect);
-  const onChangeRef   = useRef(onChange);
+  const onSelectRef            = useRef(onSelect);
+  const onChangeRef            = useRef(onChange);
+  const shapesRef              = useRef(shapes);         // always current shapes for stage dblclick
+  const handleTextDblClickRef  = useRef(null);           // set after handleTextDblClick is defined
 
-  useEffect(() => { drawToolRef.current   = drawTool;   }, [drawTool]);
-  useEffect(() => { brushColorRef.current = brushColor; }, [brushColor]);
-  useEffect(() => { brushSizeRef.current  = brushSize;  }, [brushSize]);
-  useEffect(() => { bgColorRef.current    = bgColor;    }, [bgColor]);
-  useEffect(() => { onSelectRef.current   = onSelect;   }, [onSelect]);
-  useEffect(() => { onChangeRef.current   = onChange;   }, [onChange]);
+  useEffect(() => { drawToolRef.current          = drawTool;        }, [drawTool]);
+  useEffect(() => { brushColorRef.current        = brushColor;      }, [brushColor]);
+  useEffect(() => { brushSizeRef.current         = brushSize;       }, [brushSize]);
+  useEffect(() => { bgColorRef.current           = bgColor;         }, [bgColor]);
+  useEffect(() => { onSelectRef.current          = onSelect;        }, [onSelect]);
+  useEffect(() => { onChangeRef.current          = onChange;        }, [onChange]);
+  useEffect(() => { onSelectMultipleRef.current  = onSelectMultiple;}, [onSelectMultiple]);
+  useEffect(() => { shapesRef.current            = shapes;          }, [shapes]);
 
   const [textEditing, setTextEditing] = useState(null);
 
@@ -269,6 +285,9 @@ export default function KonvaCanvas({
     });
   }, [stageRef]);
 
+  // Keep ref in sync so stage-level dblclick handler always sees latest version
+  useEffect(() => { handleTextDblClickRef.current = handleTextDblClick; }, [handleTextDblClick]);
+
   /* ── Initialize Stage (runs once on mount) ── */
   useEffect(() => {
     if (!containerRef.current || typeof window === "undefined") return;
@@ -279,15 +298,32 @@ export default function KonvaCanvas({
       const K = mod.default ?? mod;
       KRef.current = K;
 
-      const stage   = new K.Stage({ container: containerRef.current, width: pageW, height: pageH });
-      const bgLayer = new K.Layer({ listening: false });  // bg only — never intercepts events
-      const layer   = new K.Layer();
+      const stage    = new K.Stage({ container: containerRef.current, width: pageW, height: pageH });
+      const bgLayer  = new K.Layer({ listening: false });
+      const layer    = new K.Layer();
+      const selLayer = new K.Layer({ listening: false }); // top — marquee rect only
       stage.add(bgLayer);
       stage.add(layer);
+      stage.add(selLayer);
 
       const bg = new K.Rect({ width: pageW, height: pageH, fill: bgColor, listening: false, attrs: { isBackground: true } });
       bgLayer.add(bg);
-      bgLayerRef.current = bgLayer;
+      bgLayerRef.current  = bgLayer;
+      selLayerRef.current = selLayer;
+
+      /* marquee selection rectangle */
+      const selRect = new K.Rect({
+        x:0, y:0, width:0, height:0,
+        fill: "rgba(59,130,246,0.07)",
+        stroke: "#3b82f6",
+        strokeWidth: 1,
+        dash: [5, 3],
+        visible: false,
+        listening: false,
+        cornerRadius: 2,
+      });
+      selLayer.add(selRect);
+      selRectRef.current = selRect;
 
       const tr = new K.Transformer({
         rotateEnabled: true,
@@ -300,13 +336,25 @@ export default function KonvaCanvas({
       trRef.current    = tr;
       bgRef.current    = bg;
 
-      /* Pointer events — drawing & selection */
+      /* ── Pointer: mousedown ── */
       stage.on("mousedown touchstart", (e) => {
         const tool = drawToolRef.current;
+
         if (tool === "select") {
-          if (e.target === stage || e.target.attrs?.isBackground) onSelectRef.current(null);
+          if (e.target === stage || e.target.attrs?.isBackground) {
+            onSelectRef.current(null);
+            /* start marquee */
+            const pos = stage.getPointerPosition();
+            if (!pos) return;
+            selStartRef.current  = { x: pos.x, y: pos.y };
+            isSelectingRef.current = true;
+            selRect.setAttrs({ x: pos.x, y: pos.y, width: 0, height: 0, visible: true });
+            selLayer.batchDraw();
+          }
           return;
         }
+
+        /* drawing tools */
         const pos = stage.getPointerPosition();
         if (!pos) return;
         const isEraser = tool === "eraser";
@@ -316,9 +364,9 @@ export default function KonvaCanvas({
           x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, opacity: 1,
           points:    [pos.x, pos.y],
           drawColor: isEraser ? "#000000" : brushColorRef.current,
-          drawWidth: isEraser             ? brushSizeRef.current * 5
-                   : tool === "brush"     ? Math.round(brushSizeRef.current * 2.5)
-                   :                       brushSizeRef.current,
+          drawWidth: isEraser         ? brushSizeRef.current * 5
+                   : tool === "brush" ? Math.round(brushSizeRef.current * 2.5)
+                   :                   brushSizeRef.current,
           _eraser:   isEraser,
         };
         const lineNode = new K.Line({
@@ -332,32 +380,111 @@ export default function KonvaCanvas({
         setDrawingLine(newLine);
       });
 
+      /* ── Pointer: mousemove ── */
       stage.on("mousemove touchmove", () => {
+        /* marquee drag */
+        if (isSelectingRef.current) {
+          const pos = stage.getPointerPosition();
+          if (!pos) return;
+          const sx = selStartRef.current.x, sy = selStartRef.current.y;
+          const rx = Math.min(pos.x, sx), ry = Math.min(pos.y, sy);
+          const rw = Math.abs(pos.x - sx),  rh = Math.abs(pos.y - sy);
+          selRect.setAttrs({ x: rx, y: ry, width: rw, height: rh });
+          selLayer.batchDraw();
+
+          /* real-time transformer — no React state → zero re-renders */
+          const selBox = { x: rx, y: ry, width: rw, height: rh };
+          const hits = [];
+          layer.getChildren().forEach(child => {
+            if (child === tr || !child.id() || !child.listening()) return;
+            const box = child.getClientRect();
+            if (intersects(selBox, box)) hits.push(child);
+          });
+          tr.nodes(hits);
+          layer.batchDraw();
+          return;
+        }
+
+        /* freehand drawing */
         const ln = liveStrokeRef.current;
-        if (!ln || drawToolRef.current === "select") return;
+        if (!ln) return;
         const pos = stage.getPointerPosition();
         if (!pos) return;
-        const pts = ln.points().concat([pos.x, pos.y]);
-        ln.points(pts);
+        ln.points(ln.points().concat([pos.x, pos.y]));
         layer.batchDraw();
       });
 
+      /* ── Pointer: mouseup ── */
       stage.on("mouseup touchend", () => {
+        /* finish marquee */
+        if (isSelectingRef.current) {
+          isSelectingRef.current = false;
+          selRect.visible(false);
+          selLayer.batchDraw();
+          /* sync selected IDs to React state (one update, after drag ends) */
+          const ids = tr.nodes().map(n => n.id()).filter(Boolean);
+          onSelectMultipleRef.current(ids);
+          return;
+        }
+
+        /* finish freehand stroke */
         const ln = liveStrokeRef.current;
         if (!ln) return;
         const pts = ln.points();
         ln.destroy();
         liveStrokeRef.current = null;
         layer.batchDraw();
-
         setDrawingLine(prev => {
           if (prev && pts.length > 4) {
-            const finished = { ...prev, points: pts };
-            setShapes(s => [...s, finished]);
+            setShapes(s => [...s, { ...prev, points: pts }]);
             dirty.current = true;
           }
           return null;
         });
+      });
+
+      /* ── Stage-level click: selection + manual double-click detection ──
+         Konva's built-in dblclick requires the SAME node reference twice,
+         which breaks when nodes are rebuilt after the first click.
+         We detect double-clicks by ID + timestamp instead.            ── */
+      let _lastId   = null;
+      let _lastTime = 0;
+
+      stage.on("click tap", (e) => {
+        if (drawToolRef.current !== "select") return;
+
+        /* click on empty canvas → deselect */
+        if (e.target === stage || e.target.attrs?.isBackground) {
+          onSelectRef.current(null);
+          _lastId = null; _lastTime = 0;
+          return;
+        }
+
+        /* resolve the real shape node ID:
+           e.target might be the transformer border/handle, so fall back to
+           whatever node the transformer currently wraps */
+        let nodeId = e.target?.id?.();
+        if (!nodeId || !shapesRef.current.find(s => s.id === nodeId)) {
+          nodeId = tr.nodes()[0]?.id?.() ?? null;
+        }
+        if (!nodeId) return;
+
+        const now = Date.now();
+        const isDbl = nodeId === _lastId && (now - _lastTime) < 400;
+        _lastId   = nodeId;
+        _lastTime = now;
+
+        if (isDbl) {
+          /* double-click → open text editor */
+          const shape = shapesRef.current.find(s => s.id === nodeId);
+          if (shape && ["i-text","text","signature"].includes(shape.type)) {
+            _lastId = null; _lastTime = 0;
+            handleTextDblClickRef.current?.(shape);
+          }
+        } else {
+          /* single click → select */
+          onSelectRef.current(nodeId);
+        }
       });
 
       layer.batchDraw();
@@ -366,12 +493,14 @@ export default function KonvaCanvas({
     return () => {
       cancelled = true;
       stageRef.current?.destroy();
-      stageRef.current  = null;
-      layerRef.current  = null;
+      stageRef.current   = null;
+      layerRef.current   = null;
       bgLayerRef.current = null;
-      trRef.current     = null;
-      bgRef.current     = null;
-      KRef.current      = null;
+      selLayerRef.current = null;
+      selRectRef.current  = null;
+      trRef.current      = null;
+      bgRef.current      = null;
+      KRef.current       = null;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -415,8 +544,11 @@ export default function KonvaCanvas({
     tr.moveToTop();
     if (liveStrokeRef.current) liveStrokeRef.current.moveToTop();
 
-    // Re-attach transformer to selected node
-    if (selectedId && drawTool === "select") {
+    // Re-attach transformer — multi-selection takes priority over single
+    if (selectedIds?.length > 0 && drawTool === "select") {
+      const nodes = selectedIds.map(id => layer.findOne("#" + id)).filter(Boolean);
+      tr.nodes(nodes);
+    } else if (selectedId && drawTool === "select") {
       const node = layer.findOne("#" + selectedId);
       tr.nodes(node ? [node] : []);
     } else {
@@ -424,7 +556,7 @@ export default function KonvaCanvas({
     }
 
     layer.batchDraw();
-  }, [shapes, selectedId, drawTool, onChange, onSelect, handleTextDblClick]);
+  }, [shapes, selectedId, selectedIds, drawTool, onChange, onSelect, handleTextDblClick]);
 
   /* ── Update cursor per draw tool ── */
   useEffect(() => {

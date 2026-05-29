@@ -3,18 +3,18 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import axios from "axios";
 import toast from "react-hot-toast";
+import { AnimatePresence, motion } from "framer-motion";
 
 import dynamic from "next/dynamic";
 const KonvaCanvas = dynamic(() => import("./KonvaCanvas"), { ssr: false });
 import {
   ArrowLeft, Save, Loader2, FileDown, ChevronDown,
   ChevronLeft, Grid, Type, Image as ImageIcon, Tag, Palette,
-  Square, Circle, Minus, Triangle, Bold, Italic,
   AlignLeft, AlignCenter, AlignRight, Trash2, Copy,
   Building2, X, MoveUp, MoveDown, RotateCcw, Minus as LineIcon,
   AlignHorizontalJustifyCenter, AlignVerticalJustifyCenter,
   Layers, FileText, PenLine, Film, Music, LayoutList, Monitor,
-  MousePointer2, Pen, Paintbrush, Eraser,
+  MousePointer2, Pen, Paintbrush, Eraser, Fingerprint,
 } from "lucide-react";
 
 /* ─────────────── Config ─────────────── */
@@ -60,8 +60,9 @@ const SIDEBAR_ITEMS = [
   { id:"elements",  icon:Grid,      label:"Elements"  },
   { id:"text",      icon:Type,      label:"Text"      },
   { id:"draw",      icon:Pen,       label:"Draw"      },
-  { id:"signature", icon:PenLine,   label:"Sign"      },
-  { id:"images",    icon:ImageIcon, label:"Images"    },
+  { id:"signature", icon:PenLine,     label:"Sign"      },
+  { id:"stamp",     icon:Fingerprint, label:"Stamp"     },
+  { id:"images",    icon:ImageIcon,  label:"Images"    },
   { id:"vars",      icon:Tag,       label:"Variables" },
   { id:"design",    icon:Palette,   label:"Design"    },
   { id:"company",   icon:Building2, label:"Company"   },
@@ -668,12 +669,415 @@ const TemplatesPanel = ({ bgColor, company, onApplyTemplate }) => {
   );
 };
 
+/* ─────────────── Stamp SVG generator ─────────────── */
+function _esc(s) {
+  return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+function generateStampSVG({ topText="COMPANY NAME HERE", bottomText="STATE HERE", centerText="SEAL", middleText="", color="#6b7280", size=200, logoSrc="" }) {
+  const S=Number(size)||200, cx=S/2, cy=S/2;
+  const r1=S*0.455, r2=S*0.415, r3=S*0.280, rt=S*0.350;
+  const col=color||"#6b7280";
+  const uid=Math.random().toString(36).slice(2,7);
+  const topArc=`M ${(cx-rt).toFixed(1)},${cy} A ${rt},${rt} 0 0,0 ${(cx+rt).toFixed(1)},${cy}`;
+  const tf=Math.round(S*0.068), bf=Math.round(S*0.058), cf=Math.round(S*0.115), mf=Math.round(S*0.058);
+
+  if (logoSrc) {
+    /* logo mode: image in center circle, text around ring, no centerText */
+    const imgR = r3 * 0.82;
+    const imgSize = imgR * 2;
+    const imgX = (cx - imgR).toFixed(1);
+    const imgY = (cy - imgR).toFixed(1);
+    const centerTextY = middleText ? (cy - r3*0.38).toFixed(1) : cy.toFixed(1);
+    return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${S}" height="${S}" viewBox="0 0 ${S} ${S}">
+  <defs>
+    <clipPath id="cc${uid}"><circle cx="${cx}" cy="${cy}" r="${imgR.toFixed(1)}"/></clipPath>
+    <path id="ta${uid}" d="${topArc}"/>
+  </defs>
+  <circle cx="${cx}" cy="${cy}" r="${r1}" fill="none" stroke="${col}" stroke-width="1.2" stroke-dasharray="2.5 2.5"/>
+  <circle cx="${cx}" cy="${cy}" r="${r2}" fill="none" stroke="${col}" stroke-width="2.5"/>
+  <circle cx="${cx}" cy="${cy}" r="${r3}" fill="none" stroke="${col}" stroke-width="1.5"/>
+  <image href="${logoSrc}" x="${imgX}" y="${imgY}" width="${imgSize.toFixed(1)}" height="${imgSize.toFixed(1)}" preserveAspectRatio="xMidYMid meet" clip-path="url(#cc${uid})"/>
+  <text font-size="${tf}" font-family="Arial,sans-serif" font-weight="bold" fill="${col}" letter-spacing="2.5">
+    <textPath href="#ta${uid}" startOffset="50%" text-anchor="middle">${_esc(topText)}</textPath>
+  </text>
+  <g transform="rotate(180,${cx},${cy})">
+    <text font-size="${bf}" font-family="Arial,sans-serif" fill="${col}" letter-spacing="2">
+      <textPath href="#ta${uid}" startOffset="50%" text-anchor="middle">${_esc(bottomText)}</textPath>
+    </text>
+  </g>
+  ${middleText?`<text x="${cx}" y="${centerTextY}" text-anchor="middle" dominant-baseline="middle" font-size="${mf}" font-family="Arial,sans-serif" fill="${col}" letter-spacing="2">${_esc(middleText)}</text>`:""}
+</svg>`;
+  }
+
+  /* text-only mode */
+  const centerY=(middleText?(cy+cf*0.4):(cy+cf*0.18)).toFixed(1);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${S}" height="${S}" viewBox="0 0 ${S} ${S}">
+  <circle cx="${cx}" cy="${cy}" r="${r1}" fill="none" stroke="${col}" stroke-width="1.2" stroke-dasharray="2.5 2.5"/>
+  <circle cx="${cx}" cy="${cy}" r="${r2}" fill="none" stroke="${col}" stroke-width="2.5"/>
+  <circle cx="${cx}" cy="${cy}" r="${r3}" fill="none" stroke="${col}" stroke-width="1.5"/>
+  <defs><path id="ta${uid}" d="${topArc}"/></defs>
+  <text font-size="${tf}" font-family="Arial,sans-serif" font-weight="bold" fill="${col}" letter-spacing="2.5">
+    <textPath href="#ta${uid}" startOffset="50%" text-anchor="middle">${_esc(topText)}</textPath>
+  </text>
+  <g transform="rotate(180,${cx},${cy})">
+    <text font-size="${bf}" font-family="Arial,sans-serif" fill="${col}" letter-spacing="2">
+      <textPath href="#ta${uid}" startOffset="50%" text-anchor="middle">${_esc(bottomText)}</textPath>
+    </text>
+  </g>
+  ${middleText?`<text x="${cx}" y="${(cy-r3*0.38).toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-size="${mf}" font-family="Arial,sans-serif" fill="${col}" letter-spacing="2">${_esc(middleText)}</text>`:""}
+  <text x="${cx}" y="${centerY}" text-anchor="middle" dominant-baseline="middle" font-size="${cf}" font-family="Arial,sans-serif" font-weight="bold" fill="${col}">${_esc(centerText)}</text>
+</svg>`;
+}
+
+/* Convert any image URL to base64 data-URL for safe SVG embedding */
+async function toBase64DataUrl(src) {
+  if (!src) return "";
+  if (src.startsWith("data:")) return src;
+  try {
+    const res = await fetch(src);
+    const blob = await res.blob();
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload  = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch { return ""; }
+}
+
+const STAMP_PRESET_COLORS = [
+  "#6b7280","#1e3a8a","#111827","#b91c1c","#166534","#6d28d9",
+];
+
+/* ────────────── Stamp Editor Modal ──────────── */
+const StampEditorModal = ({ stamp, companyName, companyLogo, onSave, onClose, onAddToCanvas }) => {
+  const [topText,    setTopText]    = useState((stamp?.topText    || companyName || "COMPANY NAME HERE").toUpperCase());
+  const [bottomText, setBottomText] = useState((stamp?.bottomText || "STATE HERE").toUpperCase());
+  const [centerText, setCenterText] = useState((stamp?.centerText || "SEAL").toUpperCase());
+  const [middleText, setMiddleText] = useState((stamp?.middleText || "").toUpperCase());
+  const [color,      setColor]      = useState(stamp?.color  || "#6b7280");
+  const [size,       setSize]       = useState(stamp?.size   || 200);
+  const [logoSrc,    setLogoSrc]    = useState(stamp?.logoSrc || "");
+  const [logoLoading, setLogoLoading] = useState(false);
+  const logoInputRef = useRef(null);
+
+  const svgStr  = generateStampSVG({ topText, bottomText, centerText, middleText, color, size, logoSrc });
+  const dataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgStr)}`;
+
+  const handleLogoFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { toast.error("Please select an image file"); return; }
+    setLogoLoading(true);
+    try {
+      const b64 = await new Promise((res, rej) => {
+        const reader = new FileReader();
+        reader.onload  = ev => res(ev.target.result);
+        reader.onerror = rej;
+        reader.readAsDataURL(file);
+      });
+      setLogoSrc(b64);
+    } catch { toast.error("Failed to read image"); }
+    finally { setLogoLoading(false); e.target.value = ""; }
+  };
+
+  const handleUseCompanyLogo = async () => {
+    if (!companyLogo) return;
+    setLogoLoading(true);
+    const b64 = await toBase64DataUrl(companyLogo);
+    if (b64) setLogoSrc(b64);
+    else toast.error("Could not load company logo");
+    setLogoLoading(false);
+  };
+
+  const currentStamp = { ...(stamp||{}), id: stamp?.id || Date.now().toString(), topText, bottomText, centerText, middleText, color, size, logoSrc };
+
+  return (
+    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col" style={{maxHeight:"92vh"}}>
+        {/* header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
+          <div className="flex items-center gap-2">
+            <Fingerprint size={18} className="text-blue-600"/>
+            <h2 className="text-base font-bold text-slate-800">Stamp Editor</h2>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><X size={16}/></button>
+        </div>
+
+        <div className="flex flex-1 overflow-hidden">
+          {/* ── LEFT: form ── */}
+          <div className="w-[55%] p-5 space-y-4 overflow-y-auto border-r border-slate-100 [&::-webkit-scrollbar]:hidden">
+
+            {/* Text fields */}
+            {[
+              ["Top Text (Company Name)", topText,    v=>setTopText(v.toUpperCase()),    "COMPANY NAME HERE"],
+              ["Bottom Text (State / City)", bottomText, v=>setBottomText(v.toUpperCase()), "STATE / CITY"],
+              ["Center Text",             centerText, v=>setCenterText(v.toUpperCase()), "SEAL"],
+              ["Middle Text (optional)",  middleText, v=>setMiddleText(v.toUpperCase()), "e.g. REGISTERED"],
+            ].map(([label, val, setter, ph]) => (
+              <div key={label}>
+                <p className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1">{label}</p>
+                <input value={val} onChange={e=>setter(e.target.value)}
+                  placeholder={ph}
+                  className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2 outline-none focus:border-blue-400 bg-white tracking-wide"
+                />
+              </div>
+            ))}
+
+            {/* Logo / Image inside stamp */}
+            <div>
+              <p className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">Logo Inside Stamp</p>
+              <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoFile}/>
+              {logoSrc ? (
+                <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                  <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-slate-300 flex items-center justify-center bg-white shrink-0">
+                    <img src={logoSrc} alt="logo" className="w-full h-full object-contain"/>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-700">Logo added</p>
+                    <p className="text-[10px] text-slate-400">Shows inside the stamp circle</p>
+                  </div>
+                  <button onClick={()=>setLogoSrc("")}
+                    className="text-[10px] text-red-400 hover:text-red-600 font-semibold px-2 py-1 rounded-lg hover:bg-red-50 transition-colors shrink-0"
+                  >Remove</button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <button
+                    onClick={()=>logoInputRef.current?.click()}
+                    disabled={logoLoading}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 border-2 border-dashed border-slate-300 hover:border-blue-400 hover:bg-blue-50 rounded-xl text-sm text-slate-500 hover:text-blue-600 font-medium transition-all disabled:opacity-60"
+                  >
+                    {logoLoading ? <Loader2 size={14} className="animate-spin"/> : <ImageIcon size={14}/>}
+                    {logoLoading ? "Loading…" : "Upload Logo Image"}
+                  </button>
+                  {companyLogo && (
+                    <button
+                      onClick={handleUseCompanyLogo}
+                      disabled={logoLoading}
+                      className="w-full flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-xl hover:bg-violet-50 hover:border-violet-300 text-xs font-semibold text-slate-600 hover:text-violet-700 transition-all disabled:opacity-60"
+                    >
+                      <img src={companyLogo} alt="" className="w-5 h-5 rounded object-contain border border-slate-100"/>
+                      Use Company Logo
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Ink Color */}
+            <div>
+              <p className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">Ink Color</p>
+              <div className="flex flex-wrap gap-2 items-center">
+                {STAMP_PRESET_COLORS.map(c=>(
+                  <button key={c} onClick={()=>setColor(c)}
+                    className={`w-7 h-7 rounded-full border-2 transition-all ${color===c?"border-blue-500 scale-110 shadow":"border-slate-200 hover:border-slate-400"}`}
+                    style={{background:c}}
+                  />
+                ))}
+                <div className="relative w-7 h-7 rounded-full border-2 border-slate-200 overflow-hidden cursor-pointer">
+                  <input type="color" value={color} onChange={e=>setColor(e.target.value)}
+                    className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                  />
+                  <div className="w-full h-full" style={{background:color}}/>
+                </div>
+                <span className="text-[11px] text-slate-400 font-mono">{color}</span>
+              </div>
+            </div>
+
+            {/* Size */}
+            <div>
+              <p className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">Size: {size}px</p>
+              <input type="range" min={120} max={320} value={size} onChange={e=>setSize(Number(e.target.value))}
+                className="w-full accent-blue-600"
+              />
+              <div className="flex justify-between text-[10px] text-slate-400 mt-0.5">
+                <span>Small</span><span>Large</span>
+              </div>
+            </div>
+          </div>
+
+          {/* ── RIGHT: preview ── */}
+          <div className="flex-1 flex flex-col items-center justify-center p-5 bg-slate-50/60">
+            <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-4">Live Preview</p>
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 flex items-center justify-center" style={{minWidth:200,minHeight:200}}>
+              <img src={dataUrl} alt="stamp preview" style={{width:Math.min(size,200),height:Math.min(size,200),objectFit:"contain"}}/>
+            </div>
+            <p className="text-[10px] text-slate-400 mt-3 text-center leading-relaxed max-w-[160px]">
+              {logoSrc ? "Logo is shown inside the stamp circle" : "Add a logo to show it inside the circle"}
+            </p>
+          </div>
+        </div>
+
+        {/* footer */}
+        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-white shrink-0">
+          <button onClick={onClose} className="text-sm text-slate-400 hover:text-slate-600 font-medium px-3 py-1.5">Cancel</button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => { onSave(currentStamp); toast.success("Stamp saved!"); }}
+              className="px-4 py-2 text-sm font-semibold border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-700 transition-colors"
+            >Save Stamp</button>
+            <button
+              onClick={() => onAddToCanvas(svgStr, size)}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors"
+            >
+              <Fingerprint size={13}/> Add to Canvas
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ────────────── Stamp Panel ──────────── */
+const StampPanel = ({ company, onAddToCanvas }) => {
+  const compKey = `stamps_${company?.id || company?._id || company?.name || "default"}`;
+  const companyLogo = company?.companylogo || company?.companyLogo || "";
+
+  const loadStamps = () => { try { return JSON.parse(localStorage.getItem(compKey)||"[]"); } catch { return []; } };
+  const [stamps,  setStamps]  = useState(loadStamps);
+  const [editing, setEditing] = useState(null); // null=closed  false=new  {...}=edit
+
+  const persistStamps = (arr) => { setStamps(arr); localStorage.setItem(compKey, JSON.stringify(arr)); };
+
+  const handleSave = (s) => {
+    persistStamps(stamps.some(x=>x.id===s.id) ? stamps.map(x=>x.id===s.id?s:x) : [...stamps,s]);
+  };
+
+  const handleDelete = (id) => persistStamps(stamps.filter(s=>s.id!==id));
+
+  const handleAddCanvas = async (svgStr, size) => {
+    const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgStr)}`;
+    await onAddToCanvas(url);
+    setEditing(null);
+    toast.success("Stamp added to canvas!");
+  };
+
+  return (
+    <>
+      <div className="p-4 space-y-4">
+        <div className="bg-violet-50 border border-violet-200 rounded-xl p-3">
+          <p className="text-[11px] text-violet-800 font-medium leading-relaxed">
+            Create your company stamp with logo and add it to any contract.
+          </p>
+        </div>
+
+        <button onClick={()=>setEditing(false)}
+          className="w-full flex items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold transition-colors"
+        >
+          <Fingerprint size={14}/> Create New Stamp
+        </button>
+
+        {stamps.length > 0 && (
+          <div>
+            <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2">Saved Stamps</p>
+            <div className="space-y-2">
+              {stamps.map(s => {
+                const svg = generateStampSVG(s);
+                const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+                return (
+                  <div key={s.id} className="border border-slate-200 rounded-xl overflow-hidden hover:border-blue-300 transition-all">
+                    <div className="flex items-center gap-3 p-3 bg-slate-50">
+                      <img src={url} alt="stamp" className="w-14 h-14 object-contain shrink-0"/>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-slate-700 truncate">{s.topText}</p>
+                        <p className="text-[10px] text-slate-400 truncate">
+                          {s.logoSrc ? "With logo" : s.centerText}{s.middleText?` · ${s.middleText}`:""}
+                        </p>
+                        <p className="text-[9px] text-slate-300">{s.size}px · {s.color}</p>
+                      </div>
+                    </div>
+                    <div className="flex border-t border-slate-100">
+                      <button onClick={()=>setEditing(s)} className="flex-1 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Edit</button>
+                      <div className="w-px bg-slate-100"/>
+                      <button onClick={()=>handleAddCanvas(svg, s.size)} className="flex-1 py-2 text-xs font-bold text-blue-600 hover:bg-blue-50 transition-colors">Add to Canvas</button>
+                      <div className="w-px bg-slate-100"/>
+                      <button onClick={()=>handleDelete(s.id)} className="px-3 py-2 text-red-400 hover:bg-red-50 transition-colors text-xs">✕</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {editing !== null && (
+        <StampEditorModal
+          stamp={editing || null}
+          companyName={company?.name}
+          companyLogo={companyLogo}
+          onSave={handleSave}
+          onClose={()=>setEditing(null)}
+          onAddToCanvas={handleAddCanvas}
+        />
+      )}
+    </>
+  );
+};
+
 const Section = ({ title, children }) => (
   <div className="mb-4">
     <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2">{title}</p>
     {children}
   </div>
 );
+
+/* Collapsible section — header click toggles content with Framer Motion */
+const ColSection = ({ title, open, onToggle, children, accent = "blue" }) => {
+  const accents = {
+    blue:   { hover: "hover:bg-blue-50",   text: "hover:text-blue-700",   dot: "bg-blue-400"   },
+    violet: { hover: "hover:bg-violet-50", text: "hover:text-violet-700", dot: "bg-violet-400" },
+    rose:   { hover: "hover:bg-rose-50",   text: "hover:text-rose-700",   dot: "bg-rose-400"   },
+    amber:  { hover: "hover:bg-amber-50",  text: "hover:text-amber-700",  dot: "bg-amber-400"  },
+    green:  { hover: "hover:bg-green-50",  text: "hover:text-green-700",  dot: "bg-green-400"  },
+  };
+  const a = accents[accent] || accents.blue;
+  return (
+    <motion.div
+      className="mb-1 border border-slate-200 rounded-xl overflow-hidden"
+      initial={false}
+      animate={{ borderColor: open ? "#93c5fd" : "#e2e8f0" }}
+      transition={{ duration: 0.2 }}
+    >
+      <button
+        onClick={onToggle}
+        className={`w-full flex items-center justify-between px-3 py-2.5 bg-slate-50 ${a.hover} ${a.text} transition-colors group`}
+      >
+        <div className="flex items-center gap-2">
+          <motion.div
+            className={`w-1.5 h-1.5 rounded-full ${a.dot}`}
+            animate={{ scale: open ? 1.3 : 1, opacity: open ? 1 : 0.5 }}
+            transition={{ type: "spring", stiffness: 400, damping: 20 }}
+          />
+          <span className="text-[11px] font-extrabold text-slate-600 uppercase tracking-widest">{title}</span>
+        </div>
+        <motion.div
+          animate={{ rotate: open ? 180 : 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 22 }}
+        >
+          <ChevronDown size={13} className="text-slate-400"/>
+        </motion.div>
+      </button>
+
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            key="content"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ height: { type: "spring", stiffness: 300, damping: 30 }, opacity: { duration: 0.18 } }}
+            style={{ overflow: "hidden" }}
+          >
+            <div className="p-2.5">{children}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+};
 
 const ShapeBtn = ({ item, onClick }) => (
   <button onClick={onClick}
@@ -684,21 +1088,25 @@ const ShapeBtn = ({ item, onClick }) => (
   </button>
 );
 
-const ElementsPanel = ({ onAdd, onAddTable }) => (
-  <div className="p-4">
-    <Section title="Basic Shapes">
+const ElementsPanel = ({ onAdd, onAddTable }) => {
+  const [open, setOpen] = useState({ shapes: true, lines: false, tables: false, forms: false, media: false, mockups: false });
+  const toggle = (key) => setOpen(p => ({ ...p, [key]: !p[key] }));
+
+  return (
+  <div className="p-3 space-y-1">
+    <ColSection title="Basic Shapes" open={open.shapes} onToggle={()=>toggle("shapes")} accent="blue">
       <div className="grid grid-cols-4 gap-1.5">
         {BASIC_SHAPES.map(s => <ShapeBtn key={s.id} item={s} onClick={()=>onAdd(s.id)}/>)}
       </div>
-    </Section>
+    </ColSection>
 
-    <Section title="Lines & Dividers">
+    <ColSection title="Lines & Dividers" open={open.lines} onToggle={()=>toggle("lines")} accent="blue">
       <div className="grid grid-cols-3 gap-1.5">
         {LINE_SHAPES.map(l => <ShapeBtn key={l.id} item={l} onClick={()=>onAdd(l.id)}/>)}
       </div>
-    </Section>
+    </ColSection>
 
-    <Section title="Tables">
+    <ColSection title="Tables" open={open.tables} onToggle={()=>toggle("tables")} accent="green">
       <div className="space-y-1.5">
         {TABLE_PRESETS.map(t => (
           <button key={t.label} onClick={()=>onAddTable(t.rows, t.cols, t.header)}
@@ -716,9 +1124,9 @@ const ElementsPanel = ({ onAdd, onAddTable }) => (
           </button>
         ))}
       </div>
-    </Section>
+    </ColSection>
 
-    <Section title="Form Elements">
+    <ColSection title="Form Elements" open={open.forms} onToggle={()=>toggle("forms")} accent="violet">
       <div className="grid grid-cols-2 gap-1.5">
         {FORM_ELEMENTS.map(f => (
           <button key={f.id} onClick={()=>onAdd(f.id)}
@@ -729,9 +1137,9 @@ const ElementsPanel = ({ onAdd, onAddTable }) => (
           </button>
         ))}
       </div>
-    </Section>
+    </ColSection>
 
-    <Section title="Media">
+    <ColSection title="Media" open={open.media} onToggle={()=>toggle("media")} accent="rose">
       <div className="grid grid-cols-3 gap-1.5">
         {MEDIA_ELEMENTS.map(m => (
           <button key={m.id} onClick={()=>onAdd(m.id)}
@@ -742,9 +1150,9 @@ const ElementsPanel = ({ onAdd, onAddTable }) => (
           </button>
         ))}
       </div>
-    </Section>
+    </ColSection>
 
-    <Section title="Mockups">
+    <ColSection title="Mockups" open={open.mockups} onToggle={()=>toggle("mockups")} accent="amber">
       <div className="grid grid-cols-3 gap-1.5">
         {MOCKUP_ELEMENTS.map(m => (
           <button key={m.id} onClick={()=>onAdd(m.id)}
@@ -755,9 +1163,10 @@ const ElementsPanel = ({ onAdd, onAddTable }) => (
           </button>
         ))}
       </div>
-    </Section>
+    </ColSection>
   </div>
-);
+  );
+};
 
 /* ────────────── Text Panel ──────────── */
 const TEXT_PRESETS = [
@@ -805,110 +1214,41 @@ const SIG_BLOCK_PRESETS = [
 ];
 
 /* ────────────── Signature Panel ──────────── */
-const SignaturePanel = ({ onAddSignature, onAddSignatureBlock }) => {
-  const [tab,     setTab]     = useState("type");
-  const [sigText, setSigText] = useState("");
-  const [selFont, setSelFont] = useState(SIG_FONTS[0]);
-
-  return (
-    <div className="p-4 space-y-4">
-      {/* Tabs */}
-      <div className="flex gap-1 bg-slate-100 rounded-xl p-1">
-        {[["type","Type Sign"],["block","Sign Block"]].map(([id,lbl])=>(
-          <button key={id} onClick={()=>setTab(id)}
-            className={`flex-1 text-xs font-semibold py-1.5 rounded-lg transition-all ${
-              tab===id ? "bg-white shadow-sm text-slate-800" : "text-slate-500 hover:text-slate-700"
-            }`}
-          >{lbl}</button>
-        ))}
-      </div>
-
-      {/* ── Type Signature tab ── */}
-      {tab === "type" && (
-        <>
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
-            <p className="text-[11px] text-blue-800 font-medium leading-relaxed">
-              Type your name, pick a style, then click <strong>Add Signature</strong>. Double-click to edit on canvas.
-            </p>
-          </div>
-
-          <input
-            className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:border-blue-400 bg-white placeholder:text-slate-300"
-            value={sigText}
-            onChange={e => setSigText(e.target.value)}
-            placeholder="Type your name…"
-          />
-
-          <div>
-            <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2">Choose a Style</p>
-            <div className="space-y-1.5 max-h-64 overflow-y-auto pr-0.5 [&::-webkit-scrollbar]:hidden">
-              {SIG_FONTS.map(f => (
-                <button key={f.id} onClick={() => setSelFont(f)}
-                  className={`w-full px-3 py-3 rounded-xl border text-left transition-all ${
-                    selFont.id === f.id
-                      ? "border-blue-400 bg-blue-50 shadow-sm"
-                      : "border-slate-200 bg-white hover:border-blue-200 hover:bg-slate-50"
-                  }`}
-                >
-                  <span style={{ fontFamily:f.css, fontSize:28, color:"#1e293b", lineHeight:1.2, display:"block" }}>
-                    {sigText || "Your Signature"}
-                  </span>
-                  <p className="text-[9px] text-slate-400 mt-0.5">{f.name}</p>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <button
-            onClick={() => { if (!sigText.trim()) return; onAddSignature(sigText.trim(), selFont); }}
-            disabled={!sigText.trim()}
-            className="w-full flex items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-sm font-bold rounded-xl transition-colors shadow-sm"
-          >
-            <PenLine size={14}/> Add Signature to Canvas
-          </button>
-        </>
-      )}
-
-      {/* ── Signature Block tab ── */}
-      {tab === "block" && (
-        <>
-          <div className="bg-violet-50 border border-violet-200 rounded-xl p-3">
-            <p className="text-[11px] text-violet-800 font-medium leading-relaxed">
-              Click a preset to add a signature block at the bottom of your contract. Double-click the signature area to type.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            {SIG_BLOCK_PRESETS.map(preset => (
-              <button key={preset.label} onClick={() => onAddSignatureBlock(preset)}
-                className="w-full text-left px-3 py-3 bg-white border border-slate-200 rounded-xl hover:bg-violet-50 hover:border-violet-300 transition-all group"
-              >
-                <p className="text-xs font-semibold text-slate-700 mb-2 group-hover:text-violet-700">{preset.label}</p>
-                {preset.cols === 2 ? (
-                  <div className="flex gap-3">
-                    <div className="flex-1">
-                      <div className="h-5 mb-1 border-b-2 border-slate-300" style={{fontFamily:"'Dancing Script',cursive",fontSize:14,color:"#94a3b8",lineHeight:1.6}}>  </div>
-                      <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-wide">{preset.leftLabel}</p>
-                    </div>
-                    <div className="flex-1">
-                      <div className="h-5 mb-1 border-b-2 border-slate-300"/>
-                      <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-wide">{preset.rightLabel}</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div>
-                    <div className="h-5 mb-1 border-b-2 border-slate-300"/>
-                    <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-wide">{preset.leftLabel}</p>
-                  </div>
-                )}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
+const SignaturePanel = ({ onAddSignatureBlock }) => (
+  <div className="p-4 space-y-4">
+    <div className="bg-violet-50 border border-violet-200 rounded-xl p-3">
+      <p className="text-[11px] text-violet-800 font-medium leading-relaxed">
+        Click a preset to add a signature block to your contract. Double-click the signature area to type.
+      </p>
     </div>
-  );
-};
+    <div className="space-y-2">
+      {SIG_BLOCK_PRESETS.map(preset => (
+        <button key={preset.label} onClick={() => onAddSignatureBlock(preset)}
+          className="w-full text-left px-3 py-3 bg-white border border-slate-200 rounded-xl hover:bg-violet-50 hover:border-violet-300 transition-all group"
+        >
+          <p className="text-xs font-semibold text-slate-700 mb-2 group-hover:text-violet-700">{preset.label}</p>
+          {preset.cols === 2 ? (
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <div className="h-5 mb-1 border-b-2 border-slate-300"/>
+                <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-wide">{preset.leftLabel}</p>
+              </div>
+              <div className="flex-1">
+                <div className="h-5 mb-1 border-b-2 border-slate-300"/>
+                <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-wide">{preset.rightLabel}</p>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <div className="h-5 mb-1 border-b-2 border-slate-300"/>
+              <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-wide">{preset.leftLabel}</p>
+            </div>
+          )}
+        </button>
+      ))}
+    </div>
+  </div>
+);
 
 /* ────────────── Images Panel ──────────── */
 const ImagesPanel = ({ onAddImage }) => {
@@ -1398,7 +1738,7 @@ const DrawPanel = ({ drawTool, setDrawTool, brushSize, setBrushSize, brushColor,
 };
 
 /* ────────────── Properties Panel ──────────── */
-const PropertiesPanel = ({ props: p, onUpdate, onAlignH, onAlignV, onDelete, onDuplicate, onMoveUp, onMoveDown, onClose }) => {
+const PropertiesPanel = ({ props: p, onUpdate, onAlignH, onAlignV, onDelete, onDuplicate, onMoveUp, onMoveDown, onBringToFront, onSendToBack, onClose }) => {
   if (!p) return null;
 
   const isText  = p.type === "i-text" || p.type === "textbox" || p.type === "text";
@@ -1589,13 +1929,35 @@ const PropertiesPanel = ({ props: p, onUpdate, onAlignH, onAlignV, onDelete, onD
 
         {/* LAYER */}
         <div className="space-y-2">
-          <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Layer</p>
+          <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Layer Order</p>
+          {/* Bring to Front / Send to Back */}
           <div className="flex gap-1.5">
-            <button onClick={onMoveUp}   className="flex-1 flex items-center justify-center gap-1 py-2 text-xs border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600 transition-all">
+            <button onClick={onBringToFront}
+              className="flex-1 flex items-center justify-center gap-1 py-2 text-xs font-bold border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl transition-all"
+              title="Bring to Front — سب سے اوپر"
+            >
+              <MoveUp size={12}/><MoveUp size={12} className="-ml-2"/> Front
+            </button>
+            <button onClick={onSendToBack}
+              className="flex-1 flex items-center justify-center gap-1 py-2 text-xs font-bold border border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-all"
+              title="Send to Back — سب سے نیچے"
+            >
+              <MoveDown size={12}/><MoveDown size={12} className="-ml-2"/> Back
+            </button>
+          </div>
+          {/* Step Forward / Step Back */}
+          <div className="flex gap-1.5">
+            <button onClick={onMoveUp}
+              className="flex-1 flex items-center justify-center gap-1 py-2 text-xs border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600 transition-all"
+              title="Move Forward one step"
+            >
               <MoveUp size={12}/> Forward
             </button>
-            <button onClick={onMoveDown} className="flex-1 flex items-center justify-center gap-1 py-2 text-xs border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600 transition-all">
-              <MoveDown size={12}/> Back
+            <button onClick={onMoveDown}
+              className="flex-1 flex items-center justify-center gap-1 py-2 text-xs border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600 transition-all"
+              title="Move Backward one step"
+            >
+              <MoveDown size={12}/> Backward
             </button>
           </div>
         </div>
@@ -1628,7 +1990,7 @@ export default function ContractEditorPage() {
   const genId = () => `s${Date.now()}${Math.random().toString(36).slice(2,6)}`;
 
   /* ── State ── */
-  const [shapes,       setShapes]       = useState([]);
+  const [shapes,       _setShapes]      = useState([]);
   const [selectedId,   setSelectedId]   = useState(null);
   const [drawingLine,  setDrawingLine]  = useState(null);
   const [template,     setTemplate]     = useState(null);
@@ -1646,11 +2008,47 @@ export default function ContractEditorPage() {
   const [activePanel,  setActivePanel]  = useState(null);
   const [panelCollapsed, setPanelCollapsed] = useState(false);
   const [selProps,     setSelProps]     = useState(null);
+  const [selectedIds,  setSelectedIds]  = useState([]);   // multi-selection
+
+  /* ── Undo / Redo history ── */
+  const histRef = useRef({ stack: [[]], idx: 0 });
+
+  // Wrap _setShapes so every shapes change is automatically recorded
+  const setShapes = useCallback((updater) => {
+    _setShapes(prev => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      const h = histRef.current;
+      let newStack = h.stack.slice(0, h.idx + 1);
+      newStack.push(next);
+      if (newStack.length > 60) newStack = newStack.slice(newStack.length - 60);
+      h.stack = newStack;
+      h.idx   = newStack.length - 1;
+      return next;
+    });
+  }, []);
+
+  const handleUndo = useCallback(() => {
+    const h = histRef.current;
+    if (h.idx <= 0) { toast("Nothing to undo"); return; }
+    h.idx -= 1;
+    _setShapes(h.stack[h.idx]);
+    setSelectedId(null); setSelProps(null); setSelectedIds([]);
+  }, []);
+
+  const handleRedo = useCallback(() => {
+    const h = histRef.current;
+    if (h.idx >= h.stack.length - 1) { toast("Nothing to redo"); return; }
+    h.idx += 1;
+    _setShapes(h.stack[h.idx]);
+    setSelectedId(null); setSelProps(null); setSelectedIds([]);
+  }, []);
 
   /* ── Refs ── */
-  const stageRef  = useRef(null);
-  const exportRef = useRef(null);
-  const dirty     = useRef(false);
+  const stageRef      = useRef(null);
+  const exportRef     = useRef(null);
+  const dirty         = useRef(false);
+  const lastTmplRef   = useRef(null);  // { tmpl, co, logoSrc } — for page-resize re-apply
+  const prevPageRef   = useRef({ w: A4_W, h: A4_H });
 
   /* ── Shape helpers ── */
   const addShape = useCallback((shape) => {
@@ -2031,13 +2429,29 @@ export default function ContractEditorPage() {
     setSelProps(prev => prev ? { ...prev, top: Math.round(y) } : null);
   }, [selectedId, shapes, pageH, updateShape]);
 
+  /* ── Select All ── */
+  const handleSelectAll = useCallback(() => {
+    const ids = shapes.filter(s => !s._eraser).map(s => s.id);
+    if (!ids.length) return;
+    setSelectedIds(ids);
+    setSelectedId(null);
+    setSelProps(null);
+  }, [shapes]);
+
   /* ── Delete / Duplicate / Layers ── */
   const handleDelete = useCallback(() => {
+    if (selectedIds.length > 0) {
+      const idSet = new Set(selectedIds);
+      setShapes(p => p.filter(s => !idSet.has(s.id)));
+      setSelectedIds([]); setSelectedId(null); setSelProps(null);
+      dirty.current = true;
+      return;
+    }
     if (!selectedId) return;
     setShapes(p => p.filter(s => s.id !== selectedId));
     setSelectedId(null); setSelProps(null);
     dirty.current = true;
-  }, [selectedId]);
+  }, [selectedId, selectedIds]);
 
   const handleDuplicate = useCallback(() => {
     if (!selectedId) return;
@@ -2057,6 +2471,30 @@ export default function ContractEditorPage() {
   const handleMoveDown = useCallback(() => {
     if (!selectedId) return;
     setShapes(p => { const i=p.findIndex(s=>s.id===selectedId); if(i<=0) return p; const n=[...p]; [n[i],n[i-1]]=[n[i-1],n[i]]; return n; });
+  }, [selectedId]);
+  const handleBringToFront = useCallback(() => {
+    if (!selectedId) return;
+    setShapes(p => {
+      const i = p.findIndex(s => s.id === selectedId);
+      if (i < 0 || i === p.length - 1) return p;
+      const n = [...p];
+      const [item] = n.splice(i, 1);
+      n.push(item);
+      return n;
+    });
+    toast.success("Brought to front");
+  }, [selectedId]);
+  const handleSendToBack = useCallback(() => {
+    if (!selectedId) return;
+    setShapes(p => {
+      const i = p.findIndex(s => s.id === selectedId);
+      if (i <= 0) return p;
+      const n = [...p];
+      const [item] = n.splice(i, 1);
+      n.unshift(item);
+      return n;
+    });
+    toast.success("Sent to back");
   }, [selectedId]);
 
   /* ── Resize page ── */
@@ -2120,6 +2558,7 @@ export default function ContractEditorPage() {
       return tagged;
     });
 
+    lastTmplRef.current = { tmpl, co, logoSrc: logoSrc || null };
     setShapes(newShapes);
     setSelectedId(null);
     setTemplateName(tmpl.name);
@@ -2164,20 +2603,31 @@ export default function ContractEditorPage() {
   }, [templateName]);
 
   /* ── Keyboard shortcuts ── */
-  const saveRef = useRef(handleSave); const delRef = useRef(handleDelete); const dupRef = useRef(handleDuplicate);
-  useEffect(() => { saveRef.current = handleSave; });
-  useEffect(() => { delRef.current  = handleDelete; });
-  useEffect(() => { dupRef.current  = handleDuplicate; });
+  const saveRef    = useRef(handleSave);
+  const delRef     = useRef(handleDelete);
+  const dupRef     = useRef(handleDuplicate);
+  const selAllRef  = useRef(handleSelectAll);
+  const undoRef    = useRef(handleUndo);
+  const redoRef    = useRef(handleRedo);
+  useEffect(() => { saveRef.current   = handleSave; });
+  useEffect(() => { delRef.current    = handleDelete; });
+  useEffect(() => { dupRef.current    = handleDuplicate; });
+  useEffect(() => { selAllRef.current = handleSelectAll; });
+  useEffect(() => { undoRef.current   = handleUndo; });
+  useEffect(() => { redoRef.current   = handleRedo; });
   useEffect(() => {
     const onKey = (e) => {
       if (e.target.tagName==="INPUT"||e.target.tagName==="TEXTAREA") return;
-      if ((e.key==="Delete"||e.key==="Backspace") && selectedId) { e.preventDefault(); delRef.current(); }
+      if ((e.key==="Delete"||e.key==="Backspace") && (selectedId||selectedIds.length)) { e.preventDefault(); delRef.current(); }
       if ((e.ctrlKey||e.metaKey) && e.key==="s") { e.preventDefault(); saveRef.current(); }
       if ((e.ctrlKey||e.metaKey) && e.key==="d") { e.preventDefault(); dupRef.current(); }
+      if ((e.ctrlKey||e.metaKey) && e.key==="a") { e.preventDefault(); selAllRef.current(); }
+      if ((e.ctrlKey||e.metaKey) && e.key==="z" && !e.shiftKey) { e.preventDefault(); undoRef.current(); }
+      if ((e.ctrlKey||e.metaKey) && (e.key==="y" || (e.key==="z" && e.shiftKey))) { e.preventDefault(); redoRef.current(); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [selectedId]);
+  }, [selectedId, selectedIds]);
 
   /* ── Recolor template shapes when canvas bg changes ── */
   const prevBgRef = useRef(bgColor);
@@ -2199,6 +2649,58 @@ export default function ContractEditorPage() {
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bgColor]);
+
+  /* ── Re-apply template when page size changes ── */
+  useEffect(() => {
+    const prev = prevPageRef.current;
+    prevPageRef.current = { w: pageW, h: pageH };
+    if (prev.w === pageW && prev.h === pageH) return;  // no change
+    if (!lastTmplRef.current) return;                  // no template active
+
+    const { tmpl, co, logoSrc } = lastTmplRef.current;
+    const cc = getContrastColors(bgColor);
+    const built = tmpl.build(pageW, pageH, cc, co, genId);
+
+    (async () => {
+      /* logo */
+      if (logoSrc) {
+        try {
+          const img = new window.Image();
+          if (!logoSrc.startsWith("data:")) img.crossOrigin = "anonymous";
+          await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = logoSrc; });
+          const maxSize = tmpl.headerH > 0 ? tmpl.headerH - 16 : 60;
+          const sc = Math.min(maxSize / img.naturalWidth, maxSize / img.naturalHeight, 1);
+          const lw = Math.round(img.naturalWidth  * sc);
+          const lh = Math.round(img.naturalHeight * sc);
+          const ly = tmpl.headerH > 0 ? Math.round((tmpl.headerH - lh) / 2) : 12;
+          built.splice(tmpl.headerH > 0 ? 1 : built.length, 0, {
+            id: genId(), type: "image", src: logoSrc,
+            x: pageW - 50 - lw, y: ly, width: lw, height: lh,
+            scaleX: 1, scaleY: 1, rotation: 0, opacity: 1,
+          });
+        } catch { /* skip */ }
+      }
+
+      /* tag for dynamic recoloring */
+      const colorToRole = {};
+      for (const [role, val] of Object.entries(cc)) {
+        if (typeof val === "string") colorToRole[val] = role;
+      }
+      const newShapes = built.map(s => {
+        const tagged = { ...s, _tmpl: true };
+        if (tmpl.headerH > 0 && (s.y ?? 0) < tmpl.headerH) { tagged._brand = true; return tagged; }
+        if (s.fill   && colorToRole[s.fill])   tagged._fillRole   = colorToRole[s.fill];
+        if (s.stroke && colorToRole[s.stroke]) tagged._strokeRole = colorToRole[s.stroke];
+        return tagged;
+      });
+
+      setShapes(newShapes);
+      setSelectedId(null); setSelectedIds([]);
+      dirty.current = true;
+      toast(`Layout adjusted for new page size`, { icon: "📐" });
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageW, pageH]);
 
   /* ── Sidebar toggle ── */
   const handleSidebarItem = (id) => {
@@ -2258,52 +2760,92 @@ export default function ContractEditorPage() {
 
         {/* Primary sidebar */}
         <nav className="w-16 shrink-0 bg-[#f5f5f5] border-r border-[#e6e6e6] flex flex-col items-center pt-2">
-          {SIDEBAR_ITEMS.map(item => (
-            <button key={item.id} onClick={()=>handleSidebarItem(item.id)}
-              className={`w-full flex flex-col items-center justify-center gap-1 py-3 text-[10px] font-semibold transition-colors cursor-pointer ${
-                activePanel===item.id && !panelCollapsed
-                  ? "bg-[#e6e6e6] text-slate-800"
-                  : "text-slate-500 hover:bg-[#e6e6e6] hover:text-slate-700"
-              }`}
-            >
-              <item.icon size={18}/>
-              <span>{item.label}</span>
-            </button>
-          ))}
+          {SIDEBAR_ITEMS.map(item => {
+            const isActive = activePanel===item.id && !panelCollapsed;
+            return (
+              <motion.button
+                key={item.id}
+                onClick={()=>handleSidebarItem(item.id)}
+                whileHover={{ scale: 1.06, backgroundColor: "#e6e6e6" }}
+                whileTap={{ scale: 0.93 }}
+                transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                className={`w-full flex flex-col items-center justify-center gap-1 py-3 text-[10px] font-semibold cursor-pointer relative ${
+                  isActive ? "bg-[#e6e6e6] text-slate-800" : "text-slate-500"
+                }`}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="sidebar-active"
+                    className="absolute left-0 top-0 bottom-0 w-[3px] bg-blue-500 rounded-r-full"
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  />
+                )}
+                <motion.div
+                  animate={{ color: isActive ? "#1e3a8a" : undefined }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <item.icon size={18}/>
+                </motion.div>
+                <span>{item.label}</span>
+              </motion.button>
+            );
+          })}
         </nav>
 
-        {/* Secondary panel */}
-        <div className="relative shrink-0 bg-white border-r border-[#e6e6e6] transition-all duration-300 ease-in-out"
-          style={{ width: activePanel && !panelCollapsed ? 280 : 0, opacity: activePanel && !panelCollapsed ? 1 : 0 }}
-        >
+        {/* Secondary panel — outer wrapper has no overflow-hidden so the toggle button is never clipped */}
+        <div className="relative shrink-0 flex">
+          <motion.div
+            className="bg-white border-r border-[#e6e6e6] overflow-hidden h-full"
+            animate={{ width: activePanel && !panelCollapsed ? 280 : 0 }}
+            transition={{ type: "spring", stiffness: 320, damping: 32 }}
+          >
+            <AnimatePresence mode="wait">
+              {activePanel && !panelCollapsed && (
+                <motion.div
+                  key={activePanel}
+                  className="w-[280px] h-full flex flex-col"
+                  initial={{ opacity: 0, x: -12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -12 }}
+                  transition={{ duration: 0.18, ease: "easeOut" }}
+                >
+                  <div className="flex items-center gap-2 px-4 py-3 border-b border-[#e6e6e6] shrink-0">
+                    <span className="text-sm font-bold text-slate-800 capitalize">
+                      {SIDEBAR_ITEMS.find(i=>i.id===activePanel)?.label}
+                    </span>
+                    <button onClick={()=>setActivePanel(null)} className="ml-auto p-1 rounded-lg hover:bg-slate-100 text-slate-400">
+                      <X size={14}/>
+                    </button>
+                  </div>
+                  <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden">
+                    {activePanel==="templates" && <TemplatesPanel bgColor={bgColor} company={company} onApplyTemplate={handleApplyContractTemplate}/>}
+                    {activePanel==="elements"  && <ElementsPanel  onAdd={handleAddShape}    onAddTable={handleAddTable}/>}
+                    {activePanel==="text"      && <TextPanel       onAddText={handleAddText}/>}
+                    {activePanel==="draw"      && <DrawPanel       drawTool={drawTool}       setDrawTool={setDrawTool} brushSize={brushSize} setBrushSize={setBrushSize} brushColor={brushColor} setBrushColor={setBrushColor}/>}
+                    {activePanel==="signature" && <SignaturePanel  onAddSignatureBlock={handleAddSignatureBlock}/>}
+                    {activePanel==="stamp"     && <StampPanel      company={company}  onAddToCanvas={handleAddImage}/>}
+                    {activePanel==="images"    && <ImagesPanel     onAddImage={handleAddImage}/>}
+                    {activePanel==="vars"      && <VariablesPanel  onInsert={handleInsertVar}/>}
+                    {activePanel==="design"    && <DesignPanel     bgColor={bgColor} onBgChange={setBgColor} onApplyTemplate={handleApplyTemplate} onResizePage={handleResizePage} pageW={pageW} pageH={pageH}/>}
+                    {activePanel==="company"   && <CompanyPanel    company={company}  onAddText={handleAddText} onAddImage={handleAddImage}/>}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+
+          {/* Toggle button — lives OUTSIDE overflow-hidden so it's never clipped */}
           {activePanel && (
-            <div className="w-[280px] h-full flex flex-col overflow-hidden">
-              <div className="flex items-center gap-2 px-4 py-3 border-b border-[#e6e6e6] shrink-0">
-                <span className="text-sm font-bold text-slate-800 capitalize">
-                  {SIDEBAR_ITEMS.find(i=>i.id===activePanel)?.label}
-                </span>
-                <button onClick={()=>setActivePanel(null)} className="ml-auto p-1 rounded-lg hover:bg-slate-100 text-slate-400">
-                  <X size={14}/>
-                </button>
-              </div>
-              <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden">
-                {activePanel==="templates" && <TemplatesPanel bgColor={bgColor} company={company} onApplyTemplate={handleApplyContractTemplate}/>}
-                {activePanel==="elements"  && <ElementsPanel  onAdd={handleAddShape}    onAddTable={handleAddTable}/>}
-                {activePanel==="text"      && <TextPanel       onAddText={handleAddText}/>}
-                {activePanel==="draw"      && <DrawPanel       drawTool={drawTool}       setDrawTool={setDrawTool} brushSize={brushSize} setBrushSize={setBrushSize} brushColor={brushColor} setBrushColor={setBrushColor}/>}
-                {activePanel==="signature" && <SignaturePanel  onAddSignature={handleAddSignature} onAddSignatureBlock={handleAddSignatureBlock}/>}
-                {activePanel==="images"    && <ImagesPanel     onAddImage={handleAddImage}/>}
-                {activePanel==="vars"      && <VariablesPanel  onInsert={handleInsertVar}/>}
-                {activePanel==="design"    && <DesignPanel     bgColor={bgColor} onBgChange={setBgColor} onApplyTemplate={handleApplyTemplate} onResizePage={handleResizePage} pageW={pageW} pageH={pageH}/>}
-                {activePanel==="company"   && <CompanyPanel    company={company}  onAddText={handleAddText} onAddImage={handleAddImage}/>}
-              </div>
-            </div>
-          )}
-          {activePanel && (
-            <button onClick={()=>setPanelCollapsed(p=>!p)}
-              className="absolute right-[-12px] top-1/2 -translate-y-1/2 z-10 w-6 h-6 rounded-full bg-white border border-[#e6e6e6] shadow-md flex items-center justify-center text-slate-400 hover:text-blue-600 hover:border-blue-300 transition-all"
+            <button
+              onClick={()=>setPanelCollapsed(p=>!p)}
+              className="absolute right-[-12px] top-1/2 -translate-y-1/2 z-20 w-6 h-6 rounded-full bg-white border border-[#e6e6e6] shadow-md flex items-center justify-center text-slate-400 hover:text-blue-600 hover:border-blue-300 transition-all"
             >
-              <ChevronLeft size={12} className={`transition-transform ${panelCollapsed?"rotate-180":""}`}/>
+              <motion.div
+                animate={{ rotate: panelCollapsed ? 180 : 0 }}
+                transition={{ type: "spring", stiffness: 300, damping: 22 }}
+              >
+                <ChevronLeft size={12}/>
+              </motion.div>
             </button>
           )}
         </div>
@@ -2328,7 +2870,9 @@ export default function ContractEditorPage() {
                 stageRef={stageRef}
                 shapes={shapes}
                 selectedId={selectedId}
-                onSelect={setSelectedId}
+                selectedIds={selectedIds}
+                onSelect={(id) => { setSelectedId(id); setSelectedIds([]); }}
+                onSelectMultiple={(ids) => { setSelectedIds(ids); setSelectedId(null); }}
                 onChange={updateShape}
                 drawTool={drawTool}
                 brushColor={brushColor}
@@ -2347,6 +2891,8 @@ export default function ContractEditorPage() {
             {!loading && (
               <div className="flex items-center gap-4 text-[11px] text-slate-400 pb-4">
                 <span><kbd className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-mono">Del</kbd> delete</span>
+                <span><kbd className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-mono">Ctrl+Z</kbd> undo</span>
+                <span><kbd className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-mono">Ctrl+Y</kbd> redo</span>
                 <span><kbd className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-mono">Ctrl+D</kbd> duplicate</span>
                 <span><kbd className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-mono">Ctrl+S</kbd> save</span>
                 <span>Double-click text to edit</span>
@@ -2365,6 +2911,8 @@ export default function ContractEditorPage() {
           onDuplicate={handleDuplicate}
           onMoveUp={handleMoveUp}
           onMoveDown={handleMoveDown}
+          onBringToFront={handleBringToFront}
+          onSendToBack={handleSendToBack}
           onClose={() => { setSelectedId(null); setSelProps(null); }}
         />
       </div>
