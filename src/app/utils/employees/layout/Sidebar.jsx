@@ -4,6 +4,7 @@ import {
   Home, Calendar, LogOut, Users, PersonStanding, CardSim,
   Settings, ArrowLeft, ChevronLeft, ChevronRight,
   ClipboardCheck, Building, FileText, ClipboardList, Mail,
+  FileSignature, Briefcase,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
@@ -44,12 +45,25 @@ const Sidebar = ({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) => {
     { href: `/employee/${employeeSlug}/letters`,     label: "My Letters", icon: Mail,          badge: unreadLetters || null },
   ];
 
-  if (user?.department?.departmentName?.toLowerCase() === "sales") {
-    dashboardLinks.splice(1, 0, {
-      href: `/employee/${employeeSlug}/companies`,
-      label: "Companies",
-      icon: Building,
-    });
+  /* Sales-specific links — only for sales department employees */
+  const isSales = ["sales"].includes(
+    (user?.department?.departmentName || user?.designation || user?.role || "").toLowerCase()
+  );
+  if (isSales) {
+    dashboardLinks.splice(1, 0,
+      {
+        href:  `/employee/${employeeSlug}/sales-panel`,
+        label: "Sales Panel",
+        icon:  FileSignature,
+        badge: null,
+      },
+      {
+        href:  `/employee/${employeeSlug}/companies`,
+        label: "Companies",
+        icon:  Building,
+        badge: null,
+      }
+    );
   }
 
   const parts     = pathname.split("/");

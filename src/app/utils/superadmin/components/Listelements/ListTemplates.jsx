@@ -40,7 +40,7 @@ const SkeletonCard = () => (
 
 /* ── Template card ─────────────────────────────────────── */
 const TemplateCard = ({ template, onClick }) => {
-  const isContract = template.role === "Admin";
+  const isContract = template.role === "Admin" || template.role === "Contract";
   const logoSrc    = template.company?.companylogo || template.company?.companyLogo;
 
   return (
@@ -115,8 +115,8 @@ const ListTemplates = ({ loading }) => {
       const matchSearch = (t.templateName || "").toLowerCase().includes(search.toLowerCase()) ||
                           (t.company?.name || "").toLowerCase().includes(search.toLowerCase());
       const matchType   = filterType === "all" ||
-                          (filterType === "contract" && t.role === "Admin") ||
-                          (filterType === "letter"   && t.role !== "Admin");
+                          (filterType === "contract" && (t.role === "Admin" || t.role === "Contract")) ||
+                          (filterType === "letter"   && t.role !== "Admin" && t.role !== "Contract");
       return matchSearch && matchType;
     }),
   [templates, search, filterType]);

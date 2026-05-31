@@ -761,7 +761,7 @@ export default function TemplatePage() {
 
   const activeBlock = blocks.find(b=>b.id===activeId);
   const canInsert   = activeBlock && ["text","heading","date-line","callout"].includes(activeBlock.type);
-  const shortcodes  = template?.role==="Admin" ? SHORTCODES.Admin : SHORTCODES.Employee;
+  const shortcodes  = (template?.role==="Admin"||template?.role==="Contract") ? SHORTCODES.Admin : SHORTCODES.Employee;
   const logoSrc     = template?.company?.companylogo || template?.company?.companyLogo;
   const company     = template?.company;
 
@@ -835,8 +835,8 @@ export default function TemplatePage() {
               )}
             </div>
 
-            <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full hidden sm:block ${template?.role==="Admin"?"bg-violet-100 text-violet-700":"bg-blue-100 text-blue-700"}`}>
-              {template?.role==="Admin"?"Contract":"Employee Letter"}
+            <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full hidden sm:block ${(template?.role==="Admin"||template?.role==="Contract")?"bg-violet-100 text-violet-700":"bg-blue-100 text-blue-700"}`}>
+              {(template?.role==="Admin"||template?.role==="Contract")?"Contract":"Employee Letter"}
             </span>
 
             <Button onClick={handleSave} disabled={saving} size="sm" className="h-8 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold">
@@ -876,10 +876,10 @@ export default function TemplatePage() {
                   {showPresets && (
                     <div className="px-3 pt-4 pb-3 bg-violet-50 border-b border-violet-200">
                       <p className="text-[10px] font-extrabold text-violet-500 uppercase tracking-widest mb-2">
-                        {template?.role==="Admin"?"Contract Presets":"Letter Presets"}
+                        {(template?.role==="Admin"||template?.role==="Contract")?"Contract Presets":"Letter Presets"}
                       </p>
                       <div className="space-y-1">
-                        {Object.entries(template?.role==="Admin"?CONTRACT_PRESETS:EMPLOYEE_PRESETS).map(([key,p])=>(
+                        {Object.entries((template?.role==="Admin"||template?.role==="Contract")?CONTRACT_PRESETS:EMPLOYEE_PRESETS).map(([key,p])=>(
                           <button
                             key={key} onClick={()=>applyPreset(key)}
                             className="w-full text-left px-2.5 py-2 rounded-lg bg-white border border-violet-200 hover:bg-violet-600 hover:text-white hover:border-violet-600 text-slate-700 text-xs font-semibold transition-colors"

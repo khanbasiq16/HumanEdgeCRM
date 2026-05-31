@@ -1,5 +1,5 @@
 import { db } from "@/lib/firebase";
-import { doc, getDoc, setDoc, collection } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 
@@ -54,10 +54,14 @@ const buildLetter = (tmpl, company, emp, assignedBy) => {
   });
 
   const letterId = uuidv4();
+  const isContract = tmpl.role === "Admin" || tmpl.role === "Contract";
   return {
     id:           letterId,
     templateId:   tmpl.id,
     templateName: tmpl.templateName || "Untitled Letter",
+    templateRole: isContract ? "Contract" : "Employee",
+    isContract,
+    canvasData:   isContract ? (tmpl.canvasData || null) : null,
     company:      company ? {
       name:               company.name,
       companyAddress:     company.companyAddress,
@@ -71,7 +75,7 @@ const buildLetter = (tmpl, company, emp, assignedBy) => {
     assignedBy:   assignedBy || "Admin",
     assignedAt:   new Date().toISOString(),
     isRead:       false,
-    blocks:       filledBlocks,
+    blocks:       isContract ? [] : filledBlocks,
   };
 };
 
@@ -108,8 +112,20 @@ export async function POST(req) {
 
     const results = await Promise.all(
       employeeIds.map(async (empId) => {
+        /* ── Duplicate prevention: check if already assigned ── */
+        const dupSnap = await getDocs(
+          query(
+            collection(db, "assigned_letters"),
+            where("templateId",  "==", templateId),
+            where("employeeId",  "==", empId)
+          )
+        );
+        if (!dupSnap.empty) {
+          return { empId, success: false, error: "already_assigned" };
+        }
+
         const empSnap = await getDoc(doc(db, "employees", empId));
-        if (!empSnap.exists()) return { empId, success: false, error: "Not found" };
+        if (!empSnap.exists()) return { empId, success: false, error: "not_found" };
         const emp    = { id: empSnap.id, ...empSnap.data() };
         const letter = buildLetter(tmpl, company, emp, assignedBy);
         await setDoc(doc(collection(db, "assigned_letters"), letter.id), letter);
@@ -117,12 +133,30 @@ export async function POST(req) {
       })
     );
 
-    const failed = results.filter(r => !r.success);
+    const succeeded      = results.filter(r => r.success);
+    const alreadyAssigned = results.filter(r => r.error === "already_assigned");
+    const notFound        = results.filter(r => r.error === "not_found");
+
+    /* If ALL were already assigned, return a meaningful error */
+    if (succeeded.length === 0 && alreadyAssigned.length > 0) {
+      return NextResponse.json({
+        success: false,
+        error: alreadyAssigned.length === 1
+          ? "This template is already assigned to the selected employee."
+          : `This template is already assigned to ${alreadyAssigned.length} of the selected employees.`,
+        alreadyAssigned: alreadyAssigned.length,
+      }, { status: 409 });
+    }
+
     return NextResponse.json({
-      success: true,
-      assigned: results.filter(r => r.success).length,
-      failed:   failed.length,
-      letters:  results.filter(r => r.success).map(r => r.letter),
+      success:         true,
+      assigned:        succeeded.length,
+      alreadyAssigned: alreadyAssigned.length,
+      failed:          notFound.length,
+      letters:         succeeded.map(r => r.letter),
+      message: alreadyAssigned.length > 0
+        ? `Assigned to ${succeeded.length}. ${alreadyAssigned.length} already had this template.`
+        : undefined,
     });
   } catch (error) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

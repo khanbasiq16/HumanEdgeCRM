@@ -89,7 +89,7 @@ const TemplateDialog = () => {
         setOpen(false);
         setRole("Employee");
         setCompany("");
-        const editorPath = role === "Admin"
+        const editorPath = (role === "Contract" || role === "Admin")
           ? `/contract-editor/${res.data.templateId}`
           : `/template-editor/${res.data.templateId}`;
         router.push(editorPath);
@@ -150,8 +150,8 @@ const TemplateDialog = () => {
                   accent="border-blue-400 bg-blue-50 text-blue-700"
                 />
                 <TypeCard
-                  value="Admin"
-                  selected={role === "Admin"}
+                  value="Contract"
+                  selected={role === "Contract" || role === "Admin"}
                   onSelect={setRole}
                   icon={FileSignature}
                   label="Contract"
@@ -162,7 +162,7 @@ const TemplateDialog = () => {
             </div>
 
             {/* Company — always shown for both types */}
-            <Field label="Company" required={role === "Admin"} icon={Building2}>
+            <Field label="Company" required={role === "Contract" || role === "Admin"} icon={Building2}>
               <Select value={company} onValueChange={setCompany}>
                 <SelectTrigger className={`${inputCls} w-full`}>
                   <SelectValue placeholder="Select company…" />

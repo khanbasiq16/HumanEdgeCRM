@@ -20,7 +20,10 @@ export async function POST(req) {
       return NextResponse.json({ success: false, message: "Role is required" });
     }
 
-    if (role === "Admin" && !company) {
+    /* Normalize role — treat legacy "Admin" as "Contract" */
+    const normalizedRole = (role === "Admin" || role === "Contract") ? "Contract" : role;
+
+    if (normalizedRole === "Contract" && !company) {
       return NextResponse.json({ success: false, message: "Company is required for Contract templates" });
     }
 
@@ -39,16 +42,16 @@ export async function POST(req) {
       const companydata = companySnap.data();
       companyStoredId   = companydata?.companyId || company;
 
-      if (role === "Admin") {
+      if (normalizedRole === "Contract") {
         await updateDoc(companyRef, { ContactTemplates: arrayUnion(templateId) });
       }
     }
 
-    // Create template
+    // Create template — always store "Contract" (never "Admin")
     const templateRef = doc(db, "templates", templateId);
     await setDoc(templateRef, {
       templateId,
-      role,
+      role: normalizedRole,
       company: companyStoredId,
       fields:  [],
       createdAt: new Date(),

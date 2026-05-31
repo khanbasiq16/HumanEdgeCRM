@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import { useSelector } from "react-redux";
+import { useParams, useRouter } from "next/navigation";
 import axios from "axios";
 import toast from "react-hot-toast";
 import Employeelayout from "@/app/utils/employees/layout/Employeelayout";
@@ -152,7 +153,7 @@ const buildLetterHTML = (letter) => {
   </body></html>`;
 };
 
-/* ─── Letter preview card ─────────────────────────────── */
+/* ─── Letter preview card — employee letters only ─────── */
 const LetterCard = ({ letter, onView }) => {
   const date = letter.assignedAt
     ? new Date(letter.assignedAt).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })
@@ -161,11 +162,21 @@ const LetterCard = ({ letter, onView }) => {
   return (
     <div
       onClick={() => onView(letter)}
-      className={`bg-white rounded-xl border cursor-pointer hover:border-blue-300 hover:shadow-sm transition-all px-5 py-4 flex items-center gap-4 ${!letter.isRead ? "border-blue-200 bg-blue-50/30" : "border-slate-200"}`}
+      className={`bg-white rounded-xl border cursor-pointer hover:border-blue-300 hover:shadow-sm transition-all px-5 py-4 flex items-center gap-4 ${
+        !letter.isRead ? "border-blue-200 bg-blue-50/30" : "border-slate-200"
+      }`}
     >
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${!letter.isRead ? "bg-blue-100" : "bg-slate-100"}`}>
-        {letter.isRead ? <MailOpen size={18} className="text-slate-400" /> : <Mail size={18} className="text-blue-600" />}
+      {/* Icon */}
+      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+        !letter.isRead ? "bg-blue-100" : "bg-slate-100"
+      }`}>
+        {letter.isRead
+          ? <MailOpen size={18} className="text-slate-400"/>
+          : <Mail size={18} className="text-blue-600"/>
+        }
       </div>
+
+      {/* Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-0.5">
           <p className={`text-sm truncate ${!letter.isRead ? "font-bold text-slate-900" : "font-semibold text-slate-700"}`}>
@@ -177,12 +188,13 @@ const LetterCard = ({ letter, onView }) => {
         </div>
         <div className="flex items-center gap-3 text-xs text-slate-400">
           {letter.company?.name && (
-            <span className="flex items-center gap-1"><Building2 size={10} />{letter.company.name}</span>
+            <span className="flex items-center gap-1"><Building2 size={10}/>{letter.company.name}</span>
           )}
-          <span className="flex items-center gap-1"><Calendar size={10} />{date}</span>
+          <span className="flex items-center gap-1"><Calendar size={10}/>{date}</span>
         </div>
       </div>
-      <Eye size={16} className="text-slate-300 shrink-0" />
+
+      <Eye size={16} className="text-slate-300 shrink-0"/>
     </div>
   );
 };
@@ -190,6 +202,8 @@ const LetterCard = ({ letter, onView }) => {
 /* ─── Main Page ──────────────────────────────────────── */
 const LettersPage = () => {
   const { user } = useSelector((s) => s.User);
+  const { slug }  = useParams();
+  const router    = useRouter();
   const [letters,  setLetters]  = useState([]);
   const [loading,  setLoading]  = useState(true);
   const [viewLetter, setViewLetter] = useState(null);
@@ -211,7 +225,11 @@ const LettersPage = () => {
     const eid = user?.employeeId || user?.id;
     try {
       const res = await axios.get(`/api/letters/employee?employeeId=${eid}`);
-      setLetters(res.data.letters || []);
+      // Extra frontend filter — ensure contracts never appear here
+      const onlyLetters = (res.data.letters || []).filter(
+        l => !l.isContract && l.templateRole !== "Admin" && l.templateRole !== "Contract"
+      );
+      setLetters(onlyLetters);
     } catch { toast.error("Failed to load letters"); }
     finally   { setLoading(false); }
   };
@@ -224,6 +242,14 @@ const LettersPage = () => {
         setLetters(prev => prev.map(l => l.id === letter.id ? { ...l, isRead: true } : l));
       } catch { /* silent */ }
     }
+  };
+
+  const handleOpenContract = async (letter) => {
+    if (!letter.isRead) {
+      try { await axios.post("/api/letters/mark-read", { letterId: letter.id }); } catch { /* silent */ }
+      setLetters(prev => prev.map(l => l.id === letter.id ? { ...l, isRead: true } : l));
+    }
+    router.push(`/employee/${slug}/contracts/${letter.id}`);
   };
 
   const handleDownload = async () => {
@@ -438,7 +464,7 @@ const LettersPage = () => {
         ) : (
           <div className="space-y-2">
             {letters.map(l => (
-              <LetterCard key={l.id} letter={l} onView={handleView} />
+              <LetterCard key={l.id} letter={l} onView={handleView}/>
             ))}
           </div>
         )}

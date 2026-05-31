@@ -40,38 +40,57 @@ const TOOL_CURSORS = {
   ),
 };
 
-/* ── Text edit overlay (pure DOM — no Konva dependency) ── */
-const TextEditOverlay = ({ editing, onCommit, onCancel }) => {
-  const ref = useRef(null);
+/* ── Compute luma to decide if bg is dark ── */
+function isDarkColor(hex) {
+  const h = (hex || "#ffffff").replace("#", "");
+  if (h.length !== 6) return false;
+  const r = parseInt(h.slice(0,2),16)/255;
+  const g = parseInt(h.slice(2,4),16)/255;
+  const b = parseInt(h.slice(4,6),16)/255;
+  return (0.299*r + 0.587*g + 0.114*b) < 0.45;
+}
+
+/* ── Text edit overlay — matches canvas theme ── */
+const TextEditOverlay = ({ editing, bgColor, onCommit, onCancel }) => {
+  const ref  = useRef(null);
+  const dark = isDarkColor(bgColor);
+
   useEffect(() => { ref.current?.focus(); ref.current?.select(); }, []);
+
+  /* Use canvas bg color with slight opacity so it blends naturally */
+  const overlayBg   = dark ? "rgba(15,23,42,0.96)"  : "rgba(255,255,255,0.97)";
+  const overlayText = editing.fill || (dark ? "#ffffff" : "#000000");
+  const caretColor  = dark ? "#60a5fa" : "#2563eb";
+
   return (
     <textarea
       ref={ref}
       defaultValue={editing.text}
       style={{
-        position: "fixed",
-        top: editing.y + "px",
-        left: editing.x + "px",
-        width: Math.max(editing.w, 100) + "px",
-        minHeight: Math.max(editing.h, 30) + "px",
-        fontSize: editing.fontSize + "px",
-        fontFamily: editing.fontFamily || "Arial",
-        fontWeight: editing.fontWeight || "normal",
-        fontStyle: editing.fontStyle || "normal",
-        color: editing.fill || "#000",
-        background: "rgba(255,255,255,0.97)",
-        border: "2px solid #3b82f6",
+        position:  "fixed",
+        top:       editing.y + "px",
+        left:      editing.x + "px",
+        width:     Math.max(editing.w, 100) + "px",
+        minHeight: Math.max(editing.h, 30)  + "px",
+        fontSize:  editing.fontSize + "px",
+        fontFamily:  editing.fontFamily  || "Arial",
+        fontWeight:  editing.fontWeight  || "normal",
+        fontStyle:   editing.fontStyle   || "normal",
+        color:       overlayText,
+        caretColor,
+        background:  overlayBg,
+        border:     `2px solid ${dark ? "#60a5fa" : "#3b82f6"}`,
         borderRadius: "4px",
-        outline: "none",
-        resize: "none",
-        padding: "2px 4px",
+        outline:    "none",
+        resize:     "none",
+        padding:    "2px 4px",
         lineHeight: 1.2,
-        zIndex: 1000,
-        boxSizing: "border-box",
+        zIndex:     1000,
+        boxSizing:  "border-box",
       }}
       onBlur={(e) => onCommit(e.target.value)}
       onKeyDown={(e) => {
-        if (e.key === "Escape")        { e.preventDefault(); onCancel(); }
+        if (e.key === "Escape")               { e.preventDefault(); onCancel(); }
         if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onCommit(e.target.value); }
         e.stopPropagation();
       }}
@@ -206,6 +225,7 @@ export default function KonvaCanvas({
   setDrawingLine,
   setShapes,
   dirty,
+  canEditShape,   // optional (shape) => bool — gates double-click text editing
 }) {
   const containerRef     = useRef(null);
   const layerRef         = useRef(null);
@@ -229,6 +249,7 @@ export default function KonvaCanvas({
   const onChangeRef            = useRef(onChange);
   const shapesRef              = useRef(shapes);         // always current shapes for stage dblclick
   const handleTextDblClickRef  = useRef(null);           // set after handleTextDblClick is defined
+  const canEditShapeRef        = useRef(canEditShape);   // keep fresh for stage click handler
 
   useEffect(() => { drawToolRef.current          = drawTool;        }, [drawTool]);
   useEffect(() => { brushColorRef.current        = brushColor;      }, [brushColor]);
@@ -238,6 +259,7 @@ export default function KonvaCanvas({
   useEffect(() => { onChangeRef.current          = onChange;        }, [onChange]);
   useEffect(() => { onSelectMultipleRef.current  = onSelectMultiple;}, [onSelectMultiple]);
   useEffect(() => { shapesRef.current            = shapes;          }, [shapes]);
+  useEffect(() => { canEditShapeRef.current     = canEditShape;    }, [canEditShape]);
 
   const [textEditing, setTextEditing] = useState(null);
 
@@ -335,6 +357,24 @@ export default function KonvaCanvas({
       layerRef.current = layer;
       trRef.current    = tr;
       bgRef.current    = bg;
+
+      /* ── Render any shapes that were set BEFORE Konva finished loading ──
+         Konva initialises asynchronously; if shapes were already in state
+         the shapes-effect would have returned early (refs null). Draw them now. ── */
+      const initShapes = shapesRef.current || [];
+      if (initShapes.length > 0) {
+        initShapes.forEach(shape => {
+          const node = buildNode(
+            K, shape, true,
+            onChangeRef.current,
+            onSelectRef.current,
+            handleTextDblClickRef.current ?? (() => {}),
+          );
+          if (node) layer.add(node);
+        });
+        tr.moveToTop();
+        layer.batchDraw();
+      }
 
       /* ── Pointer: mousedown ── */
       stage.on("mousedown touchstart", (e) => {
@@ -475,11 +515,16 @@ export default function KonvaCanvas({
         _lastTime = now;
 
         if (isDbl) {
-          /* double-click → open text editor */
+          /* double-click → open text editor (gated by canEditShape if provided) */
           const shape = shapesRef.current.find(s => s.id === nodeId);
           if (shape && ["i-text","text","signature"].includes(shape.type)) {
-            _lastId = null; _lastTime = 0;
-            handleTextDblClickRef.current?.(shape);
+            const gate    = canEditShapeRef.current;
+            const allowed = gate ? gate(shape) : true;
+            if (allowed) {
+              _lastId = null; _lastTime = 0;
+              handleTextDblClickRef.current?.(shape);
+            }
+            /* if not allowed, fall through to single-click select */
           }
         } else {
           /* single click → select */
@@ -572,7 +617,7 @@ export default function KonvaCanvas({
         style={{ display: "block", boxShadow: "0 4px 40px rgba(0,0,0,0.12)", borderRadius: 2 }}
       />
       {textEditing && (
-        <TextEditOverlay editing={textEditing} onCommit={commitEdit} onCancel={cancelEdit} />
+        <TextEditOverlay editing={textEditing} bgColor={bgColor} onCommit={commitEdit} onCancel={cancelEdit} />
       )}
     </>
   );

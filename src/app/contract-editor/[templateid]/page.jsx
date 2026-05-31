@@ -2372,10 +2372,22 @@ export default function ContractEditorPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageW, pageH]);
 
-  /* ── Add text ── */
+  /* ── Add text — use contrast color based on current bg ── */
   const handleAddText = useCallback((text, opts = {}) => {
-    addShape({ type:"i-text", text, x:opts.left??pageW/2-150, y:opts.top??Math.min(200,pageH/4), fontSize:opts.fontSize||16, fontFamily:opts.fontFamily||"Arial", fontWeight:opts.fontWeight||"normal", fontStyle:opts.fontStyle||"normal", fill:"#1a1a1a", width:300 });
-  }, [addShape, pageW, pageH]);
+    const cc = getContrastColors(bgColor);
+    addShape({
+      type:"i-text", text,
+      x:    opts.left ?? pageW/2-150,
+      y:    opts.top  ?? Math.min(200, pageH/4),
+      fontSize:   opts.fontSize   || 16,
+      fontFamily: opts.fontFamily || "Arial",
+      fontWeight: opts.fontWeight || "normal",
+      fontStyle:  opts.fontStyle  || "normal",
+      fill:       opts.fill || cc.text,  // theme-aware default color
+      width: 300,
+      _themeText: true,   // mark so bg-change recoloring can update it
+    });
+  }, [addShape, pageW, pageH, bgColor]);
 
   /* ── Add image ── */
   const handleAddImage = useCallback(async (src) => {
@@ -2404,7 +2416,9 @@ export default function ContractEditorPage() {
     const MAP = { left:"x", top:"y", angle:"rotation", textAlign:"align" };
     const shapeKey = MAP[key] || key;
     const shapeVal = key === "opacity" ? value / 100 : value;
-    updateShape(selectedId, { [shapeKey]: shapeVal });
+    /* When user manually changes fill color → remove _themeText so it won't auto-recolor again */
+    const extra = key === "fill" ? { _themeText: false } : {};
+    updateShape(selectedId, { [shapeKey]: shapeVal, ...extra });
     setSelProps(prev => prev ? { ...prev, [key]: value } : null);
   }, [selectedId, updateShape]);
 
@@ -2629,24 +2643,38 @@ export default function ContractEditorPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [selectedId, selectedIds]);
 
-  /* ── Recolor template shapes when canvas bg changes ── */
+  /* ── Recolor shapes when canvas bg changes ── */
   const prevBgRef = useRef(bgColor);
   useEffect(() => {
     const prev = prevBgRef.current;
     prevBgRef.current = bgColor;
     if (prev === bgColor) return;
-    // Only act when there are tagged template shapes present
-    setShapes(curr => {
-      if (!curr.some(s => s._tmpl && !s._brand && (s._fillRole || s._strokeRole))) return curr;
-      const newCC = getContrastColors(bgColor);
-      return curr.map(s => {
-        if (!s._tmpl || s._brand) return s;
+
+    const newCC  = getContrastColors(bgColor);
+    const prevCC = getContrastColors(prev);
+
+    setShapes(curr => curr.map(s => {
+      /* 1. Template shapes with role tags (from contract template builder) */
+      if (s._tmpl && !s._brand && (s._fillRole || s._strokeRole)) {
         const u = {};
         if (s._fillRole   && newCC[s._fillRole])   u.fill   = newCC[s._fillRole];
         if (s._strokeRole && newCC[s._strokeRole]) u.stroke = newCC[s._strokeRole];
         return Object.keys(u).length ? { ...s, ...u } : s;
-      });
-    });
+      }
+
+      /* 2. Manually added text with _themeText flag */
+      if (s._themeText && ["i-text","text","signature"].includes(s.type)) {
+        return { ...s, fill: newCC.text };
+      }
+
+      /* 3. Any i-text/text whose fill is the PREVIOUS default text color
+            (catches shapes added before _themeText flag existed) */
+      if (["i-text","text","signature"].includes(s.type) && s.fill === prevCC.text) {
+        return { ...s, fill: newCC.text, _themeText: true };
+      }
+
+      return s;
+    }));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bgColor]);
 

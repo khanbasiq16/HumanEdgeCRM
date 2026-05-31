@@ -33,6 +33,52 @@ const SkeletonCard = () => (
   </div>
 );
 
+/* ─── Contract history row (client sent OR sales employee assigned) ── */
+const ContractHistoryRow = ({ item }) => {
+  const date = item.assignedAt
+    ? new Date(item.assignedAt).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })
+    : "—";
+  const isClient = item.kind === "client";
+
+  return (
+    <div className={`flex items-center gap-3 px-3 py-2 rounded-lg border transition-colors ${
+      isClient
+        ? "bg-violet-50/60 border-violet-100 hover:border-violet-200"
+        : "bg-emerald-50/60 border-emerald-100 hover:border-emerald-200"
+    }`}>
+      {/* Avatar */}
+      <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
+        isClient ? "bg-violet-100" : "bg-emerald-100"
+      }`}>
+        <span className={`text-[10px] font-bold ${isClient ? "text-violet-700" : "text-emerald-700"}`}>
+          {(item.name || "?")[0].toUpperCase()}
+        </span>
+      </div>
+
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-semibold text-slate-800 truncate">{item.name}</p>
+        <p className="text-[10px] text-slate-400 flex items-center gap-1 truncate">
+          {isClient
+            ? <><Mail size={9} className="shrink-0"/><span className="truncate">{item.sub}</span></>
+            : <><UserPlus size={9} className="shrink-0 text-emerald-500"/><span className="truncate">{item.sub}</span></>
+          }
+          <span className="shrink-0">· {date}</span>
+        </p>
+      </div>
+
+      {/* Badge */}
+      <span className={`shrink-0 text-[9px] font-bold px-2 py-0.5 rounded-full ${
+        isClient
+          ? item.emailSent ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
+          : "bg-emerald-100 text-emerald-700"
+      }`}>
+        {isClient ? (item.emailSent ? "Sent" : "Saved") : "Assigned"}
+      </span>
+    </div>
+  );
+};
+
 /* ─── Assigned letter row ────────────────────────────────── */
 const AssignedRow = ({ letter, onDownloadLetter, downloadingLetter }) => {
   const date    = letter.assignedAt
@@ -68,7 +114,7 @@ const AssignedRow = ({ letter, onDownloadLetter, downloadingLetter }) => {
 
 /* ─── Template row card ─────────────────────────────────── */
 const TemplateCard = ({ template, onEdit, onAssign, onDelete, onDownload, downloading, onDownloadLetter, downloadingLetter }) => {
-  const isContract  = template.role === "Admin";
+  const isContract  = (template.role === "Admin" || template.role === "Contract");
   const logoSrc     = template.company?.companylogo || template.company?.companyLogo;
   const isMe        = downloading === template.id;
   const [expanded,  setExpanded]  = useState(false);
@@ -79,8 +125,13 @@ const TemplateCard = ({ template, onEdit, onAssign, onDelete, onDownload, downlo
     if (!expanded && history === null) {
       setLoadingH(true);
       try {
-        const res = await axios.get(`/api/letters/by-template?templateId=${template.id}`);
-        setHistory(res.data.letters || []);
+        if (isContract) {
+          const res = await axios.get(`/api/templates/contract-history?templateId=${template.id}`);
+          setHistory(res.data.history || []);
+        } else {
+          const res = await axios.get(`/api/letters/by-template?templateId=${template.id}`);
+          setHistory(res.data.letters || []);
+        }
       } catch { setHistory([]); }
       finally   { setLoadingH(false); }
     }
@@ -120,16 +171,20 @@ const TemplateCard = ({ template, onEdit, onAssign, onDelete, onDownload, downlo
 
         {/* Actions */}
         <div className="flex items-center gap-1.5 shrink-0">
-          {!isContract && (
-            <button
-              onClick={toggleHistory}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-slate-500 bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-colors"
-              title="View assigned history"
-            >
-              <Users size={12} />
-              {expanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
-            </button>
-          )}
+          {/* History toggle — both contracts and letters */}
+          <button
+            onClick={toggleHistory}
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border transition-colors ${
+              isContract
+                ? "text-violet-600 bg-violet-50 hover:bg-violet-100 border-violet-200"
+                : "text-slate-500 bg-slate-50 hover:bg-slate-100 border-slate-200"
+            }`}
+            title={isContract ? "View sent history" : "View assigned history"}
+          >
+            <Users size={12} />
+            {expanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+          </button>
+
           <button
             onClick={() => onAssign(template)}
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-600 hover:text-white border border-emerald-200 hover:border-emerald-600 transition-colors"
@@ -159,19 +214,37 @@ const TemplateCard = ({ template, onEdit, onAssign, onDelete, onDownload, downlo
         </div>
       </div>
 
-      {/* Assigned history panel */}
-      {expanded && !isContract && (
-        <div className="border-t border-slate-100 px-4 pb-4 pt-3 bg-slate-50/50">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Assigned To</p>
+      {/* History panel */}
+      {expanded && (
+        <div className={`border-t px-4 pb-4 pt-3 ${
+          isContract ? "border-violet-100 bg-violet-50/30" : "border-slate-100 bg-slate-50/50"
+        }`}>
+          <p className="text-[10px] font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5">
+            {isContract
+              ? <><Send size={9} className="text-violet-500"/><span className="text-violet-500">Sent / Assigned History</span></>
+              : <><Users size={9} className="text-slate-400"/><span className="text-slate-400">Assigned To</span></>
+            }
+            {history && (
+              <span className="ml-1 px-1.5 py-0.5 rounded-full bg-white border border-slate-200 text-slate-500 font-bold text-[9px]">
+                {history.length}
+              </span>
+            )}
+          </p>
           {loadingH ? (
             <div className="flex justify-center py-4">
-              <Loader2 size={18} className="animate-spin text-blue-400" />
+              <Loader2 size={18} className={`animate-spin ${isContract ? "text-violet-400" : "text-blue-400"}`} />
             </div>
           ) : history?.length === 0 ? (
-            <p className="text-xs text-slate-400 italic py-2">Not assigned to anyone yet.</p>
+            <p className="text-xs text-slate-400 italic py-2">
+              {isContract ? "No contracts sent yet." : "Not assigned to anyone yet."}
+            </p>
+          ) : isContract ? (
+            <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
+              {history.map(item => <ContractHistoryRow key={item.id} item={item} />)}
+            </div>
           ) : (
             <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
-              {history?.map(letter => (
+              {history.map(letter => (
                 <AssignedRow
                   key={letter.id}
                   letter={letter}
@@ -210,6 +283,8 @@ const Page = () => {
   const [contractMode,   setContractMode]   = useState("send");
   const [selSalesEmp,    setSelSalesEmp]    = useState("");   // single sales employee id
   const [salesEmpSearch, setSalesEmpSearch] = useState("");
+  // Already-assigned employee IDs for the current template
+  const [alreadyAssignedIds, setAlreadyAssignedIds] = useState(new Set());
   // Contract-specific fields
   const [clientName,     setClientName]     = useState("");
   const [clientEmail,    setClientEmail]    = useState("");
@@ -242,15 +317,23 @@ const Page = () => {
   }, []);
 
   /* ── Assign ── */
-  const isContract = (t) => t?.role === "Admin";
+  const isContract = (t) => t?.role === "Admin" || t?.role === "Contract";
 
-  const openAssign = (t) => {
+  const openAssign = async (t) => {
     setAssignTmpl(t);
     setSelEmployees([]); setEmpSearch("");
     setClientName(""); setClientEmail(""); setClientPhone("");
     setClientAddress(""); setContractDate(""); setContractMsg("");
     setContractMode("send"); setSelSalesEmp(""); setSalesEmpSearch("");
+    setAlreadyAssignedIds(new Set());
     setAssignOpen(true);
+
+    /* Fetch already-assigned employee IDs for this template */
+    try {
+      const res = await axios.get(`/api/letters/by-template?templateId=${t.id}`);
+      const ids = (res.data.letters || []).map(l => l.employeeId).filter(Boolean);
+      setAlreadyAssignedIds(new Set(ids));
+    } catch { /* silent — worst case user sees no badge */ }
   };
 
   // Employees filtered by sales — checks department, designation, or role
@@ -274,15 +357,19 @@ const Page = () => {
         /* ── Assign to sales employee ── */
         if (contractMode === "assign") {
           if (!selSalesEmp) { setAssigning(false); return toast.error("Please select a sales employee"); }
-          const res = await axios.post("/api/letters/assign", {
-            templateId:  assignTmpl.id,
-            employeeIds: [selSalesEmp],
-            assignedBy:  user?.employeeName || user?.name || "Admin",
-          });
-          if (res.data.success) {
-            toast.success("Contract assigned to sales employee!");
-            setAssignOpen(false);
-          } else toast.error(res.data.error || "Failed to assign");
+          try {
+            const res = await axios.post("/api/letters/assign", {
+              templateId:  assignTmpl.id,
+              employeeIds: [selSalesEmp],
+              assignedBy:  user?.employeeName || user?.name || "Admin",
+            });
+            if (res.data.success) {
+              toast.success("Contract assigned to sales employee!");
+              setAssignOpen(false);
+            } else toast.error(res.data.error || "Failed to assign");
+          } catch (err) {
+            toast.error(err?.response?.data?.error || "Failed to assign contract");
+          }
           return;
         }
         /* ── Send directly to client ── */
@@ -304,12 +391,20 @@ const Page = () => {
           assignedBy:  user?.employeeName || user?.name || "Admin",
         });
         if (res.data.success) {
-          toast.success(`Letter assigned to ${res.data.assigned} employee${res.data.assigned !== 1 ? "s" : ""}!`);
+          const msg = res.data.message || `Letter assigned to ${res.data.assigned} employee${res.data.assigned !== 1 ? "s" : ""}!`;
+          toast.success(msg);
+          if (res.data.alreadyAssigned > 0 && res.data.assigned === 0) return;
           setAssignOpen(false);
-        } else toast.error(res.data.error || "Failed to assign");
+        } else {
+          /* 409 = already assigned */
+          toast.error(res.data.error || "Failed to assign");
+        }
       }
-    } catch { toast.error("Failed to process assignment"); }
-    finally   { setAssigning(false); }
+    } catch (err) {
+      const msg = err?.response?.data?.error;
+      toast.error(msg || "Failed to process assignment");
+    }
+    finally { setAssigning(false); }
   };
 
   /* ── Delete ── */
@@ -587,7 +682,7 @@ const Page = () => {
 
   const filtered = useMemo(() => {
     let list = templates;
-    if (filterType !== "all") list = list.filter(t => filterType === "contract" ? t.role === "Admin" : t.role !== "Admin");
+    if (filterType !== "all") list = list.filter(t => filterType === "contract" ? (t.role === "Admin" || t.role === "Contract") : t.role !== "Admin");
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(t =>
@@ -601,7 +696,7 @@ const Page = () => {
   const counts = {
     all:      templates.length,
     letter:   templates.filter(t => t.role !== "Admin").length,
-    contract: templates.filter(t => t.role === "Admin").length,
+    contract: templates.filter(t => (t.role === "Admin" || t.role === "Contract")).length,
   };
 
   return (
@@ -670,7 +765,7 @@ const Page = () => {
                 key={t.id}
                 template={t}
                 onEdit={tmpl => router.push(
-                  tmpl.role === "Admin"
+                  (tmpl.role === "Admin" || tmpl.role === "Contract")
                     ? `/contract-editor/${tmpl.id}`
                     : `/template-editor/${tmpl.id}`
                 )}
@@ -814,7 +909,8 @@ const Page = () => {
                                 (e.employeeName || "").toLowerCase().includes(salesEmpSearch.toLowerCase())
                               )
                               .map(emp => {
-                                const checked = selSalesEmp === emp.id;
+                                const checked    = selSalesEmp === emp.id;
+                                const isAssigned = alreadyAssignedIds.has(emp.id);
                                 const dept = typeof emp.department === "object"
                                   ? emp.department?.departmentName
                                   : emp.department || "";
@@ -822,32 +918,51 @@ const Page = () => {
                                 return (
                                   <div
                                     key={emp.id}
-                                    onClick={() => setSelSalesEmp(emp.id)}
-                                    className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg cursor-pointer transition-colors ${
-                                      checked
-                                        ? "bg-emerald-50 border border-emerald-300"
-                                        : "hover:bg-slate-50 border border-transparent"
+                                    onClick={() => !isAssigned && setSelSalesEmp(emp.id)}
+                                    className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-colors border ${
+                                      isAssigned
+                                        ? "opacity-60 cursor-not-allowed bg-slate-50 border-slate-100"
+                                        : checked
+                                          ? "bg-emerald-50 border-emerald-300 cursor-pointer"
+                                          : "hover:bg-slate-50 border-transparent cursor-pointer"
                                     }`}
                                   >
-                                    {/* Radio circle */}
+                                    {/* Radio / Check icon */}
                                     <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 border-2 ${
-                                      checked ? "border-emerald-600 bg-emerald-600" : "border-slate-300"
+                                      isAssigned ? "border-slate-300 bg-slate-100"
+                                      : checked   ? "border-emerald-600 bg-emerald-600"
+                                                  : "border-slate-300"
                                     }`}>
-                                      {checked && <div className="w-1.5 h-1.5 rounded-full bg-white"/>}
+                                      {isAssigned
+                                        ? <span className="text-[8px] text-slate-400 font-bold">✓</span>
+                                        : checked && <div className="w-1.5 h-1.5 rounded-full bg-white"/>
+                                      }
                                     </div>
                                     {/* Avatar */}
-                                    <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
-                                      <span className="text-[11px] font-bold text-emerald-700">
+                                    <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
+                                      isAssigned ? "bg-slate-100" : "bg-emerald-100"
+                                    }`}>
+                                      <span className={`text-[11px] font-bold ${
+                                        isAssigned ? "text-slate-400" : "text-emerald-700"
+                                      }`}>
                                         {(emp.employeeName || "?")[0].toUpperCase()}
                                       </span>
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                      <p className="text-xs font-semibold text-slate-800 truncate">{emp.employeeName || "—"}</p>
+                                      <p className={`text-xs font-semibold truncate ${isAssigned ? "text-slate-400" : "text-slate-800"}`}>
+                                        {emp.employeeName || "—"}
+                                      </p>
                                       <p className="text-[10px] text-slate-400 truncate">
-                                        {role && <span className="text-emerald-600 font-medium">{role}</span>}
+                                        {role && <span className={isAssigned ? "text-slate-400" : "text-emerald-600 font-medium"}>{role}</span>}
                                         {dept && <span className="ml-1">· {dept}</span>}
                                       </p>
                                     </div>
+                                    {/* Already assigned badge */}
+                                    {isAssigned && (
+                                      <span className="shrink-0 text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+                                        Already Assigned
+                                      </span>
+                                    )}
                                   </div>
                                 );
                               })
@@ -904,27 +1019,43 @@ const Page = () => {
                           (emp.employeeName || "").toLowerCase().includes(empSearch.toLowerCase())
                         )
                         .map(emp => {
-                          const checked = selEmployees.includes(emp.id);
-                          const dept    = typeof emp.department === "object"
+                          const checked    = selEmployees.includes(emp.id);
+                          const isAssigned = alreadyAssignedIds.has(emp.id);
+                          const dept       = typeof emp.department === "object"
                             ? emp.department?.departmentName
                             : emp.department || "";
                           return (
                             <div
                               key={emp.id}
-                              onClick={() => toggleEmployee(emp.id)}
-                              className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg cursor-pointer transition-colors ${
-                                checked ? "bg-blue-50 border border-blue-200" : "hover:bg-slate-50 border border-transparent"
+                              onClick={() => !isAssigned && toggleEmployee(emp.id)}
+                              className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg border transition-colors ${
+                                isAssigned
+                                  ? "opacity-60 cursor-not-allowed bg-slate-50 border-slate-100"
+                                  : checked
+                                    ? "bg-blue-50 border-blue-200 cursor-pointer"
+                                    : "hover:bg-slate-50 border-transparent cursor-pointer"
                               }`}
                             >
                               <div className={`w-4 h-4 rounded flex items-center justify-center shrink-0 ${
-                                checked ? "bg-blue-600" : "border-2 border-slate-300"
+                                isAssigned ? "bg-slate-200 border-0"
+                                : checked   ? "bg-blue-600"
+                                            : "border-2 border-slate-300"
                               }`}>
-                                {checked && <span className="text-white text-[10px] font-bold">✓</span>}
+                                {(checked || isAssigned) && (
+                                  <span className={`text-[10px] font-bold ${isAssigned ? "text-slate-400" : "text-white"}`}>✓</span>
+                                )}
                               </div>
-                              <div className="min-w-0">
-                                <p className="text-xs font-semibold text-slate-800 truncate">{emp.employeeName || "—"}</p>
+                              <div className="min-w-0 flex-1">
+                                <p className={`text-xs font-semibold truncate ${isAssigned ? "text-slate-400" : "text-slate-800"}`}>
+                                  {emp.employeeName || "—"}
+                                </p>
                                 {dept && <p className="text-[10px] text-slate-400 truncate">{dept}</p>}
                               </div>
+                              {isAssigned && (
+                                <span className="shrink-0 text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+                                  Already Assigned
+                                </span>
+                              )}
                             </div>
                           );
                         })}

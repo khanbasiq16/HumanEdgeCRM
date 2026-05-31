@@ -16,34 +16,37 @@ export async function GET(req) {
     );
     const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-    /* Separate letters that already have role info (new assignments) from those that don't (old) */
-    const knownLetters   = all.filter(l => l.templateRole === "Employee" || (!l.isContract && l.templateRole && l.templateRole !== "Admin"));
+    /* Known contracts (new assignments with role info) */
     const knownContracts = all.filter(l => l.isContract === true || l.templateRole === "Admin");
-    const unknown        = all.filter(l => !l.templateRole && l.isContract === undefined);
 
-    /* For old records without role info, look up the template to determine the role */
+    /* Old records without role info — check template */
+    const unknown = all.filter(l => !l.templateRole && l.isContract === undefined);
     const templateCache = {};
-    const resolvedLetters = [];
+    const resolvedContracts = [];
 
     for (const letter of unknown) {
-      if (!letter.templateId) { resolvedLetters.push(letter); continue; }
-
+      if (!letter.templateId) continue;
       if (!templateCache[letter.templateId]) {
         try {
           const tmplSnap = await getDoc(doc(db, "templates", letter.templateId));
-          templateCache[letter.templateId] = tmplSnap.exists() ? tmplSnap.data().role : null;
+          templateCache[letter.templateId] = tmplSnap.exists() ? tmplSnap.data() : null;
         } catch { templateCache[letter.templateId] = null; }
       }
-
-      const role = templateCache[letter.templateId];
-      /* Only include if NOT a contract (Admin role = contract) */
-      if (role !== "Admin" && role !== "Contract") resolvedLetters.push({ ...letter, templateRole: role || "Employee" });
+      const tmpl = templateCache[letter.templateId];
+      if (tmpl?.role === "Admin" || tmpl?.role === "Contract") {
+        resolvedContracts.push({
+          ...letter,
+          isContract: true,
+          templateRole: "Admin",
+          canvasData: letter.canvasData || tmpl.canvasData || null,
+        });
+      }
     }
 
-    const letters = [...knownLetters, ...resolvedLetters]
+    const contracts = [...knownContracts, ...resolvedContracts]
       .sort((a, b) => new Date(b.assignedAt) - new Date(a.assignedAt));
 
-    return NextResponse.json({ success: true, letters });
+    return NextResponse.json({ success: true, contracts });
   } catch (error) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

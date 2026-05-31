@@ -162,7 +162,7 @@ const Contractdialog = () => {
 
                         <div className="flex justify-center">
                           <span className="text-xs px-3 py-1 bg-blue-100 text-blue-600 rounded-full font-medium">
-                            {template.role === "Admin"
+                            {(template.role === "Admin" || template.role === "Contract")
                               ? "Contract"
                               : "Employee Letter"}
                           </span>

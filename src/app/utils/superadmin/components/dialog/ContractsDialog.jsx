@@ -186,7 +186,7 @@ const ContractDialog = () => {
                 {templates?.length > 0 ? (
                   templates.map((t) => {
                     const isSelected = selectedTemplate === t.id;
-                    const isContract = t.role === "Admin";
+                    const isContract = t.role === "Admin" || t.role === "Contract";
                     const logo = t.company?.companylogo || t.company?.companyLogo;
                     return (
                       <div
