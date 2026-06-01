@@ -199,15 +199,19 @@ const Listcompanies = () => {
                   {/* Header row */}
                   <div className="flex items-start justify-between gap-2">
                     {/* Logo / initials */}
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-sm font-extrabold shrink-0 ${avatarCls}`}>
-                      {company.companylogo ? (
+                    {(company.companylogo || company.companyLogo) ? (
+                      <div className="w-12 h-12 rounded-xl border border-slate-100 bg-slate-50 shrink-0 overflow-hidden flex items-center justify-center p-1">
                         <img
-                          src={company.companylogo}
+                          src={company.companylogo || company.companyLogo}
                           alt={company.name}
-                          className="w-full h-full object-contain rounded-xl"
+                          className="w-full h-full object-contain"
                         />
-                      ) : initials}
-                    </div>
+                      </div>
+                    ) : (
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-sm font-extrabold shrink-0 ${avatarCls}`}>
+                        {initials}
+                      </div>
+                    )}
 
                     {/* Status badge */}
                     <span className={`

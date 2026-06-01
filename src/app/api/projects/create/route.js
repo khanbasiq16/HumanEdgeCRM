@@ -20,6 +20,7 @@ export async function POST(req) {
       status: status || "active",
       deadline: deadline || null,
       createdBy: createdBy || "Admin",
+      members: [],
       createdAt: new Date().toISOString(),
     };
 

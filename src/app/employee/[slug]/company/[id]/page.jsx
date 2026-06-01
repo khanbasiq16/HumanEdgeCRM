@@ -2,269 +2,220 @@
 import Employeelayout from "@/app/utils/employees/layout/Employeelayout";
 import axios from "axios";
 import {
-  Building2, Globe, MapPin, Phone, Mail, Clock, Hash,
+  Building2, Globe, MapPin, Phone, Mail, Clock,
   Calendar, Facebook, Instagram, Linkedin, CheckCircle2,
   XCircle, FileText, Users, LayoutTemplate, UserCheck,
-  ScrollText, Loader2, ArrowRight,
+  ScrollText, Loader2, ArrowRight, User, Briefcase,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 
-/* ── Info row ────────────────────────────────────────────── */
-const InfoRow = ({ icon: Icon, label, value, isLink }) => (
-  <div className="flex items-start gap-3">
-    <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center shrink-0 mt-0.5">
-      <Icon size={13} className="text-slate-500" />
+/* ── Info row ── */
+const InfoRow = ({ icon: Icon, label, value, isLink }) => {
+  if (!value) return null;
+  return (
+    <div className="flex items-start gap-3">
+      <div className="w-8 h-8 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0">
+        <Icon size={13} className="text-slate-500" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label}</p>
+        {isLink ? (
+          <a href={value} target="_blank" rel="noreferrer"
+            className="text-sm font-medium text-blue-600 hover:underline mt-0.5 block truncate">
+            {value.replace(/^https?:\/\//, "").replace(/\/$/, "")}
+          </a>
+        ) : (
+          <p className="text-sm font-medium text-slate-800 mt-0.5 break-words">{value}</p>
+        )}
+      </div>
     </div>
-    <div className="min-w-0">
-      <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">{label}</p>
-      {isLink && value ? (
-        <a
-          href={value}
-          target="_blank"
-          rel="noreferrer"
-          className="text-sm font-medium text-blue-600 hover:text-blue-700 mt-0.5 block truncate"
-        >
-          {value.replace(/^https?:\/\//, "").replace(/\/$/, "")}
-        </a>
-      ) : (
-        <p className="text-sm font-medium text-slate-800 mt-0.5 break-words">{value || "—"}</p>
-      )}
-    </div>
-  </div>
-);
+  );
+};
 
-/* ── Section wrapper ─────────────────────────────────────── */
-const Section = ({ title, children }) => (
-  <div className="bg-white rounded-2xl border border-slate-200/80 p-5 space-y-4">
-    <p className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2">
-      {title}
-    </p>
-    {children}
-  </div>
-);
-
-/* ── Quick nav card ──────────────────────────────────────── */
+/* ── Nav card ── */
 const NavCard = ({ href, icon: Icon, label, count, color }) => {
-  const colors = {
-    blue:    { bg: "bg-blue-50",    border: "border-blue-100",    icon: "bg-blue-100 text-blue-600",    title: "text-blue-700",    btn: "bg-blue-600 hover:bg-blue-700" },
-    violet:  { bg: "bg-violet-50",  border: "border-violet-100",  icon: "bg-violet-100 text-violet-600",  title: "text-violet-700",  btn: "bg-violet-600 hover:bg-violet-700" },
-    emerald: { bg: "bg-emerald-50", border: "border-emerald-100", icon: "bg-emerald-100 text-emerald-600", title: "text-emerald-700", btn: "bg-emerald-600 hover:bg-emerald-700" },
-  };
-  const c = colors[color] || colors.blue;
+  const C = {
+    blue:    { bg: "bg-blue-50",    border: "border-blue-200",    iconBg: "bg-blue-100 text-blue-600",    text: "text-blue-700"    },
+    violet:  { bg: "bg-violet-50",  border: "border-violet-200",  iconBg: "bg-violet-100 text-violet-600",  text: "text-violet-700"  },
+    emerald: { bg: "bg-emerald-50", border: "border-emerald-200", iconBg: "bg-emerald-100 text-emerald-600", text: "text-emerald-700" },
+  }[color] || {};
 
   return (
     <Link href={href}
-      className={`rounded-2xl border p-5 flex items-center justify-between group transition-all hover:shadow-md ${c.bg} ${c.border}`}
-    >
+      className={`flex items-center justify-between p-5 rounded-2xl border transition-all hover:shadow-md group ${C.bg} ${C.border}`}>
       <div className="flex items-center gap-3">
-        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${c.icon}`}>
-          <Icon size={15} />
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${C.iconBg}`}>
+          <Icon size={18}/>
         </div>
         <div>
-          <p className={`text-xs font-bold uppercase tracking-wider ${c.title}`}>{label}</p>
-          {count !== undefined && (
-            <p className="text-lg font-extrabold text-slate-800 leading-tight">{count}</p>
-          )}
+          <p className={`text-[11px] font-bold uppercase tracking-wider ${C.text}`}>{label}</p>
+          <p className="text-2xl font-black text-slate-800 leading-tight">
+            {count ?? "—"}
+          </p>
         </div>
       </div>
-      <ArrowRight size={15} className={`${c.title} group-hover:translate-x-0.5 transition-transform`} />
+      <ArrowRight size={16} className={`${C.text} group-hover:translate-x-0.5 transition-transform`}/>
     </Link>
   );
 };
 
-/* ── Array data card ─────────────────────────────────────── */
-const ArrayCard = ({ icon: Icon, title, data, color }) => {
-  const colors = {
-    blue:    { bg: "bg-blue-50",    border: "border-blue-100",    icon: "bg-blue-100 text-blue-600",    title: "text-blue-700"    },
-    violet:  { bg: "bg-violet-50",  border: "border-violet-100",  icon: "bg-violet-100 text-violet-600",  title: "text-violet-700"  },
-    emerald: { bg: "bg-emerald-50", border: "border-emerald-100", icon: "bg-emerald-100 text-emerald-600", title: "text-emerald-700" },
-    amber:   { bg: "bg-amber-50",   border: "border-amber-100",   icon: "bg-amber-100 text-amber-600",   title: "text-amber-700"   },
-    rose:    { bg: "bg-rose-50",    border: "border-rose-100",    icon: "bg-rose-100 text-rose-600",    title: "text-rose-700"    },
-  };
-  const c = colors[color] || colors.blue;
+/* ── Tag list card ── */
+const TagCard = ({ icon: Icon, title, items, color }) => {
+  const C = {
+    violet:  { bg: "bg-violet-50",  border: "border-violet-200",  iconBg: "bg-violet-100 text-violet-600",  text: "text-violet-700",  tag: "bg-violet-100 text-violet-800 border-violet-200"  },
+    emerald: { bg: "bg-emerald-50", border: "border-emerald-200", iconBg: "bg-emerald-100 text-emerald-600", text: "text-emerald-700", tag: "bg-emerald-100 text-emerald-800 border-emerald-200" },
+    amber:   { bg: "bg-amber-50",   border: "border-amber-200",   iconBg: "bg-amber-100 text-amber-600",   text: "text-amber-700",   tag: "bg-amber-100 text-amber-800 border-amber-200"   },
+  }[color] || {};
 
   return (
-    <div className={`rounded-2xl border p-5 space-y-3 ${c.bg} ${c.border}`}>
-      <div className="flex items-center gap-2">
-        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${c.icon}`}>
-          <Icon size={13} />
+    <div className={`rounded-2xl border p-5 ${C.bg} ${C.border}`}>
+      <div className="flex items-center gap-2 mb-4">
+        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${C.iconBg}`}>
+          <Icon size={14}/>
         </div>
-        <p className={`text-xs font-bold uppercase tracking-wider ${c.title}`}>{title}</p>
-        <span className={`ml-auto text-xs font-bold px-2 py-0.5 rounded-full bg-white border ${c.border} ${c.title}`}>
-          {data?.length || 0}
+        <p className={`text-xs font-bold uppercase tracking-wider flex-1 ${C.text}`}>{title}</p>
+        <span className={`text-xs font-bold px-2 py-0.5 rounded-full border bg-white ${C.text} ${C.border}`}>
+          {items?.length ?? 0}
         </span>
       </div>
-      {data && data.length > 0 ? (
-        <ul className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
-          {data.map((item, idx) => (
-            <li key={idx} className="bg-white rounded-xl px-3 py-2 text-xs text-slate-700 border border-white/80 font-medium truncate">
+      {items?.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {items.map((item, i) => (
+            <span key={i}
+              className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border ${C.tag}`}>
+              {title.includes("Employee") ? <User size={10}/> : <Briefcase size={10}/>}
               {item}
-            </li>
+            </span>
           ))}
-        </ul>
+        </div>
       ) : (
-        <p className="text-xs text-slate-400 italic">No data available</p>
+        <p className="text-xs text-slate-400 italic text-center py-3">No data yet</p>
       )}
     </div>
   );
 };
 
-/* ── Skeleton ────────────────────────────────────────────── */
+/* ── Skeleton ── */
 const Skeleton = () => (
   <Employeelayout>
-    <div className="space-y-5 animate-pulse w-full max-w-5xl">
-      <div className="bg-white rounded-2xl border border-slate-200/80 px-6 py-5">
-        <div className="flex items-center gap-4">
-          <div className="w-20 h-20 rounded-2xl bg-slate-100 shrink-0" />
-          <div className="flex-1 space-y-2">
-            <div className="h-5 bg-slate-100 rounded w-48" />
-            <div className="h-3 bg-slate-100 rounded w-32" />
-          </div>
-        </div>
+    <div className="space-y-5 w-full animate-pulse">
+      <div className="bg-white rounded-2xl border border-slate-200 h-28"/>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {[...Array(3)].map((_,i) => <div key={i} className="h-24 rounded-2xl bg-slate-100"/>)}
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {[...Array(2)].map((_, i) => (
-          <div key={i} className="bg-white rounded-2xl border border-slate-200/80 p-5 space-y-4">
-            {[...Array(4)].map((__, j) => (
-              <div key={j} className="flex gap-3">
-                <div className="w-7 h-7 rounded-lg bg-slate-100 shrink-0" />
-                <div className="flex-1 space-y-1.5">
-                  <div className="h-2.5 bg-slate-100 rounded w-20" />
-                  <div className="h-4 bg-slate-100 rounded w-40" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ))}
+        {[...Array(2)].map((_,i) => <div key={i} className="h-48 rounded-2xl bg-white border border-slate-200"/>)}
       </div>
     </div>
   </Employeelayout>
 );
 
-/* ── Main page ───────────────────────────────────────────── */
+/* ── Page ── */
 const Page = () => {
   const { id, slug } = useParams();
   const [company, setCompany] = useState(null);
 
   useEffect(() => {
-    axios.get(`/api/get-company/${id}`, { withCredentials: true })
+    axios.get(`/api/get-company/${id}`)
       .then(res => setCompany(res.data.company))
-      .catch(err => console.error(err));
+      .catch(() => {});
   }, [id]);
 
-  if (!company) return <Skeleton />;
+  if (!company) return <Skeleton/>;
 
-  const isActive = company.status?.toLowerCase() === "active";
-  const initials = (company.name || "CO").slice(0, 2).toUpperCase();
+  const isActive  = company.status?.toLowerCase() === "active";
+  const initials  = (company.name || "CO").slice(0, 2).toUpperCase();
+  const logoSrc   = company.companyLogo || company.companylogo;
   const createdAt = company.createdAt
     ? new Date(company.createdAt).toLocaleDateString("en-US", { day: "2-digit", month: "long", year: "numeric" })
     : null;
-  const logoSrc = company.companyLogo || company.companylogo;
+
+  const employees  = company.resolvedEmployees  || [];
+  const templates  = company.resolvedTemplates  || [];
+  const clientCount = company.liveClientCount   ?? 0;
 
   return (
     <Employeelayout>
       <div className="space-y-5 w-full max-w-5xl">
 
-        {/* ── Hero card ─────────────────────────────────── */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 px-6 py-5">
-          <div className="flex items-center gap-4">
-            {/* Logo */}
-            <div className="w-20 h-20 rounded-2xl border border-slate-200 bg-white shadow-sm shrink-0 flex items-center justify-center p-2">
-              {logoSrc ? (
-                <img src={logoSrc} alt={company.name} className="w-full h-full object-contain" />
-              ) : (
-                <span className="text-2xl font-black text-blue-600">{initials}</span>
-              )}
-            </div>
+        {/* ── Hero ── */}
+        <div className="bg-white rounded-2xl border border-slate-200 px-6 py-5 flex items-center gap-5">
+          {/* Logo */}
+          <div className="w-20 h-20 rounded-2xl border border-slate-200 bg-slate-50 flex items-center justify-center shrink-0 overflow-hidden">
+            {logoSrc
+              ? <img src={logoSrc} alt={company.name} className="w-full h-full object-contain p-1"/>
+              : <span className="text-2xl font-black text-blue-600">{initials}</span>}
+          </div>
 
-            {/* Name + meta */}
-            <div className="flex-1 min-w-0">
-              <h2 className="text-xl font-bold text-slate-900">{company.name}</h2>
-              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                {company.companyId && (
-                  <span className="inline-flex items-center gap-1 text-xs text-slate-400 font-medium">
-                    <Hash size={11} /> {company.companyId}
-                  </span>
-                )}
-                {company.companyslug && (
-                  <>
-                    <span className="text-slate-300">·</span>
-                    <span className="text-xs text-blue-600 font-semibold">{company.companyslug}</span>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Status */}
-            <div className="shrink-0">
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border
-                ${isActive
+          {/* Info */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-xl font-extrabold text-slate-900">{company.name}</h1>
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${
+                isActive
                   ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                  : "bg-slate-50 text-slate-500 border-slate-200"}`}
-              >
-                {isActive
-                  ? <CheckCircle2 size={11} className="text-emerald-500" />
-                  : <XCircle size={11} className="text-slate-400" />}
+                  : "bg-slate-50 text-slate-500 border-slate-200"}`}>
+                {isActive ? <CheckCircle2 size={11}/> : <XCircle size={11}/>}
                 {isActive ? "Active" : "Inactive"}
               </span>
+            </div>
+            <div className="flex flex-wrap gap-3 mt-2">
+              {company.companyemail || company.companyEmail
+                ? <span className="text-xs text-slate-500 flex items-center gap-1"><Mail size={11}/>{company.companyemail || company.companyEmail}</span>
+                : null}
+              {company.companyPhoneNumber
+                ? <span className="text-xs text-slate-500 flex items-center gap-1"><Phone size={11}/>{company.companyPhoneNumber}</span>
+                : null}
+              {company.companyAddress
+                ? <span className="text-xs text-slate-500 flex items-center gap-1"><MapPin size={11}/>{company.companyAddress}</span>
+                : null}
             </div>
           </div>
         </div>
 
-        {/* ── Info grid ─────────────────────────────────── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <Section title="Company Details">
-            <div className="space-y-4">
-              <InfoRow icon={Globe}    label="Website"     value={company.companyWebsite}     isLink />
-              <InfoRow icon={Phone}    label="Phone"       value={company.companyPhoneNumber} />
-              <InfoRow icon={Mail}     label="Email"       value={company.companyemail || company.companyEmail} />
-              <InfoRow icon={MapPin}   label="Address"     value={company.companyAddress}     />
-              <InfoRow icon={Clock}    label="Timezone"    value={company.timezone}           />
-              <InfoRow icon={Calendar} label="Created At"  value={createdAt}                  />
-            </div>
-          </Section>
-
-          <Section title="Social Links">
-            <div className="space-y-4">
-              <InfoRow icon={Facebook}  label="Facebook"  value={company.companyFacebook}  isLink />
-              <InfoRow icon={Instagram} label="Instagram" value={company.companyInstagram} isLink />
-              <InfoRow icon={Linkedin}  label="LinkedIn"  value={company.companyLinkedin}  isLink />
-            </div>
-          </Section>
-        </div>
-
-        {/* ── Quick navigation ──────────────────────────── */}
+        {/* ── Quick nav ── */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <NavCard
-            href={`/employee/${slug}/company/${id}/invoices`}
-            icon={FileText}
-            label="Invoices"
-            count={company.assignedInvoices?.length ?? "—"}
-            color="blue"
-          />
-          <NavCard
-            href={`/employee/${slug}/company/${id}/clients`}
-            icon={Users}
-            label="Clients"
-            count={company.CreateClients?.length ?? "—"}
-            color="violet"
-          />
-          <NavCard
-            href={`/employee/${slug}/company/${id}/contracts`}
-            icon={ScrollText}
-            label="Contracts"
-            count={company.Createcontracts?.length ?? "—"}
-            color="emerald"
-          />
+          <NavCard href={`/employee/${slug}/company/${id}/invoices`}  icon={FileText}   label="Invoices"   count={company.assignedInvoices?.length ?? 0} color="blue"/>
+          <NavCard href={`/employee/${slug}/company/${id}/clients`}   icon={Users}      label="Clients"    count={clientCount}                           color="violet"/>
+          <NavCard href={`/employee/${slug}/company/${id}/contracts`} icon={ScrollText} label="Contracts"  count={company.Createcontracts?.length ?? 0}  color="emerald"/>
         </div>
 
-        {/* ── Assigned arrays ───────────────────────────── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <ArrayCard icon={Users}         title="Assigned Employees" data={company.AssignEmployee}   color="violet"  />
-          <ArrayCard icon={LayoutTemplate} title="Assign Templates"  data={company.ContactTemplates} color="emerald" />
-          <ArrayCard icon={UserCheck}     title="Assign Clients"     data={company.CreateClients}    color="amber"   />
+        {/* ── Details grid ── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+          {/* Contact Details */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
+            <p className="text-xs font-bold text-slate-800 uppercase tracking-wider pb-2 border-b border-slate-100">
+              Contact Details
+            </p>
+            <InfoRow icon={Globe}    label="Website"   value={company.companyWebsite}             isLink/>
+            <InfoRow icon={Mail}     label="Email"     value={company.companyemail || company.companyEmail}/>
+            <InfoRow icon={Phone}    label="Phone"     value={company.companyPhoneNumber}/>
+            <InfoRow icon={MapPin}   label="Address"   value={company.companyAddress}/>
+            <InfoRow icon={Clock}    label="Timezone"  value={company.timezone}/>
+            <InfoRow icon={Calendar} label="Created"   value={createdAt}/>
+          </div>
+
+          {/* Social Links */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
+            <p className="text-xs font-bold text-slate-800 uppercase tracking-wider pb-2 border-b border-slate-100">
+              Social Links
+            </p>
+            <InfoRow icon={Facebook}  label="Facebook"  value={company.companyFacebook}  isLink/>
+            <InfoRow icon={Instagram} label="Instagram" value={company.companyInstagram} isLink/>
+            <InfoRow icon={Linkedin}  label="LinkedIn"  value={company.companyLinkedin}  isLink/>
+            {!company.companyFacebook && !company.companyInstagram && !company.companyLinkedin && (
+              <p className="text-xs text-slate-400 italic text-center py-4">No social links added</p>
+            )}
+          </div>
+        </div>
+
+        {/* ── People & Templates ── */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <TagCard icon={Users}          title="Assigned Employees" items={employees} color="violet"/>
+          <TagCard icon={LayoutTemplate} title="Assigned Templates" items={templates} color="emerald"/>
         </div>
 
       </div>

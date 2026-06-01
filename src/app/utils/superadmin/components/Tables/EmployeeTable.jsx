@@ -13,7 +13,9 @@ import {
   ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight,
   Loader2, MoreHorizontal, Trash, Search, Download,
   CheckCircle2, XCircle, LogIn, LogOut, SlidersHorizontal,
+  Building2,
 } from "lucide-react";
+import AssignCompanyDialog from "../dialog/AssignCompanydIalog";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent,
@@ -83,6 +85,8 @@ export function EmployeeTable({ employees }) {
   const [editingRowId, setEditingRowId]   = React.useState(null);
   const [checkinLoadingMap, setCheckinLoadingMap]   = React.useState({});
   const [checkoutLoadingMap, setCheckoutLoadingMap] = React.useState({});
+  const [assignOpen,    setAssignOpen]    = React.useState(false);
+  const [assignEmployee,setAssignEmployee]= React.useState(null);
 
   const dispatch = useDispatch();
 
@@ -245,17 +249,30 @@ export function EmployeeTable({ employees }) {
       accessorKey: "employeeName",
       header: "Employee",
       cell: ({ row }) => {
-        const emp  = row.original;
-        const name = emp.employeeName || "";
+        const emp    = row.original;
+        const name   = emp.employeeName || "";
         const initials = name.slice(0, 2).toUpperCase() || "EM";
-        const color = AVATAR_COLORS[row.index % AVATAR_COLORS.length];
+        const color  = AVATAR_COLORS[row.index % AVATAR_COLORS.length];
+        const dept   = (
+          emp.department?.departmentName ||
+          (typeof emp.department === "string" ? emp.department : "") ||
+          emp.designation || ""
+        ).toLowerCase();
+        const isSales = dept.includes("sales");
         return (
           <div className="flex items-center gap-3 min-w-0">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${color}`}>
               {initials}
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-slate-800 truncate">{name}</p>
+              <div className="flex items-center gap-1.5">
+                <p className="text-sm font-semibold text-slate-800 truncate">{name}</p>
+                {isSales && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-violet-100 text-violet-700 border border-violet-200 shrink-0">
+                    SALES
+                  </span>
+                )}
+              </div>
               <p className="text-[11px] text-slate-400 truncate">{emp.employeeId}</p>
             </div>
           </div>
@@ -392,33 +409,65 @@ export function EmployeeTable({ employees }) {
     },
 
     {
+      id: "assignCompany",
+      header: () => <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Companies</span>,
+      enableHiding: true,
+      cell: ({ row }) => {
+        const emp     = row.original;
+        const dept    = (
+          emp.department?.departmentName ||
+          (typeof emp.department === "string" ? emp.department : "") ||
+          emp.designation || ""
+        ).toLowerCase();
+        const isSales = dept.includes("sales");
+        if (!isSales) return null;
+        return (
+          <button
+            onClick={() => { setAssignEmployee(emp); setAssignOpen(true); }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-violet-50 text-violet-700 border border-violet-200 hover:bg-violet-600 hover:text-white hover:border-violet-600 transition-all whitespace-nowrap shadow-sm"
+          >
+            <Building2 size={12}/> Assign Companies
+          </button>
+        );
+      },
+    },
+
+    {
       id: "actions",
       enableHiding: false,
       cell: ({ row }) => {
-        const emp = row.original;
+        const emp     = row.original;
+        const dept    = (
+          emp.department?.departmentName ||
+          (typeof emp.department === "string" ? emp.department : "") ||
+          emp.designation || ""
+        ).toLowerCase();
+        const isSales = dept.includes("sales");
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
-                <MoreHorizontal size={15} />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44">
-              <DropdownMenuLabel className="text-xs text-slate-500">Actions</DropdownMenuLabel>
-              <DropdownMenuItem
-                className="text-sm cursor-pointer"
-                onClick={() => navigator.clipboard.writeText(emp.employeeemail)}
-              >
-                Copy Email
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href={`/admin/employees/${emp.employeeId}/viewdetails`} className="text-sm cursor-pointer">
-                  View Details
-                </Link>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center gap-1.5">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+                  <MoreHorizontal size={15} />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuLabel className="text-xs text-slate-500">Actions</DropdownMenuLabel>
+                <DropdownMenuItem
+                  className="text-sm cursor-pointer"
+                  onClick={() => navigator.clipboard.writeText(emp.employeeemail)}
+                >
+                  Copy Email
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href={`/admin/employees/${emp.employeeId}/viewdetails`} className="text-sm cursor-pointer">
+                    View Details
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         );
       },
     },
@@ -603,6 +652,15 @@ export function EmployeeTable({ employees }) {
           </button>
         </div>
       </div>
+
+      {/* ── Assign Company Dialog ── */}
+      <AssignCompanyDialog
+        open={assignOpen}
+        setOpen={setAssignOpen}
+        employeeId={assignEmployee?.employeeId}
+        employeeName={assignEmployee?.employeeName}
+        assigncompanies={assignEmployee?.companyIds || []}
+      />
     </div>
   );
 }

@@ -5,13 +5,14 @@ import { useSelector } from "react-redux";
 import axios from "axios";
 import toast from "react-hot-toast";
 import dynamic from "next/dynamic";
+import Clientdialog from "@/app/utils/employees/components/dialog/Clientdialog";
 import {
   ArrowLeft, Building2, FileSignature, ChevronRight, Loader2,
   Send, FileDown, Save, Plus, PenLine, X, Search, CheckCircle2,
   FileText, Users, Eye, ChevronDown, MailOpen, AlertCircle,
   Bold, Italic, Underline, Type, List, ListOrdered,
   AlignLeft, AlignCenter, AlignRight, Trash2,
-  User, Mail, Phone, MapPin, Globe,
+  User, Mail, Phone, MapPin, Globe, DollarSign,
 } from "lucide-react";
 
 /* ── Canvas contrast helper (same as contract-editor) ── */
@@ -528,6 +529,20 @@ export default function SalesPanelPage() {
   const [exporting, setExporting] = useState(false);
   const [saving,    setSaving]    = useState(false);
 
+  /* ── Quick Action dialog state ── */
+  const [clientOpen,       setClientOpen]       = useState(false);
+  const [clientCreating,   setClientCreating]   = useState(false);
+  const [invoiceOpen,      setInvoiceOpen]      = useState(false);
+  const [invoiceCreating,  setInvoiceCreating]  = useState(false);
+  const [createClientOpen, setCreateClientOpen] = useState(false);
+
+  /* Invoice dialog sub-state */
+  const [invClients,    setInvClients]    = useState([]);
+  const [invSearch,     setInvSearch]     = useState("");
+  const [invSelClient,  setInvSelClient]  = useState(null);
+  const [invNumber,     setInvNumber]     = useState("");
+  const [invDate,       setInvDate]       = useState("");
+
   const stageRef = useRef(null);
   const dirty    = useRef(false);
   const genId    = () => `s${Date.now()}${Math.random().toString(36).slice(2, 6)}`;
@@ -633,6 +648,18 @@ export default function SalesPanelPage() {
     document.head.appendChild(link);
     return () => { try { document.head.removeChild(link); } catch {} };
   }, []);
+
+  /* ── Load clients when Invoice dialog opens ── */
+  useEffect(() => {
+    if (!invoiceOpen || !selectedCompany) return;
+    setInvNumber(`INV-${Math.floor(100 + Math.random() * 900)}`);
+    setInvDate(new Date().toLocaleDateString("en-GB"));
+    setInvSearch(""); setInvSelClient(null); setInvClients([]);
+    axios.get(`/api/get-all-clients/${selectedCompany.companyslug}`)
+      .then(r => setInvClients(r.data.clients || []))
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [invoiceOpen, selectedCompany]);
 
   /* ── 1. Load assigned companies ── */
   useEffect(() => {
@@ -830,6 +857,65 @@ export default function SalesPanelPage() {
   }, [bgColor, pageW, pageH]);
 
 
+  /* ── Quick: Create Client ── */
+  const handleCreateClient = async (e) => {
+    e.preventDefault();
+    if (!selectedCompany) return toast.error("Select a company first");
+    setClientCreating(true);
+    try {
+      const fd   = new FormData(e.target);
+      const body = {
+        companyName:   selectedCompany.companyslug,
+        clientName:    fd.get("clientName")    || "",
+        clientEmail:   fd.get("clientEmail")   || "",
+        clientPhone:   fd.get("clientPhone")   || "",
+        clientAddress: fd.get("clientAddress") || "",
+        clientWebsite: fd.get("clientWebsite") || "",
+        employeeid:    user?.employeeId || user?.id,
+      };
+      if (!body.clientName || !body.clientEmail || !body.clientPhone) {
+        toast.error("Name, email, and phone are required");
+        return;
+      }
+      const res = await axios.post("/api/employee/create-client", body);
+      if (res.data.success) {
+        toast.success("Client created!");
+        e.target.reset();
+        setClientOpen(false);
+      } else toast.error(res.data.error || "Failed to create client");
+    } catch { toast.error("Error creating client"); }
+    finally { setClientCreating(false); }
+  };
+
+  /* ── Quick: Create Invoice ── */
+  const handleCreateInvoice = async (e) => {
+    e.preventDefault();
+    if (!invSelClient)   return toast.error("Please select a client");
+    if (!selectedCompany) return toast.error("Select a company first");
+    setInvoiceCreating(true);
+    try {
+      const fd   = new FormData(e.target);
+      const data = {
+        companySlug:   selectedCompany.companyslug,
+        clientId:      invSelClient.id,
+        invoiceNumber: invNumber,
+        invoiceDate:   invDate,
+        Description:   fd.get("invoiceDescription") || "",
+        totalAmount:   Number(fd.get("invoiceAmount")),
+        createdBy:     user?.employeeName,
+        status:        "Draft",
+        user_id:       user?.employeeId || user?.id,
+        type:          "employee",
+      };
+      const res = await axios.post("/api/create-invoice", data);
+      if (res.data.success) {
+        toast.success("Invoice created!");
+        setInvoiceOpen(false);
+      } else toast.error(res.data.error || "Failed to create invoice");
+    } catch { toast.error("Error creating invoice"); }
+    finally { setInvoiceCreating(false); }
+  };
+
   /* ── Save (persist shapes back to assigned_letters) ── */
   const handleSave = async () => {
     if (!selectedContract?.id) return;
@@ -924,6 +1010,23 @@ export default function SalesPanelPage() {
 
         {/* Actions */}
         <div className="flex items-center gap-2 shrink-0">
+          {/* Quick actions — always visible when a company is selected */}
+          {selectedCompany && (
+            <>
+              <button
+                onClick={() => setClientOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors shadow-sm shadow-blue-200"
+              >
+                <Users size={12}/> New Client
+              </button>
+              <button
+                onClick={() => setInvoiceOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-colors shadow-sm shadow-emerald-200"
+              >
+                <FileText size={12}/> New Invoice
+              </button>
+            </>
+          )}
           {selectedContract && (
             <>
               <button onClick={handleSave} disabled={saving || !dirty.current}
@@ -1235,6 +1338,173 @@ export default function SalesPanelPage() {
         onSend={handleSend}
         company={selectedCompany}
         sending={sending}
+      />
+
+      {/* ══ CREATE CLIENT — shared Clientdialog ══ */}
+      <Clientdialog
+        open={clientOpen}
+        onClose={() => setClientOpen(false)}
+        companySlug={selectedCompany?.companyslug}
+        companyName={selectedCompany?.name}
+        hideTrigger
+      />
+
+      {/* ══ CREATE INVOICE DIALOG (admin-style) ══ */}
+      {invoiceOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl w-full max-w-[520px] shadow-xl overflow-hidden" style={{ maxHeight: "92vh" }}>
+
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                  <FileText size={15} className="text-blue-600"/>
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-slate-900 leading-none">Generate Invoice</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">Creates a new draft invoice</p>
+                </div>
+                <button onClick={() => setInvoiceOpen(false)} className="ml-auto p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors">
+                  <X size={15}/>
+                </button>
+              </div>
+            </div>
+
+            <form onSubmit={handleCreateInvoice}>
+              <div className="px-6 py-5 space-y-4 max-h-[60vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] bg-slate-50/40">
+
+                {/* Invoice meta band */}
+                <div className="grid grid-cols-3 gap-3 p-3.5 rounded-xl bg-white border border-slate-200 shadow-sm">
+                  <div className="space-y-0.5">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider"># Invoice No.</p>
+                    <p className="text-sm font-extrabold text-blue-600">{invNumber}</p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Date</p>
+                    <p className="text-sm font-semibold text-slate-700">{invDate}</p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Company</p>
+                    <p className="text-sm font-semibold text-slate-700 truncate">{selectedCompany?.name || "—"}</p>
+                  </div>
+                </div>
+
+                {/* Client search */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
+                      <User size={12} className="text-slate-400"/> Select Client <span className="text-red-500">*</span>
+                    </label>
+                    <button type="button" onClick={() => setCreateClientOpen(true)}
+                      className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-lg border border-blue-200 transition-colors">
+                      <Plus size={10}/> Create Client
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"/>
+                    <input
+                      value={invSearch}
+                      onChange={e => {
+                        setInvSearch(e.target.value);
+                        if (invSelClient && invSelClient.clientName !== e.target.value) setInvSelClient(null);
+                      }}
+                      onBlur={() => setTimeout(() => {}, 120)}
+                      placeholder="Search client name…"
+                      className="w-full h-9 text-sm bg-white border border-slate-200 rounded-lg pl-9 pr-3 focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder:text-slate-400"
+                    />
+                    {invSearch.trim() && !invSelClient && (() => {
+                      const matched = invClients.filter(c => c.clientName?.toLowerCase().includes(invSearch.toLowerCase()));
+                      return matched.length > 0 ? (
+                        <div className="absolute z-50 bg-white border border-slate-200 w-full mt-1 rounded-xl shadow-xl max-h-48 overflow-y-auto [&::-webkit-scrollbar]:hidden">
+                          {matched.map(c => (
+                            <div key={c.id}
+                              onMouseDown={e => { e.preventDefault(); setInvSearch(c.clientName); setInvSelClient(c); }}
+                              className="px-4 py-2.5 cursor-pointer text-sm text-slate-700 hover:bg-slate-50 transition-colors">
+                              <span className="font-medium">{c.clientName}</span>
+                              <span className="text-xs text-slate-400 ml-2">({c.clientEmail})</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null;
+                    })()}
+                  </div>
+                </div>
+
+                {/* Selected client preview */}
+                {invSelClient && (
+                  <div className="p-3.5 rounded-xl bg-white border border-emerald-200 shadow-sm space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+                        <User size={13} className="text-emerald-600"/>
+                      </div>
+                      <span className="text-sm font-semibold text-slate-800">{invSelClient.clientName}</span>
+                      <span className="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">Selected</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-slate-500 ml-9">
+                      <Mail size={11} className="text-emerald-500 shrink-0"/>{invSelClient.clientEmail}
+                    </div>
+                    {invSelClient.clientAddress && (
+                      <div className="flex items-center gap-2 text-xs text-slate-500 ml-9">
+                        <MapPin size={11} className="text-emerald-500 shrink-0"/>{invSelClient.clientAddress}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Description */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
+                    <FileText size={12} className="text-slate-400"/> Description
+                  </label>
+                  <textarea name="invoiceDescription" rows={3}
+                    placeholder="Describe the services rendered…"
+                    className="w-full text-sm bg-white border border-slate-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder:text-slate-400"/>
+                </div>
+
+                {/* Amount */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
+                    <DollarSign size={12} className="text-slate-400"/> Total Amount <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-semibold">$</span>
+                    <input name="invoiceAmount" type="number" step="0.01" placeholder="0.00" required
+                      className="w-full h-9 text-sm bg-white border border-slate-200 rounded-lg pl-7 pr-3 font-semibold focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder:text-slate-400"/>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-4 border-t border-slate-100 bg-white flex items-center justify-end gap-3">
+                <button type="button" onClick={() => setInvoiceOpen(false)}
+                  className="px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">
+                  Cancel
+                </button>
+                <button type="submit" disabled={invoiceCreating}
+                  className="inline-flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm shadow-blue-200">
+                  {invoiceCreating
+                    ? <><Loader2 size={14} className="animate-spin"/> Generating…</>
+                    : <><FileText size={14}/> Save as Draft</>}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Create Client — opened from inside invoice dialog */}
+      <Clientdialog
+        open={createClientOpen}
+        onClose={() => setCreateClientOpen(false)}
+        companySlug={selectedCompany?.companyslug}
+        companyName={selectedCompany?.name}
+        hideTrigger
+        onSuccess={() => {
+          if (!selectedCompany) return;
+          axios.get(`/api/get-all-clients/${selectedCompany.companyslug}`)
+            .then(r => setInvClients(r.data.clients || []))
+            .catch(() => {});
+        }}
       />
     </div>
   );

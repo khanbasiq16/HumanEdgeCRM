@@ -9,100 +9,107 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { ArrowUpDown, ChevronDown, MoreHorizontal } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import {
+  ArrowUpDown, ChevronLeft, ChevronRight,
+  Copy, Eye, MoreHorizontal, Search, FileText,
+} from "lucide-react";
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { useParams } from "next/navigation";
 import Link from "next/link";
+import toast from "react-hot-toast";
 
-export const InvoiceTable = ({ invoices, slug , companyslug }) => {
-  const [sorting, setSorting] = React.useState([]);
-  const [columnFilters, setColumnFilters] = React.useState([]);
+const STATUS_STYLES = {
+  Draft: "bg-amber-50 text-amber-700 border-amber-200",
+  Sent:  "bg-blue-50  text-blue-700  border-blue-200",
+  Paid:  "bg-emerald-50 text-emerald-700 border-emerald-200",
+};
+
+export const InvoiceTable = ({ invoices, slug, companyslug }) => {
+  const [sorting,          setSorting]          = React.useState([]);
+  const [globalFilter,     setGlobalFilter]     = React.useState("");
   const [columnVisibility, setColumnVisibility] = React.useState({});
-  const [rowSelection, setRowSelection] = React.useState({});
+  const [rowSelection,     setRowSelection]     = React.useState({});
 
   const columns = [
     {
-      id: "select",
-      header: ({ table }) => (
-        <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && "indeterminate")
-          }
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        />
-      ),
-      cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-        />
-      ),
-      enableSorting: false,
-      enableHiding: false,
-    },
-    {
       accessorKey: "invoiceNumber",
-      header: "Invoice Number",
+      header: ({ column }) => (
+        <button
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="flex items-center gap-1 text-[11px] font-bold text-slate-500 uppercase tracking-wider hover:text-slate-700 transition-colors"
+        >
+          Invoice # <ArrowUpDown size={10} />
+        </button>
+      ),
       cell: ({ row }) => (
-        <div className="capitalize whitespace-nowrap overflow-hidden text-ellipsis">
-          {row.getValue("invoiceNumber")}
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
+            <FileText size={13} className="text-blue-500" />
+          </div>
+          <span className="font-mono text-xs font-bold text-slate-700">
+            {row.getValue("invoiceNumber")}
+          </span>
         </div>
       ),
     },
     {
+      accessorKey: "clientName",
+      header: () => (
+        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+          Client
+        </span>
+      ),
+      cell: ({ row }) => {
+        const name = row.getValue("clientName") || row.original?.client?.name || "—";
+        return (
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-full bg-violet-100 flex items-center justify-center shrink-0">
+              <span className="text-[10px] font-bold text-violet-700">
+                {name[0]?.toUpperCase() ?? "?"}
+              </span>
+            </div>
+            <span className="text-sm font-medium text-slate-700 truncate max-w-[130px]">
+              {name}
+            </span>
+          </div>
+        );
+      },
+    },
+    {
       accessorKey: "totalAmount",
       header: ({ column }) => (
-        <Button
-          variant="ghost"
+        <button
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="whitespace-nowrap"
+          className="flex items-center gap-1 text-[11px] font-bold text-slate-500 uppercase tracking-wider hover:text-slate-700 transition-colors"
         >
-          Total Amount
-          <ArrowUpDown />
-        </Button>
+          Amount <ArrowUpDown size={10} />
+        </button>
       ),
       cell: ({ row }) => (
-        <div className="whitespace-nowrap">$ {row.getValue("totalAmount")}</div>
+        <span className="text-sm font-bold text-slate-800">
+          ${Number(row.getValue("totalAmount") || 0).toLocaleString()}
+        </span>
       ),
     },
     {
       accessorKey: "status",
-      header: "Status",
+      header: () => (
+        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+          Status
+        </span>
+      ),
       cell: ({ row }) => {
-        const status = row.getValue("status");
-
-        const badgeClasses = {
-          Draft:
-            "bg-red-100 text-red-600 border border-red-300 px-2 py-1 rounded-md text-sm",
-          Sent: "bg-blue-100 text-blue-600 border border-blue-300 px-2 py-1 rounded-md text-sm",
-          Paid: "bg-green-100 text-green-600 border border-green-300 px-2 py-1 rounded-md text-sm",
-          Default:
-            "bg-gray-100 text-gray-600 border border-gray-300 px-2 py-1 rounded-md text-sm",
-        };
-
+        const status = row.getValue("status") || "Draft";
         return (
-          <span className={badgeClasses[status] || badgeClasses.Default}>
+          <span
+            className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold border ${
+              STATUS_STYLES[status] ?? "bg-slate-50 text-slate-600 border-slate-200"
+            }`}
+          >
             {status}
           </span>
         );
@@ -116,32 +123,30 @@ export const InvoiceTable = ({ invoices, slug , companyslug }) => {
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <MoreHorizontal />
-              </Button>
+              <button className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors">
+                <MoreHorizontal size={15} />
+              </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              {invoice.status != "Paid" && (
+            <DropdownMenuContent align="end" className="w-44 rounded-xl shadow-lg">
+              {invoice.status !== "Paid" && (
                 <DropdownMenuItem
-                  onClick={() =>
-                    navigator.clipboard.writeText(invoice.invoiceLink)
-                  }
+                  onClick={() => {
+                    navigator.clipboard.writeText(invoice.invoiceLink || "");
+                    toast.success("Link copied!");
+                  }}
+                  className="flex items-center gap-2 text-sm cursor-pointer rounded-lg"
                 >
-                  Copy Invoice Link
+                  <Copy size={13} className="text-slate-400" /> Copy Invoice Link
                 </DropdownMenuItem>
               )}
-
-              <DropdownMenuSeparator />
-
-              <DropdownMenuItem>
+              <DropdownMenuItem asChild className="p-0 rounded-lg">
                 <Link
                   href={`/employee/${companyslug}/company/${slug}/invoices/${invoice?.invoiceId}/invoice-details`}
+                  className="flex items-center gap-2 w-full px-2 py-1.5 text-sm"
                 >
-                  View Details
+                  <Eye size={13} className="text-slate-400" /> View Details
                 </Link>
               </DropdownMenuItem>
-              {/* <DropdownMenuItem>Edit Invoice</DropdownMenuItem> */}
             </DropdownMenuContent>
           </DropdownMenu>
         );
@@ -153,131 +158,103 @@ export const InvoiceTable = ({ invoices, slug , companyslug }) => {
     data: invoices,
     columns,
     onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
-    state: {
-      sorting,
-      columnFilters,
-      columnVisibility,
-      rowSelection,
-    },
+    globalFilterFn: "includesString",
+    onGlobalFilterChange: setGlobalFilter,
+    state: { sorting, columnVisibility, rowSelection, globalFilter },
   });
 
   return (
-    <div className="w-full ">
-      <div className="flex items-center py-4">
-        <Input
-          placeholder="Filter emails..."
-          value={table.getColumn("totalAmount")?.getFilterValue() ?? ""}
-          onChange={(event) =>
-            table.getColumn("totalAmount")?.setFilterValue(event.target.value)
-          }
-          className="max-w-sm"
+    <div className="space-y-4">
+
+      {/* Search */}
+      <div className="relative">
+        <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+        <input
+          value={globalFilter}
+          onChange={(e) => setGlobalFilter(e.target.value)}
+          placeholder="Search by invoice number, client, or amount…"
+          className="w-full pl-10 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 bg-slate-50/60 placeholder:text-slate-400 transition-all"
         />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto">
-              Columns <ChevronDown />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {table
-              .getAllColumns()
-              .filter((column) => column.getCanHide())
-              .map((column) => (
-                <DropdownMenuCheckboxItem
-                  key={column.id}
-                  className="capitalize"
-                  checked={column.getIsVisible()}
-                  onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                >
-                  {column.id}
-                </DropdownMenuCheckboxItem>
-              ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
-      <div className="overflow-hidden rounded-md border">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead
-                    key={header.id}
-                    className="whitespace-nowrap overflow-hidden text-ellipsis"
-                  >
+
+      {/* Table */}
+      <div className="overflow-hidden rounded-xl border border-slate-200">
+        <table className="w-full">
+          <thead className="bg-slate-50 border-b border-slate-200">
+            {table.getHeaderGroups().map((hg) => (
+              <tr key={hg.id}>
+                {hg.headers.map((header) => (
+                  <th key={header.id} className="px-4 py-3 text-left">
                     {header.isPlaceholder
                       ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                  </TableHead>
+                      : flexRender(header.column.columnDef.header, header.getContext())}
+                  </th>
                 ))}
-              </TableRow>
+              </tr>
             ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {table.getRowModel().rows.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow
+                <tr
                   key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
+                  className="hover:bg-slate-50/70 transition-colors"
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
+                    <td key={cell.id} className="px-4 py-3.5">
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
                   ))}
-                </TableRow>
+                </tr>
               ))
             ) : (
-              <TableRow>
-                <TableCell
+              <tr>
+                <td
                   colSpan={columns.length}
-                  className="h-24 text-center"
+                  className="text-center py-14 text-sm text-slate-400"
                 >
-                  No results.
-                </TableCell>
-              </TableRow>
+                  No invoices match your search
+                </td>
+              </tr>
             )}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       </div>
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <div className="text-muted-foreground flex-1 text-sm">
-          {table.getFilteredSelectedRowModel().rows.length} of{" "}
-          {table.getFilteredRowModel().rows.length} row(s) selected.
-        </div>
-        <div className="space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
+
+      {/* Pagination */}
+      <div className="flex items-center justify-between pt-1">
+        <p className="text-xs text-slate-400">
+          {table.getFilteredRowModel().rows.length} invoice
+          {table.getFilteredRowModel().rows.length !== 1 ? "s" : ""}
+        </p>
+        <div className="flex items-center gap-1.5">
+          <button
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
+            className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-slate-600 transition-colors"
           >
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
+            <ChevronLeft size={14} />
+          </button>
+          <span className="text-xs text-slate-500 px-2 min-w-[50px] text-center">
+            {table.getState().pagination.pageIndex + 1} / {table.getPageCount() || 1}
+          </span>
+          <button
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
+            className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-slate-600 transition-colors"
           >
-            Next
-          </Button>
+            <ChevronRight size={14} />
+          </button>
         </div>
       </div>
     </div>
   );
 };
+
 export default InvoiceTable;

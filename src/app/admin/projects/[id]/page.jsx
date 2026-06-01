@@ -8,7 +8,8 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import {
   ArrowLeft, Plus, Search, Loader2, User, Calendar, MessageSquare,
-  ChevronRight, Send, Save, CheckCircle2, Clock, AlertCircle,
+  ChevronRight, Send, Save, CheckCircle2, Users, UserPlus, X, AlertCircle,
+  Pencil, Trash2, AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,9 +37,26 @@ export default function ProjectDetailPage() {
   const [project,    setProject]    = useState(null);
   const [tasks,      setTasks]      = useState([]);
   const [employees,  setEmployees]  = useState([]);
+  const [members,    setMembers]    = useState([]);  // project team members
   const [loading,    setLoading]    = useState(true);
   const [search,     setSearch]     = useState("");
-  const [sf,         setSf]         = useState("all"); // status filter
+  const [sf,         setSf]         = useState("all");
+
+  // Edit project dialog
+  const [editOpen,   setEditOpen]   = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editForm,   setEditForm]   = useState({ title: "", description: "", priority: "medium", status: "active", deadline: "" });
+
+  // Delete project dialog
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting,   setDeleting]   = useState(false);
+
+  // Add member dialog
+  const [memberOpen,      setMemberOpen]      = useState(false);
+  const [selectedMember,  setSelectedMember]  = useState("");
+  const [addingMember,    setAddingMember]    = useState(false);
+  const [removingId,      setRemovingId]      = useState(null);
+  const [memberSearch,    setMemberSearch]    = useState("");
 
   // Create task dialog
   const [createOpen, setCreateOpen] = useState(false);
@@ -66,11 +84,101 @@ export default function ProjectDetailPage() {
         axios.get(`/api/tasks/get-by-project/${id}`),
         axios.get("/api/get-all-employees"),
       ]);
-      setProject(projRes.data.project || null);
+      const proj = projRes.data.project || null;
+      setProject(proj);
       setTasks(tasksRes.data.tasks || []);
       setEmployees(empRes.data.employees || []);
+      setMembers(proj?.members || []);
     } catch { toast.error("Failed to load project"); }
     finally   { setLoading(false); }
+  };
+
+  const openEditProject = () => {
+    setEditForm({
+      title:       project?.title || "",
+      description: project?.description || "",
+      priority:    project?.priority || "medium",
+      status:      project?.status || "active",
+      deadline:    project?.deadline || "",
+    });
+    setEditOpen(true);
+  };
+
+  const handleEditProject = async () => {
+    if (!editForm.title.trim()) return toast.error("Title is required");
+    setEditSaving(true);
+    try {
+      await axios.patch(`/api/projects/${id}`, editForm);
+      setProject((p) => ({ ...p, ...editForm }));
+      toast.success("Project updated!");
+      setEditOpen(false);
+    } catch { toast.error("Failed to update project"); }
+    finally   { setEditSaving(false); }
+  };
+
+  const handleDeleteProject = async () => {
+    setDeleting(true);
+    try {
+      await axios.delete(`/api/projects/${id}`);
+      toast.success("Project deleted");
+      router.push("/admin/projects");
+    } catch { toast.error("Failed to delete project"); }
+    finally   { setDeleting(false); }
+  };
+
+  // Employees not yet in the project
+  const availableToAdd = useMemo(() => {
+    const memberIds = new Set(members.map((m) => m.id));
+    return employees.filter((e) => !memberIds.has(e.id));
+  }, [employees, members]);
+
+  const filteredAvailable = useMemo(() => {
+    if (!memberSearch.trim()) return availableToAdd;
+    const q = memberSearch.toLowerCase();
+    return availableToAdd.filter(
+      (e) => e.employeeName?.toLowerCase().includes(q) || e.department?.toLowerCase().includes(q)
+    );
+  }, [availableToAdd, memberSearch]);
+
+  const handleAddMember = async () => {
+    if (!selectedMember) return toast.error("Please select an employee");
+    const emp = employees.find((e) => e.id === selectedMember);
+    if (!emp) return;
+    setAddingMember(true);
+    try {
+      const newMember = { id: emp.id, name: emp.employeeName, department: emp.department || "", status: "pending" };
+      const updated   = [...members, newMember];
+
+      await Promise.all([
+        axios.patch(`/api/projects/${id}`, { members: updated }),
+        axios.post("/api/employee-notifications/create", {
+          employeeId:   emp.id,
+          type:         "project_invite",
+          title:        "Project Invitation",
+          body:         `You have been invited to join "${project?.title || "a project"}". Accept to become a team member.`,
+          projectId:    id,
+          projectTitle: project?.title || "",
+        }),
+      ]);
+
+      setMembers(updated);
+      setSelectedMember("");
+      setMemberSearch("");
+      setMemberOpen(false);
+      toast.success(`Invitation sent to ${emp.employeeName}`);
+    } catch { toast.error("Failed to send invitation"); }
+    finally   { setAddingMember(false); }
+  };
+
+  const handleRemoveMember = async (memberId) => {
+    setRemovingId(memberId);
+    try {
+      const updated = members.filter((m) => m.id !== memberId);
+      await axios.patch(`/api/projects/${id}`, { members: updated });
+      setMembers(updated);
+      toast.success("Member removed");
+    } catch { toast.error("Failed to remove member"); }
+    finally   { setRemovingId(null); }
   };
 
   const handleCreateTask = async () => {
@@ -79,12 +187,14 @@ export default function ProjectDetailPage() {
     }
     setCreating(true);
     try {
-      const emp = employees.find((e) => e.id === taskForm.assignedTo);
+      const member = members.find((m) => m.id === taskForm.assignedTo);
       const res = await axios.post("/api/tasks/create", {
         ...taskForm,
+        type:           "project",
+        source:         "admin",
         projectId:      id,
         projectTitle:   project?.title || "",
-        assignedToName: emp?.employeeName || "",
+        assignedToName: member?.name || "",
         createdBy:      user?.employeeName || user?.name || "Admin",
       });
       if (res.data.success) {
@@ -199,15 +309,40 @@ export default function ProjectDetailPage() {
               </span>
             </div>
             {project?.description && (
-              <p className="text-sm text-slate-400 mt-0.5">{project.description}</p>
+              <div
+                className="text-sm text-slate-400 mt-0.5 prose prose-sm max-w-none prose-p:my-0 prose-headings:my-0"
+                dangerouslySetInnerHTML={{ __html: project.description }}
+              />
             )}
           </div>
-          <Button
-            onClick={() => setCreateOpen(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center gap-2 shrink-0"
-          >
-            <Plus size={15} /> Add Task
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={openEditProject}
+              className="p-2 rounded-xl border border-slate-200 hover:border-blue-400 hover:text-blue-600 text-slate-400 bg-white transition-all"
+              title="Edit project"
+            >
+              <Pencil size={15} />
+            </button>
+            <button
+              onClick={() => setDeleteOpen(true)}
+              className="p-2 rounded-xl border border-slate-200 hover:border-red-400 hover:text-red-500 text-slate-400 bg-white transition-all"
+              title="Delete project"
+            >
+              <Trash2 size={15} />
+            </button>
+            <Button
+              onClick={() => {
+                if (members.length === 0) {
+                  toast.error("Add at least one team member before creating tasks");
+                  return;
+                }
+                setCreateOpen(true);
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center gap-2"
+            >
+              <Plus size={15} /> Add Task
+            </Button>
+          </div>
         </div>
 
         {/* Stats */}
@@ -223,6 +358,72 @@ export default function ProjectDetailPage() {
               <p className="text-xs text-slate-400 mt-0.5">{label}</p>
             </div>
           ))}
+        </div>
+
+        {/* ── Team Members Section ───────────────────────────────── */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-5 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Users size={16} className="text-slate-500" />
+              <h2 className="text-sm font-extrabold text-slate-800">Team Members</h2>
+              <span className="text-xs bg-slate-100 text-slate-500 font-bold px-2 py-0.5 rounded-full">
+                {members.length}
+              </span>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => { setMemberOpen(true); setMemberSearch(""); setSelectedMember(""); }}
+              className="bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs h-8 px-3 flex items-center gap-1.5"
+              disabled={availableToAdd.length === 0}
+            >
+              <UserPlus size={13} /> Add Member
+            </Button>
+          </div>
+
+          {members.length === 0 ? (
+            <div className="flex flex-col items-center py-8 gap-2 bg-amber-50 rounded-xl border border-amber-200">
+              <AlertCircle size={28} className="text-amber-400" />
+              <p className="text-sm font-semibold text-amber-700">No team members yet</p>
+              <p className="text-xs text-amber-500 text-center max-w-xs">
+                Add team members to this project first. Only team members can be assigned tasks.
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {members.map((m) => {
+                const isPending = m.status === "pending";
+                return (
+                  <div
+                    key={m.id}
+                    className={`inline-flex items-center gap-2 border rounded-xl px-3 py-2 ${
+                      isPending ? "bg-amber-50 border-amber-200" : "bg-slate-50 border-slate-200"
+                    }`}
+                  >
+                    <div className={`w-6 h-6 rounded-full text-white text-[10px] font-bold flex items-center justify-center shrink-0 ${
+                      isPending ? "bg-amber-400" : "bg-blue-600"
+                    }`}>
+                      {m.name?.charAt(0)?.toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-slate-800 leading-none">{m.name}</p>
+                      <p className={`text-[10px] mt-0.5 font-medium ${isPending ? "text-amber-500" : "text-emerald-500"}`}>
+                        {isPending ? "Pending" : "Accepted"}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleRemoveMember(m.id)}
+                      disabled={removingId === m.id}
+                      className="ml-1 text-slate-300 hover:text-red-400 transition-colors disabled:opacity-50"
+                    >
+                      {removingId === m.id
+                        ? <Loader2 size={12} className="animate-spin" />
+                        : <X size={13} />}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Filters + search */}
@@ -250,6 +451,9 @@ export default function ProjectDetailPage() {
           <div className="flex flex-col items-center py-16 gap-3 bg-white rounded-2xl border border-slate-200">
             <CheckCircle2 size={36} className="text-slate-200" />
             <p className="text-slate-400 text-sm font-medium">No tasks found</p>
+            {members.length === 0 && (
+              <p className="text-xs text-amber-500 font-medium">Add team members above to start creating tasks</p>
+            )}
           </div>
         ) : (
           <div className="space-y-2">
@@ -293,6 +497,158 @@ export default function ProjectDetailPage() {
           </div>
         )}
 
+        {/* ── Edit Project Dialog ───────────────────────────────── */}
+        <Dialog open={editOpen} onOpenChange={setEditOpen}>
+          <DialogContent className="sm:max-w-md rounded-2xl p-6">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold flex items-center gap-2">
+                <Pencil size={15} className="text-blue-500" /> Edit Project
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 my-2">
+              <div>
+                <label className="text-xs font-semibold text-slate-600 block mb-1.5">Title *</label>
+                <Input className="rounded-xl border-slate-200" placeholder="Project title…"
+                  value={editForm.title} onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))} />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-600 block mb-1.5">Description</label>
+                <Textarea className="rounded-xl border-slate-200 resize-none" placeholder="What is this project about…" rows={3}
+                  value={editForm.description} onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-slate-600 block mb-1.5">Priority</label>
+                  <Select value={editForm.priority} onValueChange={(v) => setEditForm((f) => ({ ...f, priority: v }))}>
+                    <SelectTrigger className="rounded-xl border-slate-200 text-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600 block mb-1.5">Status</label>
+                  <Select value={editForm.status} onValueChange={(v) => setEditForm((f) => ({ ...f, status: v }))}>
+                    <SelectTrigger className="rounded-xl border-slate-200 text-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="on-hold">On Hold</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-600 block mb-1.5">Deadline</label>
+                <Input type="date" className="rounded-xl border-slate-200"
+                  value={editForm.deadline} onChange={(e) => setEditForm((f) => ({ ...f, deadline: e.target.value }))} />
+              </div>
+            </div>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" className="rounded-xl" onClick={() => setEditOpen(false)} disabled={editSaving}>Cancel</Button>
+              <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl" onClick={handleEditProject} disabled={editSaving}>
+                {editSaving ? <><Loader2 size={14} className="animate-spin mr-1.5" />Saving…</> : "Save Changes"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* ── Delete Project Dialog ──────────────────────────────── */}
+        <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+          <DialogContent className="sm:max-w-sm rounded-2xl p-6">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold flex items-center gap-2 text-red-600">
+                <AlertTriangle size={16} /> Delete Project
+              </DialogTitle>
+            </DialogHeader>
+            <div className="my-3 space-y-3">
+              <p className="text-sm text-slate-600">
+                Are you sure you want to delete <span className="font-bold text-slate-900">"{project?.title}"</span>?
+              </p>
+              <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+                <p className="text-xs text-red-600 font-semibold">This will permanently delete:</p>
+                <ul className="text-xs text-red-500 mt-1 space-y-0.5 list-disc list-inside">
+                  <li>The project and all its settings</li>
+                  <li>All {tasks.length} task{tasks.length !== 1 ? "s" : ""} in this project</li>
+                  <li>All team member assignments</li>
+                </ul>
+              </div>
+            </div>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" className="rounded-xl" onClick={() => setDeleteOpen(false)} disabled={deleting}>Cancel</Button>
+              <Button className="bg-red-600 hover:bg-red-700 text-white rounded-xl" onClick={handleDeleteProject} disabled={deleting}>
+                {deleting ? <><Loader2 size={14} className="animate-spin mr-1.5" />Deleting…</> : "Yes, Delete"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* ── Add Member Dialog ──────────────────────────────────── */}
+        <Dialog open={memberOpen} onOpenChange={setMemberOpen}>
+          <DialogContent className="sm:max-w-sm rounded-2xl p-6">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold flex items-center gap-2">
+                <UserPlus size={16} className="text-blue-500" /> Add Team Member
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 my-2">
+              <div className="relative">
+                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Input
+                  className="pl-8 rounded-xl border-slate-200 text-sm"
+                  placeholder="Search employees…"
+                  value={memberSearch}
+                  onChange={(e) => setMemberSearch(e.target.value)}
+                />
+              </div>
+              <div className="max-h-52 overflow-y-auto space-y-1.5 pr-0.5">
+                {filteredAvailable.length === 0 ? (
+                  <p className="text-xs text-slate-400 text-center py-6">
+                    {availableToAdd.length === 0 ? "All employees are already in this project" : "No employees match your search"}
+                  </p>
+                ) : (
+                  filteredAvailable.map((emp) => (
+                    <button
+                      key={emp.id}
+                      onClick={() => setSelectedMember(emp.id)}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left border transition-all ${
+                        selectedMember === emp.id
+                          ? "border-blue-500 bg-blue-50"
+                          : "border-slate-200 hover:border-slate-300 bg-white"
+                      }`}
+                    >
+                      <div className="w-7 h-7 rounded-full bg-slate-200 text-slate-600 text-xs font-bold flex items-center justify-center shrink-0">
+                        {emp.employeeName?.charAt(0)?.toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-slate-800 truncate">{emp.employeeName}</p>
+                        <p className="text-[10px] text-slate-400">{emp.department || "—"}</p>
+                      </div>
+                      {selectedMember === emp.id && (
+                        <CheckCircle2 size={14} className="text-blue-500 ml-auto shrink-0" />
+                      )}
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" className="rounded-xl" onClick={() => setMemberOpen(false)} disabled={addingMember}>
+                Cancel
+              </Button>
+              <Button
+                className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl"
+                onClick={handleAddMember}
+                disabled={addingMember || !selectedMember}
+              >
+                {addingMember ? <><Loader2 size={14} className="animate-spin mr-1.5" />Adding…</> : "Add Member"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* ── Create Task Dialog ─────────────────────────────────── */}
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogContent className="sm:max-w-md rounded-2xl p-6">
@@ -311,15 +667,16 @@ export default function ProjectDetailPage() {
               <div>
                 <label className="text-xs font-semibold text-slate-600 block mb-1.5">Assign To *</label>
                 <Select value={taskForm.assignedTo} onValueChange={(v) => setTaskForm((f) => ({ ...f, assignedTo: v }))}>
-                  <SelectTrigger className="rounded-xl border-slate-200 text-sm"><SelectValue placeholder="Select employee…" /></SelectTrigger>
+                  <SelectTrigger className="rounded-xl border-slate-200 text-sm"><SelectValue placeholder="Select team member…" /></SelectTrigger>
                   <SelectContent>
-                    {employees.map((emp) => (
-                      <SelectItem key={emp.id} value={emp.id}>
-                        {emp.employeeName} — {emp.department || "—"}
+                    {members.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.name} — {m.department || "—"}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-[10px] text-slate-400 mt-1">Only project team members can be assigned tasks</p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>

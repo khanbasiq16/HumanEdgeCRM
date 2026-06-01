@@ -7,7 +7,8 @@ export async function POST(req) {
   try {
     const {
       projectId, projectTitle, title, description,
-      assignedTo, assignedToName, priority, dueDate, createdBy, source,
+      assignedTo, assignedToName, priority, dueDate, taskDate,
+      createdBy, source, type,
     } = await req.json();
 
     if (!title?.trim() || !assignedTo) {
@@ -21,15 +22,18 @@ export async function POST(req) {
     const now = new Date().toISOString();
     const task = {
       id,
+      // "self" = employee personal task, "project" = admin-assigned project task
+      type:           type || (source === "employee" ? "self" : "project"),
       projectId:      projectId    || null,
       projectTitle:   projectTitle || "",
       title:          title.trim(),
       description:    description  || "",
       assignedTo,
       assignedToName: assignedToName || "",
-      source:         source || "admin",   // "employee" | "admin"
+      source:         source || "admin",
       status:         "pending",
       priority:       priority || "medium",
+      taskDate:       taskDate || null,
       dueDate:        dueDate  || null,
       createdBy:      createdBy || "Admin",
       createdAt:      now,
