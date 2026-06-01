@@ -4,7 +4,8 @@ import React, { useEffect, useState } from "react";
 import Checkin  from "@/app/utils/employees/components/attendance/Checkin";
 import CheckOut from "@/app/utils/employees/components/attendance/CheckOut";
 import { useParams } from "next/navigation";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { updateCheckIn } from "@/features/Slice/UserSlice";
 import axios from "axios";
 import toast from "react-hot-toast";
 import {
@@ -82,6 +83,7 @@ const Page = () => {
 
   const { slug } = useParams();
   const { user } = useSelector((s) => s.User);
+  const dispatch = useDispatch();
   const now      = useKarachiClock();
 
   /* ── fetch today's status ─────────────────────────────── */
@@ -95,6 +97,12 @@ const Page = () => {
         );
         setIsCheckedin(res.data.employee.isCheckedin);
         setIsCheckedout(false);
+        if (res.data.employee.isCheckedin && res.data.employee.startTime) {
+          dispatch(updateCheckIn({
+            startTime:    res.data.employee.startTime,
+            attendanceid: res.data.employee.attendanceid,
+          }));
+        }
       } catch (err) {
         toast.error(err.response?.data?.error || "Failed to fetch status");
       } finally {
