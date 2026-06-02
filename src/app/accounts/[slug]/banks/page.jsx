@@ -46,12 +46,11 @@ const page = () => {
     useEffect(() => {
         const getCurrencies = async () => {
             const res = await axios.get(`/api/admin/get-curency`);
-
             if (res.data.success) {
                 dispatch(createallCurency(res.data.currencies))
             }
-
         }
+        
         getCurrencies();
     }, [])
 

@@ -15,8 +15,9 @@ import {
   CheckCircle2, XCircle, LogIn, LogOut, SlidersHorizontal,
   Building2, Pencil,
 } from "lucide-react";
-import AssignCompanyDialog from "../dialog/AssignCompanydIalog";
-import EditEmployeeDialog  from "../dialog/EditEmployeeDialog";
+import AssignCompanyDialog    from "../dialog/AssignCompanydIalog";
+import EditEmployeeDialog     from "../dialog/EditEmployeeDialog";
+import EditAllEmployeesDialog from "../dialog/EditAllEmployeesDialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent,
@@ -90,6 +91,7 @@ export function EmployeeTable({ employees }) {
   const [assignEmployee,setAssignEmployee]= React.useState(null);
   const [editOpen,      setEditOpen]      = React.useState(false);
   const [editEmployee,  setEditEmployee]  = React.useState(null);
+  const [editAllOpen,   setEditAllOpen]   = React.useState(false);
 
   const dispatch = useDispatch();
 
@@ -565,8 +567,16 @@ export function EmployeeTable({ employees }) {
           )}
         </div>
 
-        {/* Right: export + column toggle */}
+        {/* Right: edit all + export + column toggle */}
         <div className="flex items-center gap-2 shrink-0 ml-auto">
+          <button
+            onClick={() => setEditAllOpen(true)}
+            className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-200"
+          >
+            <Pencil size={13} />
+            Edit All
+          </button>
+
           <button
             onClick={downloadSalaryExcel}
             className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200"
@@ -662,6 +672,12 @@ export function EmployeeTable({ employees }) {
           </button>
         </div>
       </div>
+
+      {/* ── Edit All Employees Dialog ── */}
+      <EditAllEmployeesDialog
+        open={editAllOpen}
+        onOpenChange={setEditAllOpen}
+      />
 
       {/* ── Assign Company Dialog ── */}
       <AssignCompanyDialog

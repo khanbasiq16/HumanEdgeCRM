@@ -7,7 +7,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import {
   ClipboardList, Search, Loader2, User, Calendar, MessageSquare,
-  ChevronRight, Send, Save,
+  ChevronRight, Send, Save, FolderKanban,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,10 +31,12 @@ const Page = () => {
   const { user } = useSelector((s) => s.User);
 
   const [tasks,          setTasks]          = useState([]);
+  const [projects,       setProjects]       = useState([]);
   const [loading,        setLoading]        = useState(true);
   const [search,         setSearch]         = useState("");
   const [sf,             setSf]             = useState("all");
   const [sourceFilter,   setSourceFilter]   = useState("all");
+  const [projectFilter,  setProjectFilter]  = useState("all");
 
   // Task detail
   const [selTask,        setSelTask]        = useState(null);
@@ -45,14 +47,18 @@ const Page = () => {
   const [savingRemark,   setSavingRemark]   = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
 
-  useEffect(() => { fetchTasks(); }, []);
+  useEffect(() => { fetchAll(); }, []);
 
-  const fetchTasks = async () => {
+  const fetchAll = async () => {
     setLoading(true);
     try {
-      const res = await axios.get("/api/tasks/get-all");
-      setTasks(res.data.tasks || []);
-    } catch { toast.error("Failed to load tasks"); }
+      const [tasksRes, projectsRes] = await Promise.all([
+        axios.get("/api/tasks/get-all"),
+        axios.get("/api/projects/get-all"),
+      ]);
+      setTasks(tasksRes.data.tasks || []);
+      setProjects(projectsRes.data.projects || []);
+    } catch { toast.error("Failed to load data"); }
     finally   { setLoading(false); }
   };
 
@@ -119,8 +125,9 @@ const Page = () => {
 
   const filtered = useMemo(() => {
     let list = tasks;
-    if (sf !== "all")           list = list.filter((t) => t.status === sf);
-    if (sourceFilter !== "all") list = list.filter((t) => t.source === sourceFilter);
+    if (sf !== "all")              list = list.filter((t) => t.status === sf);
+    if (sourceFilter !== "all")    list = list.filter((t) => t.source === sourceFilter);
+    if (projectFilter !== "all")   list = list.filter((t) => t.projectId === projectFilter);
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter((t) =>
@@ -130,7 +137,7 @@ const Page = () => {
       );
     }
     return list;
-  }, [tasks, sf, sourceFilter, search]);
+  }, [tasks, sf, sourceFilter, projectFilter, search]);
 
   return (
     <SuperAdminlayout>
@@ -161,55 +168,101 @@ const Page = () => {
         </div>
 
         {/* Filters row */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-5">
-          <div className="flex gap-2 flex-wrap">
-            {[
-              ["all", "All"],
-              ["pending", "Pending"],
-              ["in-progress", "In Progress"],
-              ["working", "Working"],
-              ["completed", "Completed"],
-            ].map(([v, l]) => (
+        <div className="flex flex-col gap-3 mb-5">
+
+          {/* Row 1: Project dropdown */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2 shrink-0">
+              <FolderKanban size={15} className="text-slate-400" />
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Project</span>
+            </div>
+            <Select value={projectFilter} onValueChange={setProjectFilter}>
+              <SelectTrigger className="w-64 h-9 rounded-xl border-slate-200 bg-white text-sm font-semibold text-slate-700">
+                <SelectValue placeholder="All Projects" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl max-h-64">
+                <SelectItem value="all" className="text-sm font-semibold">
+                  All Projects
+                </SelectItem>
+                {projects.map((p) => (
+                  <SelectItem key={p.id} value={p.id} className="text-sm">
+                    <span className="flex items-center gap-2">
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                        p.status === "active" ? "bg-blue-500" :
+                        p.status === "completed" ? "bg-emerald-500" : "bg-amber-500"
+                      }`} />
+                      {p.title}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {projectFilter !== "all" && (
               <button
-                key={v}
-                onClick={() => setSf(v)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
-                  sf === v
-                    ? "bg-blue-600 text-white border-blue-600"
-                    : "bg-white text-slate-600 border-slate-200 hover:border-blue-300"
-                }`}
+                onClick={() => setProjectFilter("all")}
+                className="text-xs text-slate-400 hover:text-slate-700 underline underline-offset-2"
               >
-                {l}
+                Clear
               </button>
-            ))}
+            )}
+            {projectFilter !== "all" && (
+              <span className="text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-lg">
+                {filtered.length} task{filtered.length !== 1 ? "s" : ""} in this project
+              </span>
+            )}
           </div>
 
-          <div className="flex gap-2 sm:ml-auto items-center flex-wrap">
-            {/* Source filter */}
-            <div className="flex gap-1.5">
-              {[["all", "All Sources"], ["admin", "Admin"], ["employee", "Self"]].map(([v, l]) => (
+          {/* Row 2: Status + Source + Search */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex gap-2 flex-wrap">
+              {[
+                ["all", "All"],
+                ["pending", "Pending"],
+                ["in-progress", "In Progress"],
+                ["working", "Working"],
+                ["completed", "Completed"],
+              ].map(([v, l]) => (
                 <button
                   key={v}
-                  onClick={() => setSourceFilter(v)}
+                  onClick={() => setSf(v)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
-                    sourceFilter === v
-                      ? "bg-violet-600 text-white border-violet-600"
-                      : "bg-white text-slate-600 border-slate-200 hover:border-violet-300"
+                    sf === v
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "bg-white text-slate-600 border-slate-200 hover:border-blue-300"
                   }`}
                 >
                   {l}
                 </button>
               ))}
             </div>
-            {/* Search */}
-            <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <Input
-                className="pl-8 rounded-xl border-slate-200 text-sm w-full sm:w-52"
-                placeholder="Search tasks or employee…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
+
+            <div className="flex gap-2 sm:ml-auto items-center flex-wrap">
+              {/* Source filter */}
+              <div className="flex gap-1.5">
+                {[["all", "All Sources"], ["admin", "Admin"], ["employee", "Self"]].map(([v, l]) => (
+                  <button
+                    key={v}
+                    onClick={() => setSourceFilter(v)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
+                      sourceFilter === v
+                        ? "bg-violet-600 text-white border-violet-600"
+                        : "bg-white text-slate-600 border-slate-200 hover:border-violet-300"
+                    }`}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
+              {/* Search */}
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Input
+                  className="pl-8 rounded-xl border-slate-200 text-sm w-full sm:w-52"
+                  placeholder="Search tasks or employee…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
             </div>
           </div>
         </div>
