@@ -3,6 +3,8 @@
 import React, { useState } from "react";
 import Employeelayout from "@/app/utils/employees/layout/Employeelayout";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import toast   from "react-hot-toast";
 import axios   from "axios";
 import { useDispatch, useSelector } from "react-redux";
@@ -10,7 +12,43 @@ import { UpdateUser } from "@/features/Slice/UserSlice";
 import {
   User, Shield, Bell, Lock, Eye, EyeOff, RefreshCcw,
   Save, Mail, Phone, Loader2, Check, ChevronRight, Building2, Hash, Briefcase,
+  Landmark, CreditCard, ChevronsUpDown,
 } from "lucide-react";
+
+/* ── bank list ────────────────────────────────────────────── */
+const BANKS = [
+  { name: "National Bank of Pakistan",         code: "NBP"   },
+  { name: "NayaPay",                            code: "NAYAP" },
+  { name: "SadaPay",                            code: "SADAP" },
+  { name: "SINDH BANK",                         code: "SDB"   },
+  { name: "Summit Bank Limited",                code: "SUM"   },
+  { name: "CITI BANK N A",                      code: "CITI"  },
+  { name: "ALLIED BANK LTD",                    code: "ABL"   },
+  { name: "BANK AL FALAH LIMITED",              code: "BAL"   },
+  { name: "ASKARI BANK LTD",                    code: "ACB"   },
+  { name: "BANK AL HABIB LTD",                  code: "BAH"   },
+  { name: "BANK ISLAMI PAKISTAN LTD",           code: "BIL"   },
+  { name: "THE BANK OF PUNJAB",                 code: "TBP"   },
+  { name: "DUBAI ISLAMIC BANK PAK LTD",         code: "DBI"   },
+  { name: "AL BARAKA BANK (PAKISTAN) LTD",      code: "ABS"   },
+  { name: "HABIB BANK LIMITED",                 code: "HBL"   },
+  { name: "J.S.BANK LIMITED",                   code: "JSB"   },
+  { name: "KHUSHALI BANK LIMITED",              code: "KBL"   },
+  { name: "THE BANK OF KHYBER LTD",             code: "TBK"   },
+  { name: "SAMBA BANK LIMITED",                 code: "SMB"   },
+  { name: "MCB ISLAMIC BANK",                   code: "MCBIS" },
+  { name: "MEEZAN BANK LIMITED",                code: "MBL"   },
+  { name: "HABIB METROPOLITAN BANK LTD",        code: "MPB"   },
+  { name: "MCB Bank Ltd.",                      code: "MCB"   },
+  { name: "NRSP Microfinance Bank",             code: "NRSP"  },
+  { name: "SILKBANK LIMITED",                   code: "SLK"   },
+  { name: "ST. CHARTERED BANK PAKISTAN",        code: "SCB"   },
+  { name: "SONERI BANK LTD.",                   code: "SBL"   },
+  { name: "TELENOR MICRO FINANCE BANK LIMITED", code: "TBL"   },
+  { name: "U Microfinance Bank Ltd",            code: "UBANK" },
+  { name: "UNITED BANK LIMITED",                code: "UBL"   },
+  { name: "Mobilink Micro Finance Bank Ltd",    code: "MOBIM" },
+];
 
 /* ── helpers ──────────────────────────────────────────────── */
 const getInitials = (name) =>
@@ -47,7 +85,7 @@ const pwStrength = (pw) => {
   return             { score: s, label: "Strong", color: "bg-emerald-500" };
 };
 
-/* ── reusable section header (matches admin theme) ────────── */
+/* ── reusable section header ──────────────────────────────── */
 const SectionHeader = ({ icon: Icon, title, action }) => (
   <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
     <div className="flex items-center gap-2">
@@ -58,14 +96,12 @@ const SectionHeader = ({ icon: Icon, title, action }) => (
   </div>
 );
 
-/* ── form field label ─────────────────────────────────────── */
 const FieldLabel = ({ children }) => (
   <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
     {children}
   </p>
 );
 
-/* ── password field ───────────────────────────────────────── */
 const PwField = ({ label, value, show, onToggle, onChange, placeholder }) => (
   <div>
     <FieldLabel>{label}</FieldLabel>
@@ -90,9 +126,10 @@ const PwField = ({ label, value, show, onToggle, onChange, placeholder }) => (
 
 /* ── nav items ────────────────────────────────────────────── */
 const NAV_ITEMS = [
-  { id: "profile",       icon: User,   label: "Profile"       },
-  { id: "security",      icon: Shield, label: "Security"      },
-  { id: "notifications", icon: Bell,   label: "Notifications" },
+  { id: "profile",       icon: User,    label: "Profile"      },
+  { id: "bank",          icon: Landmark,label: "Bank Details" },
+  { id: "security",      icon: Shield,  label: "Security"     },
+  { id: "notifications", icon: Bell,    label: "Notifications"},
 ];
 
 /* ══════════════════════════════════════════════════════════ */
@@ -112,6 +149,15 @@ const EmployeeSettings = () => {
     designation:     user?.designation     || "",
   });
   const [profileLoading, setProfileLoading] = useState(false);
+
+  /* bank */
+  const [bank, setBank] = useState({
+    bankName:          user?.bankName          || "",
+    bankCode:          user?.bankCode          || "",
+    bankAccountNumber: user?.bankAccountNumber || "",
+  });
+  const [bankOpen,    setBankOpen]    = useState(false);
+  const [bankLoading, setBankLoading] = useState(false);
 
   /* password */
   const [pw, setPw]           = useState({ old: "", new: "", confirm: "" });
@@ -139,6 +185,27 @@ const EmployeeSettings = () => {
     finally   { setProfileLoading(false); }
   };
 
+  const handleBankSelect = (bankName) => {
+    const found = BANKS.find((b) => b.name === bankName);
+    setBank((b) => ({ ...b, bankName, bankCode: found?.code || "" }));
+    setBankOpen(false);
+  };
+
+  const saveBank = async (e) => {
+    e.preventDefault();
+    if (!bank.bankName) return toast.error("Please select a bank");
+    if (!bank.bankAccountNumber) return toast.error("Please enter account number");
+    setBankLoading(true);
+    try {
+      const res = await axios.post(`/api/employee/update-employee/${user.employeeId}`, bank);
+      if (res.data.success) {
+        toast.success("Bank details updated successfully");
+        dispatch(UpdateUser(res.data.employee));
+      }
+    } catch { toast.error("Failed to update bank details"); }
+    finally   { setBankLoading(false); }
+  };
+
   const savePassword = async (e) => {
     e.preventDefault();
     if (pw.new !== pw.confirm) return toast.error("Passwords do not match");
@@ -156,6 +223,8 @@ const EmployeeSettings = () => {
     finally      { setPwLoading(false); }
   };
 
+  const inputCls = "h-9 rounded-xl border-slate-200 bg-slate-50 text-sm focus-visible:ring-blue-500 focus-visible:ring-1";
+
   /* ── render ───────────────────────────────────────────── */
   return (
     <Employeelayout>
@@ -165,7 +234,7 @@ const EmployeeSettings = () => {
         <div>
           <h1 className="text-xl font-extrabold text-slate-900">Settings</h1>
           <p className="text-sm text-slate-400 mt-0.5">
-            Manage your profile, security, and preferences
+            Manage your profile, bank details, security, and preferences
           </p>
         </div>
 
@@ -261,35 +330,31 @@ const EmployeeSettings = () => {
                     <div>
                       <FieldLabel>Full Name</FieldLabel>
                       <Input name="employeeName" value={profile.employeeName} onChange={onProfileChange}
-                        placeholder="Your full name"
-                        className="h-9 rounded-xl border-slate-200 bg-slate-50 text-sm focus-visible:ring-blue-500 focus-visible:ring-1" />
+                        placeholder="Your full name" className={inputCls} />
                     </div>
 
                     <div>
                       <FieldLabel>Email Address</FieldLabel>
                       <Input type="email" name="employeeemail" value={profile.employeeemail} onChange={onProfileChange}
-                        placeholder="you@company.com"
-                        className="h-9 rounded-xl border-slate-200 bg-slate-50 text-sm focus-visible:ring-blue-500 focus-visible:ring-1" />
+                        placeholder="you@company.com" className={inputCls} />
                     </div>
 
                     <div>
                       <FieldLabel>Phone Number</FieldLabel>
                       <Input name="employeePhone" value={profile.employeePhone} onChange={onProfileChange}
-                        placeholder="+92 300 0000000"
-                        className="h-9 rounded-xl border-slate-200 bg-slate-50 text-sm focus-visible:ring-blue-500 focus-visible:ring-1" />
+                        placeholder="+92 300 0000000" className={inputCls} />
                     </div>
 
                     <div>
                       <FieldLabel>CNIC</FieldLabel>
                       <Input name="employeeCNIC" value={profile.employeeCNIC} onChange={onProfileChange}
-                        placeholder="00000-0000000-0"
-                        className="h-9 rounded-xl border-slate-200 bg-slate-50 text-sm focus-visible:ring-blue-500 focus-visible:ring-1" />
+                        placeholder="00000-0000000-0" className={inputCls} />
                     </div>
 
                     <div>
                       <FieldLabel>Date of Joining</FieldLabel>
                       <Input type="date" name="dateOfJoining" value={profile.dateOfJoining} onChange={onProfileChange}
-                        className="h-9 rounded-xl border-slate-200 bg-slate-50 text-sm focus-visible:ring-blue-500 focus-visible:ring-1" />
+                        className={inputCls} />
                     </div>
 
                     <div>
@@ -299,15 +364,13 @@ const EmployeeSettings = () => {
                         </span>
                       </FieldLabel>
                       <Input name="designation" value={profile.designation} onChange={onProfileChange}
-                        placeholder="e.g. Software Engineer"
-                        className="h-9 rounded-xl border-slate-200 bg-slate-50 text-sm focus-visible:ring-blue-500 focus-visible:ring-1" />
+                        placeholder="e.g. Software Engineer" className={inputCls} />
                     </div>
 
-                    <div>
+                    <div className="sm:col-span-2">
                       <FieldLabel>Home Address</FieldLabel>
                       <Input name="employeeAddress" value={profile.employeeAddress} onChange={onProfileChange}
-                        placeholder="Street, City"
-                        className="h-9 rounded-xl border-slate-200 bg-slate-50 text-sm focus-visible:ring-blue-500 focus-visible:ring-1" />
+                        placeholder="Street, City" className={inputCls} />
                     </div>
 
                   </div>
@@ -321,6 +384,120 @@ const EmployeeSettings = () => {
                       {profileLoading
                         ? <><Loader2 size={13} className="animate-spin" />Saving…</>
                         : <><Save size={13} />Save Changes</>}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* ══ BANK DETAILS ═════════════════════════════ */}
+            {tab === "bank" && (
+              <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden">
+                <SectionHeader icon={Landmark} title="Bank Details" />
+
+                {/* Current bank info strip */}
+                {user?.bankName && (
+                  <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-4">
+                    <div className="w-11 h-11 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center shrink-0">
+                      <Landmark size={18} className="text-emerald-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-slate-800">{user.bankName}</p>
+                      <div className="flex items-center gap-3 mt-0.5">
+                        <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                          {user.bankCode || "—"}
+                        </span>
+                        <span className="flex items-center gap-1 text-xs text-slate-400 font-mono">
+                          <CreditCard size={11} className="text-slate-300" />
+                          {user.bankAccountNumber || "—"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <form onSubmit={saveBank} className="p-5 space-y-4">
+
+                  {/* Bank name searchable dropdown */}
+                  <div>
+                    <FieldLabel>Bank Name</FieldLabel>
+                    <Popover open={bankOpen} onOpenChange={setBankOpen}>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          className={`${inputCls} w-full flex items-center justify-between px-3 border border-slate-200`}
+                        >
+                          <span className={bank.bankName ? "text-slate-800 flex-1 truncate text-sm" : "text-slate-400 flex-1 text-sm"}>
+                            {bank.bankName || "Search & select your bank…"}
+                          </span>
+                          <ChevronsUpDown size={13} className="text-slate-400 shrink-0 ml-2" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        className="p-0 rounded-xl shadow-lg"
+                        align="start"
+                        style={{ width: "var(--radix-popover-trigger-width)" }}
+                      >
+                        <Command>
+                          <CommandInput placeholder="Search bank…" className="h-9 text-sm" />
+                          <CommandList className="max-h-52">
+                            <CommandEmpty className="py-4 text-center text-sm text-slate-400">No bank found.</CommandEmpty>
+                            <CommandGroup>
+                              {BANKS.map((b) => (
+                                <CommandItem
+                                  key={b.code}
+                                  value={b.name}
+                                  onSelect={() => handleBankSelect(b.name)}
+                                  className="flex items-center justify-between text-sm px-3 py-2 cursor-pointer"
+                                >
+                                  <span>{b.name}</span>
+                                  <span className="text-[11px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">{b.code}</span>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  {/* Bank code – readonly, auto-filled */}
+                  <div>
+                    <FieldLabel>Bank Code</FieldLabel>
+                    <div className="relative">
+                      <Hash size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                      <Input
+                        value={bank.bankCode}
+                        readOnly
+                        placeholder="Auto-filled from bank selection"
+                        className={`${inputCls} pl-8 bg-slate-100 text-slate-500 cursor-not-allowed`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Account number */}
+                  <div>
+                    <FieldLabel>Account Number / IBAN</FieldLabel>
+                    <div className="relative">
+                      <CreditCard size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                      <Input
+                        value={bank.bankAccountNumber}
+                        onChange={(e) => setBank((b) => ({ ...b, bankAccountNumber: e.target.value }))}
+                        placeholder="e.g. 1234567890 or PK00XXXX…"
+                        className={`${inputCls} pl-8`}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-4 border-t border-slate-100">
+                    <button
+                      type="submit"
+                      disabled={bankLoading}
+                      className="inline-flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white text-sm font-bold rounded-xl transition-colors"
+                    >
+                      {bankLoading
+                        ? <><Loader2 size={13} className="animate-spin" />Saving…</>
+                        : <><Save size={13} />Save Bank Details</>}
                     </button>
                   </div>
                 </form>
@@ -350,7 +527,6 @@ const EmployeeSettings = () => {
 
                 <form onSubmit={savePassword} className="p-5 space-y-4">
 
-                  {/* info banner */}
                   <div className="flex items-start gap-3 p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
                     <Lock size={14} className="text-slate-400 mt-0.5 shrink-0" />
                     <p className="text-xs text-slate-500 leading-relaxed">
@@ -370,7 +546,6 @@ const EmployeeSettings = () => {
                     onChange={(e) => setPw((d) => ({ ...d, new: e.target.value }))}
                     placeholder="Enter new password" />
 
-                  {/* Strength bar */}
                   {pw.new && (
                     <div className="space-y-1.5 -mt-2">
                       <div className="flex gap-1">
@@ -397,7 +572,6 @@ const EmployeeSettings = () => {
                     onChange={(e) => setPw((d) => ({ ...d, confirm: e.target.value }))}
                     placeholder="Confirm new password" />
 
-                  {/* Match indicator */}
                   {pw.confirm && (
                     <p className={`text-[11px] font-semibold flex items-center gap-1 -mt-2
                       ${pw.new === pw.confirm ? "text-emerald-600" : "text-red-500"}`}>
@@ -429,20 +603,8 @@ const EmployeeSettings = () => {
 
                 <div className="p-5 space-y-3">
                   {[
-                    {
-                      id:    "email",
-                      icon:  Mail,
-                      label: "Email Notifications",
-                      sub:   "Receive alerts and updates via email",
-                      accent:"bg-blue-50 text-blue-500",
-                    },
-                    {
-                      id:    "sms",
-                      icon:  Phone,
-                      label: "SMS Alerts",
-                      sub:   "Get text messages for critical events",
-                      accent:"bg-emerald-50 text-emerald-500",
-                    },
+                    { id: "email", icon: Mail,  label: "Email Notifications", sub: "Receive alerts and updates via email",     accent: "bg-blue-50 text-blue-500"    },
+                    { id: "sms",   icon: Phone, label: "SMS Alerts",           sub: "Get text messages for critical events",    accent: "bg-emerald-50 text-emerald-500" },
                   ].map(({ id, icon: Icon, label, sub, accent }) => (
                     <div key={id}
                       className="flex items-center justify-between p-4 rounded-xl bg-slate-50 border border-slate-200/80 hover:border-slate-300 transition-colors"
@@ -456,8 +618,6 @@ const EmployeeSettings = () => {
                           <p className="text-xs text-slate-400 mt-0.5">{sub}</p>
                         </div>
                       </div>
-
-                      {/* Toggle */}
                       <button
                         type="button"
                         onClick={() => setNotifs((n) => ({ ...n, [id]: !n[id] }))}
