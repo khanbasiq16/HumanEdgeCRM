@@ -60,9 +60,9 @@ const page = () => {
                 const res = await axios.get("/api/get-maincompanies");
 
                 if (res.data.success) {
-
                     dispatch(createcompany(res.data.companies))
                 }
+                
             } catch (error) {
                 console.error("Error fetching companies:", error);
             }
