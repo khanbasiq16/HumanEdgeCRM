@@ -47,7 +47,7 @@ const Sidebar = ({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) => {
 
   const attendanceSubLinks = [
     { href: "/admin/attendance",        label: "All Employee Attendance" },
-    { href: "/admin/attendance/report", label: "Reports"                 },
+    { href: "/admin/attendance/report", label: "Salary Report"            },
   ];
 
   const dashboardLinks = allDashboardLinks.filter((l) => l.perm === null || can(l.perm));

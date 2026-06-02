@@ -5,16 +5,21 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { useDispatch, useSelector } from "react-redux";
 import {
-  Eye, EyeOff, KeyRound, User, Mail, Phone, CreditCard, MapPin,
-  Building2, Layers, DollarSign, Clock, Calendar, Lock, Loader2,
+  Eye, EyeOff, KeyRound, User, Mail, CreditCard, MapPin,
+  Building2, Layers, Clock, Calendar, Lock, Loader2,
   ArrowRight, ArrowLeft, CheckCircle2, ClipboardCheck, BarChart3,
-  FileText, UserPlus, Briefcase,
+  FileText, UserPlus, Briefcase, Landmark, Hash,
 } from "lucide-react";
+import PhoneInput from "react-phone-number-input";
+import "react-phone-number-input/style.css";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { ChevronsUpDown } from "lucide-react";
 import { createcompany } from "@/features/Slice/CompanySlice";
 import { createdepartment } from "@/features/Slice/DepartmentSlice";
 import { useRouter } from "next/navigation";
@@ -32,30 +37,66 @@ const FEATURES = [
   { icon: Clock,          text: "Access payslips & salary details"    },
 ];
 
-const STEPS = ["Personal Info", "Employment", "Security"];
+const STEPS = ["Personal Info", "Employment", "Bank & ID", "Security"];
+
+const BANKS = [
+  { name: "National Bank of Pakistan",       code: "NBP"   },
+  { name: "NayaPay",                          code: "NAYAP" },
+  { name: "SadaPay",                          code: "SADAP" },
+  { name: "SINDH BANK",                       code: "SDB"   },
+  { name: "Summit Bank Limited",              code: "SUM"   },
+  { name: "CITI BANK N A",                    code: "CITI"  },
+  { name: "ALLIED BANK LTD",                  code: "ABL"   },
+  { name: "BANK AL FALAH LIMITED",            code: "BAL"   },
+  { name: "ASKARI BANK LTD",                  code: "ACB"   },
+  { name: "BANK AL HABIB LTD",               code: "BAH"   },
+  { name: "BANK ISLAMI PAKISTAN LTD",         code: "BIL"   },
+  { name: "THE BANK OF PUNJAB",               code: "TBP"   },
+  { name: "DUBAI ISLAMIC BANK PAK LTD",       code: "DBI"   },
+  { name: "AL BARAKA BANK (PAKISTAN) LTD",    code: "ABS"   },
+  { name: "HABIB BANK LIMITED",               code: "HBL"   },
+  { name: "J.S.BANK LIMITED",                 code: "JSB"   },
+  { name: "KHUSHALI BANK LIMITED",            code: "KBL"   },
+  { name: "THE BANK OF KHYBER LTD",          code: "TBK"   },
+  { name: "SAMBA BANK LIMITED",               code: "SMB"   },
+  { name: "MCB ISLAMIC BANK",                 code: "MCBIS" },
+  { name: "MEEZAN BANK LIMITED",              code: "MBL"   },
+  { name: "HABIB METROPOLITAN BANK LTD",      code: "MPB"   },
+  { name: "MCB Bank Ltd.",                    code: "MCB"   },
+  { name: "NRSP Microfinance Bank",           code: "NRSP"  },
+  { name: "SILKBANK LIMITED",                 code: "SLK"   },
+  { name: "ST. CHARTERED BANK PAKISTAN",      code: "SCB"   },
+  { name: "SONERI BANK LTD.",                 code: "SBL"   },
+  { name: "TELENOR MICRO FINANCE BANK LIMITED", code: "TBL" },
+  { name: "U Microfinance Bank Ltd",          code: "UBANK" },
+  { name: "UNITED BANK LIMITED",              code: "UBL"   },
+  { name: "Mobilink Micro Finance Bank Ltd",  code: "MOBIM" },
+];
 
 /* ── Step Indicator ── */
 const StepBar = ({ current }) => (
-  <div className="flex items-center gap-0 mb-8">
+  <div className="flex items-center mb-8 pt-1">
     {STEPS.map((label, i) => {
-      const done    = i < current;
-      const active  = i === current;
+      const done   = i < current;
+      const active = i === current;
       return (
         <React.Fragment key={label}>
-          <div className="flex flex-col items-center gap-1 shrink-0">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all ${
+          <div className="flex flex-col items-center gap-1 shrink-0 min-w-0">
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black transition-all ${
               done   ? "bg-blue-600 text-white" :
-              active ? "bg-blue-600 text-white ring-4 ring-blue-100" :
+              active ? "bg-blue-600 text-white ring-[3px] ring-blue-100 ring-offset-1" :
                        "bg-slate-100 text-slate-400"
             }`}>
-              {done ? <CheckCircle2 size={14} /> : i + 1}
+              {done ? <CheckCircle2 size={12} /> : i + 1}
             </div>
-            <span className={`text-[10px] font-bold uppercase tracking-wider ${active ? "text-blue-600" : done ? "text-slate-500" : "text-slate-300"}`}>
+            <span className={`text-[9px] font-bold uppercase tracking-wide leading-none text-center ${
+              active ? "text-blue-600" : done ? "text-slate-500" : "text-slate-300"
+            }`}>
               {label}
             </span>
           </div>
           {i < STEPS.length - 1 && (
-            <div className={`flex-1 h-0.5 mb-4 mx-1 transition-all ${i < current ? "bg-blue-600" : "bg-slate-100"}`} />
+            <div className={`flex-1 h-px mx-1.5 mb-3.5 transition-all ${i < current ? "bg-blue-600" : "bg-slate-200"}`} />
           )}
         </React.Fragment>
       );
@@ -74,12 +115,17 @@ export default function EmployeeRegisterPage() {
   const [passwordError,      setPasswordError]      = useState("");
   const [selectedDepartment, setSelectedDepartment] = useState("");
   const [selectedCompanyId,  setSelectedCompanyId]  = useState("");
+  const [selectedBankName,   setSelectedBankName]   = useState("");
+  const [bankCode,           setBankCode]           = useState("");
+  const [bankOpen,           setBankOpen]           = useState(false);
+  const [phoneValue,         setPhoneValue]         = useState("");
   const [success,            setSuccess]            = useState(null);
+  const [fieldErrors,        setFieldErrors]        = useState({ email: "", cnic: "", accountNumber: "" });
   const [form,               setForm]               = useState({
     employeeName: "", employeeemail: "", employeePhone: "",
     employeeCNIC: "", employeeAddress: "", employeeSalary: "",
     totalWorkingHours: "", dateOfJoining: "", salesTarget: "",
-    designation: "",
+    designation: "", bankAccountNumber: "",
   });
 
   const router   = useRouter();
@@ -108,6 +154,43 @@ export default function EmployeeRegisterPage() {
 
   const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
+  const handleBankSelect = (bankName) => {
+    const bank = BANKS.find((b) => b.name === bankName);
+    setSelectedBankName(bankName);
+    setBankCode(bank?.code || "");
+  };
+
+  const setFieldError = (key, msg) =>
+    setFieldErrors((p) => ({ ...p, [key]: msg }));
+
+  const handleEmailChange = (e) => {
+    const v = e.target.value;
+    setForm((p) => ({ ...p, employeeemail: v }));
+    if (!v) { setFieldError("email", ""); return; }
+    const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+    setFieldError("email", valid ? "" : "Enter a valid email address");
+  };
+
+  const handleCNICChange = (e) => {
+    // Auto-format: XXXXX-XXXXXXX-X
+    let raw = e.target.value.replace(/\D/g, "").slice(0, 13);
+    let formatted = raw;
+    if (raw.length > 5)  formatted = raw.slice(0, 5) + "-" + raw.slice(5);
+    if (raw.length > 12) formatted = raw.slice(0, 5) + "-" + raw.slice(5, 12) + "-" + raw.slice(12);
+    setForm((p) => ({ ...p, employeeCNIC: formatted }));
+    const valid = /^\d{5}-\d{7}-\d$/.test(formatted);
+    setFieldError("cnic", raw.length === 0 ? "" : valid ? "" : "Format must be XXXXX-XXXXXXX-X");
+  };
+
+  const handleAccountNumberChange = (e) => {
+    const v = e.target.value.replace(/\D/g, ""); // only digits
+    setForm((p) => ({ ...p, bankAccountNumber: v }));
+    if (!v) { setFieldError("accountNumber", ""); return; }
+    if (v.length < 10) setFieldError("accountNumber", "Account number must be at least 10 digits");
+    else if (v.length > 24) setFieldError("accountNumber", "Account number too long");
+    else setFieldError("accountNumber", "");
+  };
+
   const validatePassword = (v) => {
     if (v.length < 6)  return setPasswordError("Minimum 6 characters required.");
     if (!/\d/.test(v)) return setPasswordError("Must contain at least one number.");
@@ -126,18 +209,25 @@ export default function EmployeeRegisterPage() {
   /* Step validation before advancing */
   const validateStep = () => {
     if (step === 0) {
-      if (!form.employeeName.trim())    return toast.error("Name is required");
-      if (!form.employeeemail.trim())   return toast.error("Email is required");
-      if (!form.employeePhone.trim())   return toast.error("Phone is required");
-      if (!form.employeeCNIC.trim())    return toast.error("CNIC is required");
-      if (!form.employeeAddress.trim()) return toast.error("Address is required");
+      if (!form.employeeName.trim())  return toast.error("Name is required");
+      if (!form.employeeemail.trim()) return toast.error("Email is required");
+      if (fieldErrors.email)          return toast.error(fieldErrors.email);
+      if (!phoneValue)                return toast.error("Phone number is required");
     }
     if (step === 1) {
-      if (!selectedCompanyId)           return toast.error("Select a company");
-      if (!selectedDepartment)          return toast.error("Select a department");
-      if (!form.designation.trim())      return toast.error("Designation is required");
-      if (!form.employeeSalary)         return toast.error("Salary is required");
-      if (!form.dateOfJoining)          return toast.error("Joining date is required");
+      if (!selectedCompanyId)         return toast.error("Select a company");
+      if (!selectedDepartment)        return toast.error("Select a department");
+      if (!form.designation.trim())   return toast.error("Designation is required");
+      if (!form.employeeSalary)       return toast.error("Salary is required");
+      if (!form.dateOfJoining)        return toast.error("Joining date is required");
+    }
+    if (step === 2) {
+      if (!form.employeeCNIC.trim())       return toast.error("CNIC is required");
+      if (fieldErrors.cnic)                return toast.error(fieldErrors.cnic);
+      if (!form.employeeAddress.trim())    return toast.error("Address is required");
+      if (!selectedBankName)               return toast.error("Select a bank");
+      if (!form.bankAccountNumber.trim())  return toast.error("Account number is required");
+      if (fieldErrors.accountNumber)       return toast.error(fieldErrors.accountNumber);
     }
     return true;
   };
@@ -150,18 +240,21 @@ export default function EmployeeRegisterPage() {
     setLoading(true);
     try {
       const res = await axios.post("/api/create-employee", {
-        companyIds:        [selectedCompanyId],
-        employeeName:      form.employeeName,
-        employeeAddress:   form.employeeAddress,
-        employeeemail:     form.employeeemail,
-        employeepassword:  password,
-        employeePhone:     form.employeePhone,
-        employeeCNIC:      form.employeeCNIC,
-        employeeSalary:    form.employeeSalary,
-        department:        selectedDepartment,
-        designation:       form.designation,
-        totalWorkingHours: form.totalWorkingHours,
-        dateOfJoining:     form.dateOfJoining,
+        companyIds:         [selectedCompanyId],
+        employeeName:       form.employeeName,
+        employeeAddress:    form.employeeAddress,
+        employeeemail:      form.employeeemail,
+        employeepassword:   password,
+        employeePhone:      phoneValue,
+        employeeCNIC:       form.employeeCNIC,
+        employeeSalary:     form.employeeSalary,
+        department:         selectedDepartment,
+        designation:        form.designation,
+        totalWorkingHours:  form.totalWorkingHours,
+        dateOfJoining:      form.dateOfJoining,
+        bankName:           selectedBankName,
+        bankCode:           bankCode,
+        bankAccountNumber:  form.bankAccountNumber,
         ...(selectedDepartment === "Sales" && { salesTarget: form.salesTarget }),
       });
       if (res.data.success) setSuccess({ name: form.employeeName, email: form.employeeemail });
@@ -315,29 +408,30 @@ export default function EmployeeRegisterPage() {
                     <Label className={labelCls}>Email Address</Label>
                     <div className="relative">
                       <Mail size={14} className={iconCls} />
-                      <Input type="email" value={form.employeeemail} onChange={set("employeeemail")} placeholder="you@company.com" className={inputCls} />
+                      <Input
+                        type="email"
+                        value={form.employeeemail}
+                        onChange={handleEmailChange}
+                        placeholder="you@company.com"
+                        className={`${inputCls} ${fieldErrors.email ? "border-red-400 focus-visible:ring-red-400" : ""}`}
+                      />
                     </div>
+                    {fieldErrors.email && (
+                      <p className="text-xs text-red-500 flex items-center gap-1">
+                        <span className="w-1 h-1 rounded-full bg-red-500 inline-block" /> {fieldErrors.email}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-1.5">
                     <Label className={labelCls}>Phone Number</Label>
-                    <div className="relative">
-                      <Phone size={14} className={iconCls} />
-                      <Input value={form.employeePhone} onChange={set("employeePhone")} placeholder="+92 3XX-XXXXXXX" className={inputCls} />
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className={labelCls}>CNIC Number</Label>
-                    <div className="relative">
-                      <CreditCard size={14} className={iconCls} />
-                      <Input value={form.employeeCNIC} onChange={set("employeeCNIC")} placeholder="XXXXX-XXXXXXX-X" className={inputCls} />
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className={labelCls}>Address</Label>
-                    <div className="relative">
-                      <MapPin size={14} className={iconCls} />
-                      <Input value={form.employeeAddress} onChange={set("employeeAddress")} placeholder="Street, City" className={inputCls} />
-                    </div>
+                    <PhoneInput
+                      international
+                      defaultCountry="PK"
+                      value={phoneValue}
+                      onChange={setPhoneValue}
+                      placeholder="+92 3XX XXXXXXX"
+                      className="phone-input-wrapper"
+                    />
                   </div>
                 </div>
               )}
@@ -390,7 +484,7 @@ export default function EmployeeRegisterPage() {
                     <div className="space-y-1.5">
                       <Label className={labelCls}>Monthly Sales Target (PKR)</Label>
                       <div className="relative">
-                        <DollarSign size={14} className={iconCls} />
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold pointer-events-none">Rs</span>
                         <Input type="number" value={form.salesTarget} onChange={set("salesTarget")} placeholder="e.g. 50000" className={inputCls} />
                       </div>
                     </div>
@@ -400,7 +494,7 @@ export default function EmployeeRegisterPage() {
                     <div className="space-y-1.5">
                       <Label className={labelCls}>Salary (PKR)</Label>
                       <div className="relative">
-                        <DollarSign size={14} className={iconCls} />
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold pointer-events-none">Rs</span>
                         <Input type="number" value={form.employeeSalary} onChange={set("employeeSalary")} placeholder="50000" className={inputCls} />
                       </div>
                     </div>
@@ -423,8 +517,117 @@ export default function EmployeeRegisterPage() {
                 </div>
               )}
 
-              {/* ── Step 3: Security ── */}
+              {/* ── Step 3: Bank & ID ── */}
               {step === 2 && (
+                <div className="space-y-5">
+                  <div className="space-y-1.5">
+                    <Label className={labelCls}>CNIC Number</Label>
+                    <div className="relative">
+                      <CreditCard size={14} className={iconCls} />
+                      <Input
+                        value={form.employeeCNIC}
+                        onChange={handleCNICChange}
+                        placeholder="XXXXX-XXXXXXX-X"
+                        maxLength={15}
+                        className={`${inputCls} ${fieldErrors.cnic ? "border-red-400 focus-visible:ring-red-400" : ""}`}
+                      />
+                    </div>
+                    {fieldErrors.cnic ? (
+                      <p className="text-xs text-red-500 flex items-center gap-1">
+                        <span className="w-1 h-1 rounded-full bg-red-500 inline-block" /> {fieldErrors.cnic}
+                      </p>
+                    ) : form.employeeCNIC.length === 15 && (
+                      <p className="text-xs text-blue-600 flex items-center gap-1">
+                        <CheckCircle2 size={11} /> Valid CNIC
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className={labelCls}>Address</Label>
+                    <div className="relative">
+                      <MapPin size={14} className={iconCls} />
+                      <Input value={form.employeeAddress} onChange={set("employeeAddress")} placeholder="Street, City" className={inputCls} />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className={labelCls}>Bank Name</Label>
+                    <Popover open={bankOpen} onOpenChange={setBankOpen}>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          className="w-full flex items-center gap-2 pl-9 pr-3 h-11 text-sm bg-slate-50 border border-slate-200 rounded-xl text-left transition-colors hover:bg-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500 relative"
+                        >
+                          <Landmark size={14} className={iconCls} />
+                          <span className={selectedBankName ? "text-slate-800 flex-1 truncate" : "text-slate-400 flex-1"}>
+                            {selectedBankName || "Search & select bank…"}
+                          </span>
+                          <ChevronsUpDown size={14} className="text-slate-400 shrink-0" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-full p-0 rounded-xl shadow-lg" align="start" style={{ width: "var(--radix-popover-trigger-width)" }}>
+                        <Command>
+                          <CommandInput placeholder="Search bank…" className="h-10 text-sm" />
+                          <CommandList className="max-h-52">
+                            <CommandEmpty className="py-4 text-center text-sm text-slate-400">No bank found.</CommandEmpty>
+                            <CommandGroup>
+                              {BANKS.map((b) => (
+                                <CommandItem
+                                  key={b.code}
+                                  value={b.name}
+                                  onSelect={() => { handleBankSelect(b.name); setBankOpen(false); }}
+                                  className="flex items-center justify-between text-sm px-3 py-2 cursor-pointer"
+                                >
+                                  <span>{b.name}</span>
+                                  <span className="text-[11px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">{b.code}</span>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>Bank Code</Label>
+                      <div className="relative">
+                        <Hash size={14} className={iconCls} />
+                        <Input
+                          value={bankCode}
+                          readOnly
+                          placeholder="Auto-filled"
+                          className={`${inputCls} bg-slate-100 text-slate-500 cursor-not-allowed`}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>Account Number</Label>
+                      <div className="relative">
+                        <CreditCard size={14} className={iconCls} />
+                        <Input
+                          value={form.bankAccountNumber}
+                          onChange={handleAccountNumberChange}
+                          placeholder="e.g. 1234567890"
+                          inputMode="numeric"
+                          className={`${inputCls} ${fieldErrors.accountNumber ? "border-red-400 focus-visible:ring-red-400" : ""}`}
+                        />
+                      </div>
+                      {fieldErrors.accountNumber ? (
+                        <p className="text-xs text-red-500 flex items-center gap-1">
+                          <span className="w-1 h-1 rounded-full bg-red-500 inline-block" /> {fieldErrors.accountNumber}
+                        </p>
+                      ) : form.bankAccountNumber.length >= 10 && (
+                        <p className="text-xs text-blue-600 flex items-center gap-1">
+                          <CheckCircle2 size={11} /> Valid account number
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Step 4: Security ── */}
+              {step === 3 && (
                 <div className="space-y-5">
                   <div className="space-y-1.5">
                     <Label className={labelCls}>Password</Label>
@@ -485,7 +688,7 @@ export default function EmployeeRegisterPage() {
                     <ArrowLeft size={15} /> Back
                   </button>
                 )}
-                {step < 2 ? (
+                {step < 3 ? (
                   <button
                     type="button"
                     onClick={next}

@@ -51,8 +51,6 @@ const Page = () => {
 
     const { user } = useSelector((state) => state.User)
 
-
-
     useEffect(() => {
         const fetchBank = async () => {
             try {

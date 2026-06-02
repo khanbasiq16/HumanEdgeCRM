@@ -15,8 +15,44 @@ import { createemployees } from "@/features/Slice/EmployeeSlice";
 import {
   Users, Plus, Loader2, Eye, EyeOff, KeyRound, Mail, Phone,
   MapPin, CreditCard, DollarSign, Clock, Calendar, Building2,
-  Briefcase, Target,
+  Briefcase, Target, Landmark, Hash, ChevronsUpDown,
 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+
+const BANKS = [
+  { name: "National Bank of Pakistan",       code: "NBP"   },
+  { name: "NayaPay",                          code: "NAYAP" },
+  { name: "SadaPay",                          code: "SADAP" },
+  { name: "SINDH BANK",                       code: "SDB"   },
+  { name: "Summit Bank Limited",              code: "SUM"   },
+  { name: "CITI BANK N A",                    code: "CITI"  },
+  { name: "ALLIED BANK LTD",                  code: "ABL"   },
+  { name: "BANK AL FALAH LIMITED",            code: "BAL"   },
+  { name: "ASKARI BANK LTD",                  code: "ACB"   },
+  { name: "BANK AL HABIB LTD",               code: "BAH"   },
+  { name: "BANK ISLAMI PAKISTAN LTD",         code: "BIL"   },
+  { name: "THE BANK OF PUNJAB",               code: "TBP"   },
+  { name: "DUBAI ISLAMIC BANK PAK LTD",       code: "DBI"   },
+  { name: "AL BARAKA BANK (PAKISTAN) LTD",    code: "ABS"   },
+  { name: "HABIB BANK LIMITED",               code: "HBL"   },
+  { name: "J.S.BANK LIMITED",                 code: "JSB"   },
+  { name: "KHUSHALI BANK LIMITED",            code: "KBL"   },
+  { name: "THE BANK OF KHYBER LTD",          code: "TBK"   },
+  { name: "SAMBA BANK LIMITED",               code: "SMB"   },
+  { name: "MCB ISLAMIC BANK",                 code: "MCBIS" },
+  { name: "MEEZAN BANK LIMITED",              code: "MBL"   },
+  { name: "HABIB METROPOLITAN BANK LTD",      code: "MPB"   },
+  { name: "MCB Bank Ltd.",                    code: "MCB"   },
+  { name: "NRSP Microfinance Bank",           code: "NRSP"  },
+  { name: "SILKBANK LIMITED",                 code: "SLK"   },
+  { name: "ST. CHARTERED BANK PAKISTAN",      code: "SCB"   },
+  { name: "SONERI BANK LTD.",                 code: "SBL"   },
+  { name: "TELENOR MICRO FINANCE BANK LIMITED", code: "TBL" },
+  { name: "U Microfinance Bank Ltd",          code: "UBANK" },
+  { name: "UNITED BANK LIMITED",              code: "UBL"   },
+  { name: "Mobilink Micro Finance Bank Ltd",  code: "MOBIM" },
+];
 
 /* ── Field wrapper ──────────────────────────────────────── */
 const Field = ({ label, required, icon: Icon, children }) => (
@@ -50,6 +86,9 @@ const Employeedailog = () => {
   const [selectedDepartment, setSelectedDepartment] = useState("");
   const [selectedCompanies, setSelectedCompanies]   = useState([]);
   const [dateOfJoining, setDateOfJoining]           = useState(today);
+  const [selectedBankName, setSelectedBankName]     = useState("");
+  const [bankCode, setBankCode]                     = useState("");
+  const [bankOpen, setBankOpen]                     = useState(false);
 
   const dispatch = useDispatch();
   const { department } = useSelector((s) => s.Department);
@@ -76,6 +115,12 @@ const Employeedailog = () => {
     setSelectedCompanies(c ? [c.id] : []);
   };
 
+  const handleBankSelect = (bankName) => {
+    const bank = BANKS.find((b) => b.name === bankName);
+    setSelectedBankName(bankName);
+    setBankCode(bank?.code || "");
+  };
+
   const formHandler = async (e) => {
     e.preventDefault();
     if (!password || passwordError) return;
@@ -97,6 +142,9 @@ const Employeedailog = () => {
       formData.append("designation",       e.target.designation.value);
       formData.append("totalWorkingHours", e.target.totalWorkingHours?.value || "");
       formData.append("dateOfJoining",     e.target.dateOfJoining.value);
+      formData.append("bankName",          selectedBankName);
+      formData.append("bankCode",          bankCode);
+      formData.append("bankAccountNumber", e.target.bankAccountNumber?.value || "");
       if (e.target.salesTarget) formData.append("salesTarget", e.target.salesTarget.value);
 
       const payload = {};
@@ -121,6 +169,9 @@ const Employeedailog = () => {
         setSelectedCompanies([]);
         setPassword("");
         setDateOfJoining(today);
+        setSelectedBankName("");
+        setBankCode("");
+        setBankOpen(false);
         setOpen(false);
       }
     } catch {
@@ -186,6 +237,59 @@ const Employeedailog = () => {
                   <Input className={inputCls} name="employeeAddress" placeholder="123 Main Street, City" />
                 </Field>
               </div>
+
+              {/* Bank Details */}
+              <div className="md:col-span-2">
+                <Field label="Bank Name" icon={Landmark}>
+                  <Popover open={bankOpen} onOpenChange={setBankOpen}>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className={`${inputCls} w-full flex items-center justify-between px-3 text-left`}
+                      >
+                        <span className={selectedBankName ? "text-slate-800 flex-1 truncate text-sm" : "text-slate-400 flex-1 text-sm"}>
+                          {selectedBankName || "Search & select bank…"}
+                        </span>
+                        <ChevronsUpDown size={13} className="text-slate-400 shrink-0 ml-2" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="p-0 rounded-xl shadow-lg" align="start" style={{ width: "var(--radix-popover-trigger-width)" }}>
+                      <Command>
+                        <CommandInput placeholder="Search bank…" className="h-9 text-sm" />
+                        <CommandList className="max-h-48">
+                          <CommandEmpty className="py-4 text-center text-sm text-slate-400">No bank found.</CommandEmpty>
+                          <CommandGroup>
+                            {BANKS.map((b) => (
+                              <CommandItem
+                                key={b.code}
+                                value={b.name}
+                                onSelect={() => { handleBankSelect(b.name); setBankOpen(false); }}
+                                className="flex items-center justify-between text-sm px-3 py-2 cursor-pointer"
+                              >
+                                <span>{b.name}</span>
+                                <span className="text-[11px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">{b.code}</span>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </Field>
+              </div>
+
+              <Field label="Bank Code" icon={Hash}>
+                <Input
+                  className={`${inputCls} bg-slate-100 text-slate-500 cursor-not-allowed`}
+                  value={bankCode}
+                  readOnly
+                  placeholder="Auto-filled"
+                />
+              </Field>
+
+              <Field label="Account Number" icon={CreditCard}>
+                <Input className={inputCls} name="bankAccountNumber" placeholder="e.g. 1234567890" />
+              </Field>
 
               {/* Password — full width */}
               <div className="md:col-span-2">

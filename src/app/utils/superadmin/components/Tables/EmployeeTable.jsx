@@ -13,9 +13,10 @@ import {
   ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight,
   Loader2, MoreHorizontal, Trash, Search, Download,
   CheckCircle2, XCircle, LogIn, LogOut, SlidersHorizontal,
-  Building2,
+  Building2, Pencil,
 } from "lucide-react";
 import AssignCompanyDialog from "../dialog/AssignCompanydIalog";
+import EditEmployeeDialog  from "../dialog/EditEmployeeDialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent,
@@ -87,6 +88,8 @@ export function EmployeeTable({ employees }) {
   const [checkoutLoadingMap, setCheckoutLoadingMap] = React.useState({});
   const [assignOpen,    setAssignOpen]    = React.useState(false);
   const [assignEmployee,setAssignEmployee]= React.useState(null);
+  const [editOpen,      setEditOpen]      = React.useState(false);
+  const [editEmployee,  setEditEmployee]  = React.useState(null);
 
   const dispatch = useDispatch();
 
@@ -465,6 +468,13 @@ export function EmployeeTable({ employees }) {
                     View Details
                   </Link>
                 </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="text-sm cursor-pointer flex items-center gap-2 text-indigo-600 focus:text-indigo-600 focus:bg-indigo-50"
+                  onClick={() => { setEditEmployee(emp); setEditOpen(true); }}
+                >
+                  <Pencil size={13} />
+                  Edit Employee
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -661,6 +671,21 @@ export function EmployeeTable({ employees }) {
         employeeName={assignEmployee?.employeeName}
         assigncompanies={assignEmployee?.companyIds || []}
       />
+
+      {/* ── Edit Employee Dialog ── */}
+      {editEmployee && (
+        <EditEmployeeDialog
+          employee={editEmployee}
+          setemployee={(updated) => {
+            setEditEmployee(updated);
+            dispatch(createemployees(
+              employees.map((e) => e.employeeId === updated.employeeId ? updated : e)
+            ));
+          }}
+          open={editOpen}
+          onOpenChange={setEditOpen}
+        />
+      )}
     </div>
   );
 }

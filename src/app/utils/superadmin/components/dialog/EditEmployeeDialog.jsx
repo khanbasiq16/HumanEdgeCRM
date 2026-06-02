@@ -8,11 +8,49 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { Pencil, Loader2, Users, Mail, Phone, MapPin, CreditCard, DollarSign, Clock, Calendar, Briefcase, Target } from "lucide-react";
-import { useDispatch, useSelector } from "react-redux";
-import { createemployees } from "@/features/Slice/EmployeeSlice";
+import {
+  Pencil, Loader2, Users, Mail, Phone, MapPin, CreditCard, DollarSign,
+  Clock, Calendar, Briefcase, Target, Landmark, Hash, ChevronsUpDown,
+} from "lucide-react";
+import { useSelector } from "react-redux";
+
+const BANKS = [
+  { name: "National Bank of Pakistan",         code: "NBP"   },
+  { name: "NayaPay",                            code: "NAYAP" },
+  { name: "SadaPay",                            code: "SADAP" },
+  { name: "SINDH BANK",                         code: "SDB"   },
+  { name: "Summit Bank Limited",                code: "SUM"   },
+  { name: "CITI BANK N A",                      code: "CITI"  },
+  { name: "ALLIED BANK LTD",                    code: "ABL"   },
+  { name: "BANK AL FALAH LIMITED",              code: "BAL"   },
+  { name: "ASKARI BANK LTD",                    code: "ACB"   },
+  { name: "BANK AL HABIB LTD",                  code: "BAH"   },
+  { name: "BANK ISLAMI PAKISTAN LTD",           code: "BIL"   },
+  { name: "THE BANK OF PUNJAB",                 code: "TBP"   },
+  { name: "DUBAI ISLAMIC BANK PAK LTD",         code: "DBI"   },
+  { name: "AL BARAKA BANK (PAKISTAN) LTD",      code: "ABS"   },
+  { name: "HABIB BANK LIMITED",                 code: "HBL"   },
+  { name: "J.S.BANK LIMITED",                   code: "JSB"   },
+  { name: "KHUSHALI BANK LIMITED",              code: "KBL"   },
+  { name: "THE BANK OF KHYBER LTD",             code: "TBK"   },
+  { name: "SAMBA BANK LIMITED",                 code: "SMB"   },
+  { name: "MCB ISLAMIC BANK",                   code: "MCBIS" },
+  { name: "MEEZAN BANK LIMITED",                code: "MBL"   },
+  { name: "HABIB METROPOLITAN BANK LTD",        code: "MPB"   },
+  { name: "MCB Bank Ltd.",                      code: "MCB"   },
+  { name: "NRSP Microfinance Bank",             code: "NRSP"  },
+  { name: "SILKBANK LIMITED",                   code: "SLK"   },
+  { name: "ST. CHARTERED BANK PAKISTAN",        code: "SCB"   },
+  { name: "SONERI BANK LTD.",                   code: "SBL"   },
+  { name: "TELENOR MICRO FINANCE BANK LIMITED", code: "TBL"   },
+  { name: "U Microfinance Bank Ltd",            code: "UBANK" },
+  { name: "UNITED BANK LIMITED",                code: "UBL"   },
+  { name: "Mobilink Micro Finance Bank Ltd",    code: "MOBIM" },
+];
 
 /* ── Field wrapper ──────────────────────────────────────── */
 const Field = ({ label, required, icon: Icon, children }) => (
@@ -35,16 +73,22 @@ const Section = ({ title, subtitle }) => (
 );
 
 /* ── Main component ─────────────────────────────────────── */
-const EditEmployeeDialog = ({ employee, setemployee }) => {
-  const [loading, setLoading] = useState(false);
-  const [open, setOpen]       = useState(false);
+const EditEmployeeDialog = ({ employee, setemployee, open: externalOpen, onOpenChange }) => {
+  const [loading, setLoading]         = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const [bankOpen, setBankOpen]         = useState(false);
+
+  const isControlled = externalOpen !== undefined;
+  const open    = isControlled ? externalOpen  : internalOpen;
+  const setOpen = isControlled ? onOpenChange  : setInternalOpen;
+
   const [formData, setFormData] = useState({
     employeeName: "", employeeAddress: "", employeeemail: "",
     employeePhone: "", employeeCNIC: "", employeeSalary: "",
     department: "", totalWorkingHours: "", dateOfJoining: "", salesTarget: "",
+    bankName: "", bankCode: "", bankAccountNumber: "",
   });
 
-  const dispatch = useDispatch();
   const { department } = useSelector((s) => s.Department);
 
   useEffect(() => {
@@ -60,6 +104,9 @@ const EditEmployeeDialog = ({ employee, setemployee }) => {
         totalWorkingHours: employee.totalWorkingHours || "",
         dateOfJoining:     employee.dateOfJoining ? employee.dateOfJoining.split("T")[0] : "",
         salesTarget:       employee.salesTarget       || "",
+        bankName:          employee.bankName          || "",
+        bankCode:          employee.bankCode          || "",
+        bankAccountNumber: employee.bankAccountNumber || "",
       });
     }
   }, [employee]);
@@ -70,6 +117,12 @@ const EditEmployeeDialog = ({ employee, setemployee }) => {
   };
 
   const handleDepartmentChange = (value) => setFormData((p) => ({ ...p, department: value }));
+
+  const handleBankSelect = (bankName) => {
+    const bank = BANKS.find((b) => b.name === bankName);
+    setFormData((p) => ({ ...p, bankName, bankCode: bank?.code || "" }));
+    setBankOpen(false);
+  };
 
   const formHandler = async (e) => {
     e.preventDefault();
@@ -94,15 +147,14 @@ const EditEmployeeDialog = ({ employee, setemployee }) => {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <button
-          onClick={() => setOpen(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm shadow-blue-200"
-        >
-          <Pencil size={14} />
-          Edit
-        </button>
-      </DialogTrigger>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          <button className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm shadow-blue-200">
+            <Pencil size={14} />
+            Edit
+          </button>
+        </DialogTrigger>
+      )}
 
       <DialogContent className="sm:max-w-[680px] p-0 gap-0 rounded-2xl overflow-hidden">
         {/* Header */}
@@ -149,6 +201,67 @@ const EditEmployeeDialog = ({ employee, setemployee }) => {
                   <Input className={inputCls} name="employeeAddress" value={formData.employeeAddress} onChange={handleChange} />
                 </Field>
               </div>
+
+              {/* ── Bank Details ───────────────────────────── */}
+              <Section title="Bank Details" subtitle="Employee payment and account information" />
+
+              <div className="md:col-span-2">
+                <Field label="Bank Name" icon={Landmark}>
+                  <Popover open={bankOpen} onOpenChange={setBankOpen}>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className={`${inputCls} w-full flex items-center justify-between px-3 text-left`}
+                      >
+                        <span className={formData.bankName ? "text-slate-800 flex-1 truncate text-sm" : "text-slate-400 flex-1 text-sm"}>
+                          {formData.bankName || "Search & select bank…"}
+                        </span>
+                        <ChevronsUpDown size={13} className="text-slate-400 shrink-0 ml-2" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="p-0 rounded-xl shadow-lg" align="start" style={{ width: "var(--radix-popover-trigger-width)" }}>
+                      <Command>
+                        <CommandInput placeholder="Search bank…" className="h-9 text-sm" />
+                        <CommandList className="max-h-48">
+                          <CommandEmpty className="py-4 text-center text-sm text-slate-400">No bank found.</CommandEmpty>
+                          <CommandGroup>
+                            {BANKS.map((b) => (
+                              <CommandItem
+                                key={b.code}
+                                value={b.name}
+                                onSelect={() => handleBankSelect(b.name)}
+                                className="flex items-center justify-between text-sm px-3 py-2 cursor-pointer"
+                              >
+                                <span>{b.name}</span>
+                                <span className="text-[11px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">{b.code}</span>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </Field>
+              </div>
+
+              <Field label="Bank Code" icon={Hash}>
+                <Input
+                  className={`${inputCls} bg-slate-100 text-slate-500 cursor-not-allowed`}
+                  value={formData.bankCode}
+                  readOnly
+                  placeholder="Auto-filled"
+                />
+              </Field>
+
+              <Field label="Account Number" icon={CreditCard}>
+                <Input
+                  className={inputCls}
+                  name="bankAccountNumber"
+                  value={formData.bankAccountNumber}
+                  onChange={handleChange}
+                  placeholder="e.g. 1234567890"
+                />
+              </Field>
 
               {/* ── Work Details ───────────────────────────── */}
               <Section title="Work Details" subtitle="Employment and role information" />

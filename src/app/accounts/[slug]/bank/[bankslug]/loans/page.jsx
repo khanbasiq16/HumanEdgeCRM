@@ -21,7 +21,7 @@ const page = () => {
             setLoading(true);
             const res = await axios.get(`/api/acounts/banks/get-bank-details/${bankslug}`);
             if (res.data.success) {
-                console.log(res.data.bank)
+                
                 setBank(res.data.bank);
                 setLoading(false);
             }
@@ -47,8 +47,7 @@ const page = () => {
         <>
             <Accountslayout>
                 <section className="w-full p-6">
-                    {/* <Accountsbankbreadcrumbs path={"Loans"} bank={bank} setBank={setBank} /> */}
-
+                    
 
                 </section>
             </Accountslayout>

@@ -13,9 +13,6 @@ import { useDispatch, useSelector } from 'react-redux';
 
 
 
-
-
-
 const page = () => {
     const { slug } = useParams();
     const [loading, setLoading] = useState(true);

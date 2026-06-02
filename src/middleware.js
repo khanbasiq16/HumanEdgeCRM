@@ -47,8 +47,9 @@ export async function middleware(req) {
 
     return NextResponse.next();
   } catch (err) {
-    console.error("JWT verification failed:", err);
-    return NextResponse.redirect(new URL("/", req.url));
+    const response = NextResponse.redirect(new URL("/", req.url));
+    response.cookies.delete("token");
+    return response;
   }
 }
 

@@ -24,6 +24,9 @@ export async function POST(req) {
       totalWorkingHours,
       dateOfJoining,
       salesTarget,
+      bankName,
+      bankCode,
+      bankAccountNumber,
     } = body
 
 
@@ -67,6 +70,9 @@ export async function POST(req) {
       isCheckedin:false,
       isCheckedout:true,
       salesTarget: salesTarget || "",
+      bankName:          bankName          || "",
+      bankCode:          bankCode          || "",
+      bankAccountNumber: bankAccountNumber || "",
       status: "active",
       createdAt: new Date().toISOString(),
     });
