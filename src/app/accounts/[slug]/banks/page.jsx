@@ -50,7 +50,6 @@ const page = () => {
                 dispatch(createallCurency(res.data.currencies))
             }
         }
-        
         getCurrencies();
     }, [])
 
