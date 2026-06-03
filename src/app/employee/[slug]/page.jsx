@@ -1,14 +1,17 @@
 "use client";
 import Employeelayout from "@/app/utils/employees/layout/Employeelayout";
-import React from "react";
-import { useSelector } from "react-redux";
+import React, { useEffect, useState, useCallback } from "react";
+import { useSelector, useDispatch } from "react-redux";
 import { useParams } from "next/navigation";
 import {
   User, Mail, Phone, CreditCard, MapPin,
   CalendarDays, Clock, Timer, ClipboardCheck, Building2,
-  CheckCircle2, XCircle, Hash, Settings, ArrowRight,
+  CheckCircle2, XCircle, Hash, Settings, ArrowRight, RotateCcw,
 } from "lucide-react";
 import Link from "next/link";
+import axios from "axios";
+import toast from "react-hot-toast";
+import { UpdateUser } from "@/features/Slice/UserSlice";
 
 /* ─── helpers ────────────────────────────────────────────── */
 const getInitials = (name) => {
@@ -50,6 +53,26 @@ const Section = ({ title, children, className = "" }) => (
 export default function EmployeeDashboard() {
   const { slug } = useParams();
   const { user } = useSelector((s) => s.User);
+  const dispatch  = useDispatch();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchFreshData = useCallback(async (showToast = false) => {
+    if (!user?.employeeId) return;
+    setRefreshing(true);
+    try {
+      const res = await axios.get(`/api/employee/get-employee/${user.employeeId}`);
+      if (res.data.success) {
+        dispatch(UpdateUser(res.data.employee));
+        if (showToast) toast.success("Data refreshed");
+      }
+    } catch {
+      if (showToast) toast.error("Failed to refresh data");
+    } finally {
+      setRefreshing(false);
+    }
+  }, [user?.employeeId, dispatch]);
+
+  useEffect(() => { fetchFreshData(false); }, [fetchFreshData]);
 
   const isActive = user?.status?.trim().toLowerCase() === "active";
   const gradientClass = avatarGradients[
@@ -122,14 +145,24 @@ export default function EmployeeDashboard() {
               </div>
             </div>
 
-            {/* CTA */}
-            <Link
-              href={`/employee/${slug}/mark-attendance`}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm shadow-blue-200 shrink-0"
-            >
-              <ClipboardCheck size={15} />
-              Mark Attendance
-            </Link>
+            {/* CTAs */}
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => fetchFreshData(true)}
+                disabled={refreshing}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-800 text-sm font-semibold transition-colors disabled:opacity-50"
+              >
+                <RotateCcw size={15} className={refreshing ? "animate-spin" : ""} />
+                Refresh
+              </button>
+              <Link
+                href={`/employee/${slug}/mark-attendance`}
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm shadow-blue-200"
+              >
+                <ClipboardCheck size={15} />
+                Mark Attendance
+              </Link>
+            </div>
           </div>
 
           {/* ── Stat chips ───────────────────────────────── */}
