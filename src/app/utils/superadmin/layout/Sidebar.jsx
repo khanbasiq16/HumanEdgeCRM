@@ -4,7 +4,7 @@ import {
   Home, Calendar, LogOut, Users, PersonStanding, CardSim,
   NotepadTextDashed, Settings, ArrowLeft, Building, DollarSign,
   Receipt, BadgeDollarSign, ChevronLeft, ChevronRight, Landmark, Layers,
-  FolderKanban, ClipboardList, BarChart3, ChevronDown,
+  FolderKanban, ClipboardList, BarChart3, ChevronDown, Megaphone,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
@@ -37,6 +37,7 @@ const Sidebar = ({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) => {
     { href: "/admin/departments",   label: "Departments",   icon: Layers,           perm: "employees"  },
     { href: "/admin/templates",     label: "Templates",     icon: NotepadTextDashed,perm: "templates"  },
     { type: "attendance-group",     perm: "attendance"                                                 },
+    { href: "/admin/announcements", label: "Announcements", icon: Megaphone,        perm: null         },
     { href: "/admin/projects",      label: "Projects",      icon: FolderKanban,     perm: "employees"  },
     { href: "/admin/tasks",         label: "All Tasks",     icon: ClipboardList,    perm: "employees"  },
     { href: "/admin/accounts",      label: "Accounts",      icon: DollarSign,       perm: "accounts"   },

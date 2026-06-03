@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import { Bell, Search, Menu, X, UserCheck, Timer as TimerIcon, Building2, Check, FolderKanban, Loader2, Settings, LogOut, ChevronDown } from "lucide-react";
+import { Bell, Search, Menu, X, UserCheck, Timer as TimerIcon, Building2, Check, FolderKanban, Loader2, Settings, LogOut, ChevronDown, Megaphone } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -26,9 +26,10 @@ const NotificationPanel = ({ notifications, onMarkRead, onAcceptInvite }) => {
   };
 
   const iconFor = (type) => {
-    if (type === "project_invite") return { bg: "bg-emerald-100", icon: <FolderKanban size={14} className="text-emerald-600"/> };
-    if (type === "company_assigned") return { bg: "bg-violet-100", icon: <Building2 size={14} className="text-violet-600"/> };
-    return { bg: "bg-blue-100", icon: <Building2 size={14} className="text-blue-600"/> };
+    if (type === "project_invite")   return { bg: "bg-emerald-100", icon: <FolderKanban size={14} className="text-emerald-600"/> };
+    if (type === "company_assigned") return { bg: "bg-violet-100",  icon: <Building2    size={14} className="text-violet-600"/>  };
+    if (type === "announcement")     return { bg: "bg-amber-100",   icon: <Megaphone    size={14} className="text-amber-600"/>   };
+    return { bg: "bg-blue-100", icon: <Bell size={14} className="text-blue-600"/> };
   };
 
   return (
