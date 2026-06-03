@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import MonthPicker from "@/app/utils/superadmin/components/basecomponent/MonthPicker";
 
 const TASK_STATUS = {
   pending:       { label: "Pending",     bg: "bg-slate-100",  text: "text-slate-600",   dot: "bg-slate-400"   },
@@ -29,6 +30,7 @@ const PRIORITY_STYLE = {
 
 const Page = () => {
   const { user } = useSelector((s) => s.User);
+  const { employees } = useSelector((s) => s.Employee);
 
   const [tasks,          setTasks]          = useState([]);
   const [projects,       setProjects]       = useState([]);
@@ -38,7 +40,7 @@ const Page = () => {
   const [sourceFilter,   setSourceFilter]   = useState("all");
   const [projectFilter,  setProjectFilter]  = useState("all");
   const [employeeFilter, setEmployeeFilter] = useState("all");
-  const [monthFilter,    setMonthFilter]    = useState("all");
+  const [monthFilter,    setMonthFilter]    = useState("");
 
   // Task detail
   const [selTask,        setSelTask]        = useState(null);
@@ -117,26 +119,9 @@ const Page = () => {
     finally   { setSavingRemark(false); }
   };
 
-  const uniqueEmployees = useMemo(() => {
-    const map = new Map();
-    tasks.forEach((t) => {
-      if (t.assignedTo && t.assignedToName && !map.has(t.assignedTo)) {
-        map.set(t.assignedTo, t.assignedToName);
-      }
-    });
-    return Array.from(map.entries()).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
-  }, [tasks]);
-
-  const uniqueMonths = useMemo(() => {
-    const set = new Set();
-    tasks.forEach((t) => {
-      const raw = t.dueDate || t.taskDate || t.createdAt;
-      if (!raw) return;
-      const d = new Date(raw);
-      if (!isNaN(d)) set.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
-    });
-    return Array.from(set).sort((a, b) => b.localeCompare(a));
-  }, [tasks]);
+  const sortedEmployees = useMemo(() =>
+    [...employees].sort((a, b) => (a.employeeName || "").localeCompare(b.employeeName || ""))
+  , [employees]);
 
   const counts = useMemo(() => ({
     total:         tasks.length,
@@ -152,7 +137,7 @@ const Page = () => {
     if (sourceFilter !== "all")     list = list.filter((t) => t.source === sourceFilter);
     if (projectFilter !== "all")    list = list.filter((t) => t.projectId === projectFilter);
     if (employeeFilter !== "all")   list = list.filter((t) => t.assignedTo === employeeFilter);
-    if (monthFilter !== "all") {
+    if (monthFilter) {
       list = list.filter((t) => {
         const raw = t.dueDate || t.taskDate || t.createdAt;
         if (!raw) return false;
@@ -171,6 +156,7 @@ const Page = () => {
     }
     return list;
   }, [tasks, sf, sourceFilter, projectFilter, employeeFilter, monthFilter, search]);
+
 
   return (
     <SuperAdminlayout>
@@ -211,14 +197,16 @@ const Page = () => {
               <Users size={15} className="text-slate-400" />
               <span className="text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Employee</span>
             </div>
-            <Select value={employeeFilter} onValueChange={(v) => { setEmployeeFilter(v); }}>
+            <Select value={employeeFilter} onValueChange={setEmployeeFilter}>
               <SelectTrigger className="w-52 h-9 rounded-xl border-slate-200 bg-white text-sm font-semibold text-slate-700">
                 <SelectValue placeholder="All Employees" />
               </SelectTrigger>
               <SelectContent className="rounded-xl max-h-64">
                 <SelectItem value="all" className="text-sm font-semibold">All Employees</SelectItem>
-                {uniqueEmployees.map((e) => (
-                  <SelectItem key={e.id} value={e.id} className="text-sm">{e.name}</SelectItem>
+                {sortedEmployees.map((e) => (
+                  <SelectItem key={e.employeeId} value={e.employeeId} className="text-sm">
+                    {e.employeeName}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -233,26 +221,9 @@ const Page = () => {
               <Calendar size={15} className="text-slate-400" />
               <span className="text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Month</span>
             </div>
-            <Select value={monthFilter} onValueChange={setMonthFilter}>
-              <SelectTrigger className="w-44 h-9 rounded-xl border-slate-200 bg-white text-sm font-semibold text-slate-700">
-                <SelectValue placeholder="All Months" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl max-h-64">
-                <SelectItem value="all" className="text-sm font-semibold">All Months</SelectItem>
-                {uniqueMonths.map((m) => {
-                  const [yr, mo] = m.split("-");
-                  const label = new Date(Number(yr), Number(mo) - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
-                  return <SelectItem key={m} value={m} className="text-sm">{label}</SelectItem>;
-                })}
-              </SelectContent>
-            </Select>
-            {monthFilter !== "all" && (
-              <button onClick={() => setMonthFilter("all")} className="text-xs text-slate-400 hover:text-slate-700 underline underline-offset-2">
-                Clear
-              </button>
-            )}
+            <MonthPicker value={monthFilter} onChange={setMonthFilter} />
 
-            {(employeeFilter !== "all" || monthFilter !== "all") && (
+            {(employeeFilter !== "all" || monthFilter) && (
               <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg ml-auto">
                 {filtered.length} task{filtered.length !== 1 ? "s" : ""} found
               </span>
