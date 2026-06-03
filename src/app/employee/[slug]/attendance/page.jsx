@@ -9,6 +9,7 @@ import { Loader2 } from "lucide-react";
 const Page = () => {
   const { user }      = useSelector((state) => state.User);
   const [attendance,  setAttendance] = useState([]);
+  const [employee,    setEmployee]   = useState(null);
   const [loading,     setLoading]    = useState(false);
 
   useEffect(() => {
@@ -17,7 +18,9 @@ const Page = () => {
       setLoading(true);
       try {
         const res = await axios.get(`/api/get-employee/${user.employeeId}`);
-        setAttendance(res?.data?.employee?.Attendance || []);
+        const emp = res?.data?.employee || null;
+        setEmployee(emp);
+        setAttendance(emp?.Attendance || []);
       } catch (e) {
         console.error("❌ Error fetching attendance:", e);
       } finally {
@@ -43,7 +46,7 @@ const Page = () => {
             <p className="text-sm text-slate-400">Loading attendance records…</p>
           </div>
         ) : (
-          <Listattendance attendance={attendance} />
+          <Listattendance attendance={attendance} employee={employee} />
         )}
 
       </div>

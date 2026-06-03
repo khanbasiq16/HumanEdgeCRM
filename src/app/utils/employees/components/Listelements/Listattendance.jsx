@@ -24,7 +24,20 @@ const MONTH_NAMES = [
   "July","August","September","October","November","December",
 ];
 
-const Listattendance = ({ attendance }) => {
+
+const STATUS_STYLE = {
+  "On Time":           "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "Late":              "bg-amber-50 text-amber-700 border-amber-200",
+  "Half Day":          "bg-blue-50 text-blue-700 border-blue-200",
+  "Short Day":         "bg-violet-50 text-violet-700 border-violet-200",
+  "Early Check Out":   "bg-cyan-50 text-cyan-700 border-cyan-200",
+  "Late Check Out":    "bg-violet-50 text-violet-700 border-violet-200",
+  "On Time Check Out": "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "Absent":            "bg-red-50 text-red-700 border-red-200",
+};
+
+
+const Listattendance = ({ attendance, employee }) => {
   const now = new Date();
 
   const [selMonth, setSelMonth] = useState(now.getMonth() + 1); // 1-12
@@ -85,6 +98,16 @@ const Listattendance = ({ attendance }) => {
       rate:    workDays > 0 ? Math.round((present / workDays) * 100) : 0,
     };
   }, [monthAttendance, selMonth, selYear]);
+
+  /* ── status chips for selected month ─────────────────── */
+  const statusCounts = useMemo(() => {
+    const counts = {};
+    monthAttendance.forEach((a) => {
+      const s = activeTab === "checkin" ? a.checkin?.status : a.checkout?.status;
+      if (s) counts[s] = (counts[s] || 0) + 1;
+    });
+    return counts;
+  }, [monthAttendance, activeTab]);
 
   /* ── export helpers ──────────────────────────────────── */
   const [exportOpen, setExportOpen] = useState(false);
@@ -252,6 +275,20 @@ const Listattendance = ({ attendance }) => {
         ))}
       </div>
 
+      {/* ── Absence formula rules ─────────────────────── */}
+      <div className="flex flex-wrap items-center gap-2 px-1">
+        <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Absence Rules:</span>
+        {[
+          { label: "Late",      count: 3, color: "bg-amber-50 border-amber-200 text-amber-700" },
+          { label: "Half Day",  count: 2, color: "bg-blue-50 border-blue-200 text-blue-700"   },
+          { label: "Short Day", count: 3, color: "bg-violet-50 border-violet-200 text-violet-700" },
+        ].map(({ label, count, color }) => (
+          <span key={label} className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${color}`}>
+            {count} {label} = 1 Absent
+          </span>
+        ))}
+      </div>
+
       {/* ── Main card ─────────────────────────────────── */}
       <div className="bg-white rounded-2xl border border-slate-200/80">
 
@@ -259,23 +296,39 @@ const Listattendance = ({ attendance }) => {
         <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-slate-100 flex-wrap gap-3">
 
           {/* Tabs */}
-          <div className="flex items-center gap-1">
-            {[
-              { id: "checkin",  label: "Check In"  },
-              { id: "checkout", label: "Check Out" },
-            ].map(({ id, label }) => (
-              <button
-                key={id}
-                onClick={() => setActiveTab(id)}
-                className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all duration-200
-                  ${activeTab === id
-                    ? "bg-blue-600 text-white shadow-sm"
-                    : "text-slate-500 hover:bg-slate-100"
-                  }`}
-              >
-                {label}
-              </button>
-            ))}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1">
+              {[
+                { id: "checkin",  label: "Check In"  },
+                { id: "checkout", label: "Check Out" },
+              ].map(({ id, label }) => (
+                <button
+                  key={id}
+                  onClick={() => setActiveTab(id)}
+                  className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all duration-200
+                    ${activeTab === id
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "text-slate-500 hover:bg-slate-100"
+                    }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* Status chips */}
+            {Object.keys(statusCounts).length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                {Object.entries(statusCounts).map(([status, count]) => (
+                  <span
+                    key={status}
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${STATUS_STYLE[status] || "bg-slate-50 text-slate-600 border-slate-200"}`}
+                  >
+                    {status} <span className="font-extrabold">·{count}</span>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Month navigator */}
