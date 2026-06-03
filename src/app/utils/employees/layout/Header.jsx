@@ -1,8 +1,15 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import { Bell, Search, Menu, X, UserCheck, Timer as TimerIcon, Building2, Check, FolderKanban, Loader2 } from "lucide-react";
-import { useSelector } from "react-redux";
+import { Bell, Search, Menu, X, UserCheck, Timer as TimerIcon, Building2, Check, FolderKanban, Loader2, Settings, LogOut, ChevronDown } from "lucide-react";
+import { useSelector, useDispatch } from "react-redux";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { logout } from "@/features/Slice/UserSlice";
+import { resetTimer } from "@/features/Slice/StopwatchSlice";
+import { resetCheckIn } from "@/features/Slice/CheckInSlice";
+import { resetCheckOut } from "@/features/Slice/CheckOutSlice";
+import toast from "react-hot-toast";
 import Timer from "../components/attendance/Timer";
 import { usePathname } from "next/navigation";
 import EmployeeCommandPalette from "../components/basecomponent/EmployeeCommandPalette";
@@ -101,6 +108,8 @@ const NotificationPanel = ({ notifications, onMarkRead, onAcceptInvite }) => {
 /* ── Header ─────────────────────────────────────────────── */
 const Header = ({ onMobileMenu, mobileOpen }) => {
   const { user }     = useSelector((state) => state.User);
+  const dispatch     = useDispatch();
+  const router       = useRouter();
   const pathname     = usePathname();
   const segments     = pathname.split("/");
   const employeeSlug = segments[2] || "";
@@ -108,7 +117,9 @@ const Header = ({ onMobileMenu, mobileOpen }) => {
   const [paletteOpen,    setPaletteOpen]    = useState(false);
   const [notifOpen,      setNotifOpen]      = useState(false);
   const [notifications,  setNotifications]  = useState([]);
-  const notifRef = useRef(null);
+  const [dropdownOpen,   setDropdownOpen]   = useState(false);
+  const notifRef    = useRef(null);
+  const dropdownRef = useRef(null);
 
   const isSales = user?.department?.departmentName?.toLowerCase().includes("sales");
 
@@ -129,12 +140,29 @@ const Header = ({ onMobileMenu, mobileOpen }) => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  /* close panel on outside click */
+  /* close notif panel on outside click */
   useEffect(() => {
     const handler = (e) => { if (notifRef.current && !notifRef.current.contains(e.target)) setNotifOpen(false); };
     if (notifOpen) document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [notifOpen]);
+
+  /* close dropdown on outside click */
+  useEffect(() => {
+    const handler = (e) => { if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setDropdownOpen(false); };
+    if (dropdownOpen) document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [dropdownOpen]);
+
+  const handleLogout = async () => {
+    try {
+      const res = await axios.get("/api/logout");
+      if (res.data.success) {
+        dispatch(logout()); dispatch(resetTimer()); dispatch(resetCheckIn()); dispatch(resetCheckOut());
+        router.push("/"); toast.success("Logged out successfully");
+      }
+    } catch { toast.error("Failed to logout"); }
+  };
 
   /* Ctrl+K */
   useEffect(() => {
@@ -265,20 +293,49 @@ const Header = ({ onMobileMenu, mobileOpen }) => {
 
           <div className="hidden sm:block w-px h-7 bg-slate-200 mx-1" />
 
-          {/* User card */}
-          <div className="hidden sm:flex items-center gap-2.5">
-            <div className="relative shrink-0">
-              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center text-xs font-bold shadow-sm">
-                {initials(user?.employeeName)}
+          {/* User card with dropdown */}
+          <div className="relative hidden sm:block" ref={dropdownRef}>
+            <button
+              onClick={() => setDropdownOpen((o) => !o)}
+              className="flex items-center gap-2.5 rounded-xl px-2 py-1.5 hover:bg-slate-50 transition-colors"
+            >
+              <div className="relative shrink-0">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center text-xs font-bold shadow-sm">
+                  {initials(user?.employeeName)}
+                </div>
+                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-2 ring-white" />
               </div>
-              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-2 ring-white" />
-            </div>
-            <div className="hidden md:block leading-tight">
-              <p className="text-sm font-bold text-slate-800 leading-none">{user?.employeeName || "Employee"}</p>
-              <p className="text-[11px] text-slate-400 mt-0.5 truncate max-w-[140px]">
-                {user?.department?.departmentName || user?.employeeemail}
-              </p>
-            </div>
+              <div className="hidden md:block leading-tight text-left">
+                <p className="text-sm font-bold text-slate-800 leading-none">{user?.employeeName || "Employee"}</p>
+                <p className="text-[11px] text-slate-400 mt-0.5 truncate max-w-[120px]">
+                  {user?.department?.departmentName || user?.employeeemail}
+                </p>
+              </div>
+              <ChevronDown size={13} className={`text-slate-400 transition-transform shrink-0 ${dropdownOpen ? "rotate-180" : ""}`} />
+            </button>
+
+            {dropdownOpen && (
+              <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden">
+                <div className="px-4 py-3 border-b border-slate-100">
+                  <p className="text-xs font-bold text-slate-800 truncate">{user?.employeeName || "Employee"}</p>
+                  <p className="text-[11px] text-slate-400 truncate mt-0.5">{user?.department?.departmentName || user?.employeeemail}</p>
+                </div>
+                <Link
+                  href={`/employee/${employeeSlug}/settings`}
+                  onClick={() => setDropdownOpen(false)}
+                  className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  <Settings size={14} className="text-slate-400 shrink-0" /> Settings
+                </Link>
+                <div className="border-t border-slate-100" />
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors"
+                >
+                  <LogOut size={14} className="shrink-0" /> Logout
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </header>

@@ -1,13 +1,43 @@
 "use client";
-import React, { useEffect, useState } from "react";
-import { Bell, Search, Menu, X, ShieldCheck } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { Bell, Search, Menu, X, ShieldCheck, Settings, LogOut, ChevronDown } from "lucide-react";
 import Image from "next/image";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import axios from "axios";
+import toast from "react-hot-toast";
+import { logout } from "@/features/Slice/UserSlice";
 import CommandPalette from "@/app/utils/superadmin/components/basecomponent/CommandPalette";
 
 const Header = ({ onMobileMenu, mobileOpen }) => {
-  const { user } = useSelector((state) => state.User);
-  const [paletteOpen, setPaletteOpen] = useState(false);
+  const { user }   = useSelector((state) => state.User);
+  const dispatch   = useDispatch();
+  const router     = useRouter();
+  const [paletteOpen,   setPaletteOpen]   = useState(false);
+  const [dropdownOpen,  setDropdownOpen]  = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setDropdownOpen(false);
+    };
+    if (dropdownOpen) document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [dropdownOpen]);
+
+  const handleLogout = async () => {
+    try {
+      const res = await axios.get("/api/logout");
+      if (res.data.success) {
+        dispatch(logout());
+        router.push("/superadmin/sign-in");
+        toast.success("Logged out successfully");
+      }
+    } catch {
+      toast.error("Logout failed");
+    }
+  };
 
   useEffect(() => {
     const onKey = (e) => {
@@ -87,17 +117,48 @@ const Header = ({ onMobileMenu, mobileOpen }) => {
 
           <div className="hidden sm:block w-px h-7 bg-slate-200 mx-1" />
 
-          <div className="hidden sm:flex items-center gap-2.5">
-            <div className="relative shrink-0">
-              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center text-xs font-bold shadow-sm">
-                {initials(user?.name)}
+          <div className="relative hidden sm:block" ref={dropdownRef}>
+            <button
+              onClick={() => setDropdownOpen((o) => !o)}
+              className="flex items-center gap-2.5 rounded-xl px-2 py-1.5 hover:bg-slate-50 transition-colors"
+            >
+              <div className="relative shrink-0">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center text-xs font-bold shadow-sm">
+                  {initials(user?.name)}
+                </div>
+                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-2 ring-white" />
               </div>
-              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-2 ring-white" />
-            </div>
-            <div className="hidden md:block leading-tight">
-              <p className="text-sm font-bold text-slate-800 leading-none">{user?.name || "Super Admin"}</p>
-              <p className="text-[11px] text-slate-400 mt-0.5 truncate max-w-[160px]">{user?.email}</p>
-            </div>
+              <div className="hidden md:block leading-tight text-left">
+                <p className="text-sm font-bold text-slate-800 leading-none">{user?.name || "Super Admin"}</p>
+                <p className="text-[11px] text-slate-400 mt-0.5 truncate max-w-[130px]">{user?.email}</p>
+              </div>
+              <ChevronDown size={13} className={`text-slate-400 transition-transform shrink-0 ${dropdownOpen ? "rotate-180" : ""}`} />
+            </button>
+
+            {dropdownOpen && (
+              <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden">
+                <div className="px-4 py-3 border-b border-slate-100">
+                  <p className="text-xs font-bold text-slate-800 truncate">{user?.name || "Super Admin"}</p>
+                  <p className="text-[11px] text-slate-400 truncate mt-0.5">{user?.email}</p>
+                </div>
+                {(user?.role === "superAdmin" || user?.permissions?.includes("settings")) && (
+                  <Link
+                    href="/admin/settings"
+                    onClick={() => setDropdownOpen(false)}
+                    className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                  >
+                    <Settings size={14} className="text-slate-400 shrink-0" /> Settings
+                  </Link>
+                )}
+                <div className="border-t border-slate-100" />
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors"
+                >
+                  <LogOut size={14} className="shrink-0" /> Logout
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </header>
