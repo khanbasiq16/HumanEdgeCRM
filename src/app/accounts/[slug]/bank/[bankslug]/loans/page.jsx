@@ -21,7 +21,6 @@ const page = () => {
             setLoading(true);
             const res = await axios.get(`/api/acounts/banks/get-bank-details/${bankslug}`);
             if (res.data.success) {
-                
                 setBank(res.data.bank);
                 setLoading(false);
             }
@@ -39,8 +38,6 @@ const page = () => {
         };
         fetchBanks();
     }, [])
-
-
 
 
     return (

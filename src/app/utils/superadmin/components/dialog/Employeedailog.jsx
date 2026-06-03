@@ -19,40 +19,7 @@ import {
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-
-const BANKS = [
-  { name: "National Bank of Pakistan",       code: "NBP"   },
-  { name: "NayaPay",                          code: "NAYAP" },
-  { name: "SadaPay",                          code: "SADAP" },
-  { name: "SINDH BANK",                       code: "SDB"   },
-  { name: "Summit Bank Limited",              code: "SUM"   },
-  { name: "CITI BANK N A",                    code: "CITI"  },
-  { name: "ALLIED BANK LTD",                  code: "ABL"   },
-  { name: "BANK AL FALAH LIMITED",            code: "BAL"   },
-  { name: "ASKARI BANK LTD",                  code: "ACB"   },
-  { name: "BANK AL HABIB LTD",               code: "BAH"   },
-  { name: "BANK ISLAMI PAKISTAN LTD",         code: "BIL"   },
-  { name: "THE BANK OF PUNJAB",               code: "TBP"   },
-  { name: "DUBAI ISLAMIC BANK PAK LTD",       code: "DBI"   },
-  { name: "AL BARAKA BANK (PAKISTAN) LTD",    code: "ABS"   },
-  { name: "HABIB BANK LIMITED",               code: "HBL"   },
-  { name: "J.S.BANK LIMITED",                 code: "JSB"   },
-  { name: "KHUSHALI BANK LIMITED",            code: "KBL"   },
-  { name: "THE BANK OF KHYBER LTD",          code: "TBK"   },
-  { name: "SAMBA BANK LIMITED",               code: "SMB"   },
-  { name: "MCB ISLAMIC BANK",                 code: "MCBIS" },
-  { name: "MEEZAN BANK LIMITED",              code: "MBL"   },
-  { name: "HABIB METROPOLITAN BANK LTD",      code: "MPB"   },
-  { name: "MCB Bank Ltd.",                    code: "MCB"   },
-  { name: "NRSP Microfinance Bank",           code: "NRSP"  },
-  { name: "SILKBANK LIMITED",                 code: "SLK"   },
-  { name: "ST. CHARTERED BANK PAKISTAN",      code: "SCB"   },
-  { name: "SONERI BANK LTD.",                 code: "SBL"   },
-  { name: "TELENOR MICRO FINANCE BANK LIMITED", code: "TBL" },
-  { name: "U Microfinance Bank Ltd",          code: "UBANK" },
-  { name: "UNITED BANK LIMITED",              code: "UBL"   },
-  { name: "Mobilink Micro Finance Bank Ltd",  code: "MOBIM" },
-];
+import { BANKS } from "@/app/utils/constants/banks";
 
 /* ── Field wrapper ──────────────────────────────────────── */
 const Field = ({ label, required, icon: Icon, children }) => (
