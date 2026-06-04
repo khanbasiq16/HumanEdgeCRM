@@ -169,6 +169,7 @@ function StatusChips({ tasks, filter, onFilter }) {
 function TaskDetailDialog({ task, open, onClose, user, isSelf, onStatusChange, onUpdate, onDelete, onAddComment }) {
   const [editMode,       setEditMode]       = useState(false);
   const [editForm,       setEditForm]       = useState({});
+  const [editEditorKey,  setEditEditorKey]  = useState(0);
   const [saving,         setSaving]         = useState(false);
   const [deleting,       setDeleting]       = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
@@ -180,6 +181,7 @@ function TaskDetailDialog({ task, open, onClose, user, isSelf, onStatusChange, o
       setEditForm({ title: task.title, description: task.description || "", taskDate: task.taskDate || "", dueDate: task.dueDate || "" });
       setEditMode(false);
       setNewComment("");
+      setEditEditorKey((k) => k + 1);
     }
   }, [task]);
 
@@ -276,9 +278,12 @@ function TaskDetailDialog({ task, open, onClose, user, isSelf, onStatusChange, o
           {!editMode && task.description && (
             <div>
               <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2">Description</p>
-              <p className="text-sm text-slate-700 bg-slate-50 rounded-xl px-4 py-3 border border-slate-100 whitespace-pre-wrap">
-                {task.description?.replace(/<[^>]*>/g, " ").trim()}
-              </p>
+              <div
+                className="text-sm text-slate-700 bg-slate-50 rounded-xl px-4 py-3 border border-slate-100
+                  [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5
+                  [&_li]:my-0.5 [&_p]:my-0.5 [&_strong]:font-bold [&_em]:italic"
+                dangerouslySetInnerHTML={{ __html: task.description }}
+              />
             </div>
           )}
 
@@ -288,8 +293,11 @@ function TaskDetailDialog({ task, open, onClose, user, isSelf, onStatusChange, o
               <p className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">Edit Task</p>
               <div>
                 <label className="text-xs font-semibold text-slate-600 block mb-1">Description</label>
-                <Textarea className="rounded-xl border-slate-200 bg-white resize-none text-sm" rows={3}
-                  value={editForm.description} onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))} />
+                <SelfTaskEditor
+                  editorKey={editEditorKey}
+                  content={editForm.description}
+                  onChange={(html) => setEditForm((f) => ({ ...f, description: html }))}
+                />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
