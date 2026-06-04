@@ -105,7 +105,7 @@ const CheckOut = ({ isCheckedIn, isCheckedout, setIsCheckedout, setIsCheckedin }
   /* ── core API call ────────────────────────────────────── */
   const doCheckout = async (noteText = null) => {
     setLoading(true);
-    const tid = toast.loading("Processing check-out…");
+    // const tid = toast.loading("Processing check-out…");
     try {
       const ip           = await getIP();
       const checkInStart = user?.startTime || stopwatchStartTime;
@@ -122,7 +122,6 @@ const CheckOut = ({ isCheckedIn, isCheckedout, setIsCheckedout, setIsCheckedin }
       });
 
       if (res.data.success) {
-        toast.dismiss(tid);
         toast.success("Checked out successfully!");
         dispatch(resetCheckIn());
         dispatch(updateCheckOut());

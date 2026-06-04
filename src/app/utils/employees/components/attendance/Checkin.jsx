@@ -55,7 +55,7 @@ const Checkin = ({ isCheckedIn, setIsCheckedin, setIsCheckedout }) => {
   /* ── core API call ────────────────────────────────────── */
   const doCheckin = async (noteText = "") => {
     setLoading(true);
-    const tid = toast.loading("Verifying identity…");
+    // const tid = toast.loading("Verifying identity…");
     try {
       const ip  = await getIP();
       const res = await axios.post("/api/check-in", {
@@ -64,7 +64,6 @@ const Checkin = ({ isCheckedIn, setIsCheckedin, setIsCheckedout }) => {
         note:       noteText,
       });
       if (res.data.success) {
-        toast.dismiss(tid);
         toast.success("Check-in successful!");
         dispatch(setattendanceid(res.data.attendanceid));
         dispatch(resetCheckOut());

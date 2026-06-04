@@ -106,7 +106,7 @@ export async function POST(req) {
             {
               success: false,
               error:
-                "Check In Failed. Please Connect With the Office Network Use Local Internet 5G",
+                "Check-in Failed: Please connect to the authorized office network.",
             },
             { status: 403 }
           );
