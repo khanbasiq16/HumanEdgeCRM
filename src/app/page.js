@@ -57,13 +57,18 @@ export default function Page() {
     try {
       const res = await axios.post("/api/check-in-sign-in", formData);
       if (res.data.success) {
-        toast.success(res.data.message);
         dispatch(loginSuccess(res.data.user));
-        const slug = res.data.user.employeeName.trim().replace(/\s+/g, "-").toLowerCase();
+        const slug = res.data.user?.employeeName?.trim()?.replace(/\s+/g, "-")?.toLowerCase();
+        if (!slug) {
+          toast.error("Login failed. Please contact admin.");
+          return;
+        }
+        toast.success(res.data.message);
         router.push(`/employee/${slug}`);
       }
     } catch (err) {
-      toast.error(err?.response?.data?.error || "Sign in failed");
+      const message = err?.response?.data?.error || "Sign in failed. Please try again.";
+      toast.error(message);
     } finally {
       setLoading(false);
     }

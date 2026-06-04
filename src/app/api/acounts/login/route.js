@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
-import { signToken } from "@/lib/signToken";
+import { signToken, signRefreshToken } from "@/lib/signToken";
 
 export async function POST(req) {
     try {
@@ -43,12 +43,15 @@ export async function POST(req) {
             );
         }
 
-        const token = signToken({
+        const tokenPayload = {
             id: user.uid,
             email: userData.accountuseremail,
             role: "accounts",
             slug: userData.accountuserName?.trim()?.replace(/\s+/g, "-")?.toLowerCase(),
-        });
+        };
+
+        const token = signToken(tokenPayload);
+        const refreshToken = signRefreshToken(tokenPayload);
 
         userData.role = "accounts";
 
@@ -62,7 +65,14 @@ export async function POST(req) {
         response.cookies.set("token", token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
-            maxAge: 7 * 24 * 60 * 60,
+            maxAge: 24 * 60 * 60,
+            path: "/",
+        });
+
+        response.cookies.set("refresh_token", refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            maxAge: 30 * 24 * 60 * 60,
             path: "/",
         });
 

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth, db } from "@/lib/firebase";
 import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { signToken } from "@/lib/signToken";
+import { signToken, signRefreshToken } from "@/lib/signToken";
 
 export async function POST(req) {
   try {
@@ -98,13 +98,15 @@ export async function POST(req) {
     // 🔹 Create slug
     const slug = userData?.employeeName?.trim()?.replace(/\s+/g, "-")?.toLowerCase();
 
-    // 🔹 Create JWT token
-    const token = signToken({
+    const tokenPayload = {
       id: loggedInUser.uid,
       email: loggedInUser.email,
       role: "employee",
       slug,
-    });
+    };
+
+    const token = signToken(tokenPayload);
+    const refreshToken = signRefreshToken(tokenPayload);
 
     const response = NextResponse.json({
       message: "Login successfully",
@@ -121,7 +123,14 @@ export async function POST(req) {
     response.cookies.set("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      maxAge: 7 * 24 * 60 * 60, // 7 days
+      maxAge: 24 * 60 * 60,
+      path: "/",
+    });
+
+    response.cookies.set("refresh_token", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 30 * 24 * 60 * 60,
       path: "/",
     });
 
