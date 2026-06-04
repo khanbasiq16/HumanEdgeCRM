@@ -25,7 +25,12 @@ const MODULES = [
   { id: "settings",      label: "Settings Page Only",      desc: "IP whitelist, toggles, configuration",      icon: Settings     },
 ];
 
-const EditInvitationdialog = ({ open, setOpen, invitation, onUpdated, endpoint = "/api/admin/invite/edit", idField = "id" }) => {
+// inviterPermissions: null = super admin (show all), array = only show those modules
+const EditInvitationdialog = ({ open, setOpen, invitation, onUpdated, endpoint = "/api/admin/invite/edit", idField = "id", inviterPermissions = null }) => {
+  const availableModules = inviterPermissions === null
+    ? MODULES
+    : MODULES.filter((m) => inviterPermissions.includes(m.id));
+
   const [selected, setSelected] = useState(invitation?.permissions || []);
   const [loading, setLoading]   = useState(false);
 
@@ -33,7 +38,7 @@ const EditInvitationdialog = ({ open, setOpen, invitation, onUpdated, endpoint =
     setSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
 
   const selectAll = () =>
-    setSelected(selected.length === MODULES.length ? [] : MODULES.map((m) => m.id));
+    setSelected(selected.length === availableModules.length ? [] : availableModules.map((m) => m.id));
 
   const handleSave = async () => {
     if (!selected.length) { toast.error("Select at least one permission"); return; }
@@ -78,11 +83,11 @@ const EditInvitationdialog = ({ open, setOpen, invitation, onUpdated, endpoint =
               onClick={selectAll}
               className="text-[11px] font-semibold text-blue-600 hover:text-blue-700"
             >
-              {selected.length === MODULES.length ? "Deselect all" : "Select all"}
+              {selected.length === availableModules.length ? "Deselect all" : "Select all"}
             </button>
           </div>
 
-          {MODULES.map((mod) => {
+          {availableModules.map((mod) => {
             const Icon      = mod.icon;
             const isChecked = selected.includes(mod.id);
             return (

@@ -22,7 +22,11 @@ const MODULES = [
   { id: "settings",   label: "Settings Page Only",      desc: "IP whitelist, toggles, configuration",    icon: Settings     },
 ];
 
-const InviteMemberdialog = ({ open, setOpen, invitedBy }) => {
+// inviterPermissions: null = super admin (show all), array = only show those modules
+const InviteMemberdialog = ({ open, setOpen, invitedBy, inviterPermissions = null }) => {
+  const availableModules = inviterPermissions === null
+    ? MODULES
+    : MODULES.filter((m) => inviterPermissions.includes(m.id));
   const [email, setEmail]           = useState("");
   const [note, setNote]             = useState("");
   const [selected, setSelected]     = useState([]);
@@ -56,7 +60,7 @@ const InviteMemberdialog = ({ open, setOpen, invitedBy }) => {
   };
 
   const selectAll = () => {
-    setSelected(selected.length === MODULES.length ? [] : MODULES.map((m) => m.id));
+    setSelected(selected.length === availableModules.length ? [] : availableModules.map((m) => m.id));
   };
 
   const validate = () => {
@@ -277,12 +281,12 @@ const InviteMemberdialog = ({ open, setOpen, invitedBy }) => {
                       onClick={selectAll}
                       className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 transition-colors"
                     >
-                      {selected.length === MODULES.length ? "Deselect all" : "Select all"}
+                      {selected.length === availableModules.length ? "Deselect all" : "Select all"}
                     </button>
                   </div>
 
                   <div className="space-y-2">
-                    {MODULES.map((mod) => {
+                    {availableModules.map((mod) => {
                       const Icon      = mod.icon;
                       const isChecked = selected.includes(mod.id);
                       return (

@@ -155,10 +155,14 @@ const Page = () => {
   const dispatch = useDispatch();
   const origin = typeof window !== "undefined" ? window.location.origin : "";
 
-  const { department } = useSelector((s) => s.Department);
+  const { user }        = useSelector((s) => s.User);
+  const { department }  = useSelector((s) => s.Department);
   const { ipwhitelist } = useSelector((s) => s.Ipwhitelist);
   const { employees }   = useSelector((s) => s.Employee);
   const { companies }   = useSelector((s) => s.Company);
+
+  const isSuperAdmin      = user?.role === "superAdmin";
+  const inviterPermissions = isSuperAdmin ? null : (user?.permissions || []);
 
   useEffect(() => {
     axios.get("/api/get-all-department").then((r) => dispatch(createdepartment(r.data.departments))).catch(console.error);
@@ -376,11 +380,14 @@ const Page = () => {
             icon={ShieldCheck}
             title={`Admin Members${members.length + invitations.length > 0 ? ` · ${members.length + invitations.length}` : ""}`}
             action={
-              <InviteMemberdialog
-                open={invitedialog}
-                setOpen={setInvitedialog}
-                invitedBy="Super Admin"
-              />
+              isSuperAdmin ? (
+                <InviteMemberdialog
+                  open={invitedialog}
+                  setOpen={setInvitedialog}
+                  invitedBy={user?.name || user?.email || "Admin"}
+                  inviterPermissions={inviterPermissions}
+                />
+              ) : null
             }
           />
           <div className="divide-y divide-slate-100">
@@ -429,28 +436,32 @@ const Page = () => {
                             </span>
                           )}
                         </div>
-                        <button
-                          onClick={() => { setEditingMember({ id: m.uid, email: m.email, permissions: m.permissions || [] }); setEditMemberOpen(true); }}
-                          className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-50 transition-colors shrink-0"
-                          title="Edit permissions"
-                        >
-                          <Pencil size={13} />
-                        </button>
-                        <button
-                          onClick={async () => {
-                            try {
-                              await axios.delete("/api/admin/members", { data: { uid: m.uid } });
-                              setMembers((prev) => prev.filter((x) => x.uid !== m.uid));
-                              toast.success("Member removed");
-                            } catch {
-                              toast.error("Failed to remove member");
-                            }
-                          }}
-                          className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors shrink-0"
-                          title="Remove member"
-                        >
-                          <Trash2 size={13} />
-                        </button>
+                        {isSuperAdmin && (
+                          <>
+                            <button
+                              onClick={() => { setEditingMember({ id: m.uid, email: m.email, permissions: m.permissions || [] }); setEditMemberOpen(true); }}
+                              className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-50 transition-colors shrink-0"
+                              title="Edit permissions"
+                            >
+                              <Pencil size={13} />
+                            </button>
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await axios.delete("/api/admin/members", { data: { uid: m.uid } });
+                                  setMembers((prev) => prev.filter((x) => x.uid !== m.uid));
+                                  toast.success("Member removed");
+                                } catch {
+                                  toast.error("Failed to remove member");
+                                }
+                              }}
+                              className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors shrink-0"
+                              title="Remove member"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   );
@@ -489,21 +500,23 @@ const Page = () => {
                             </span>
                           )}
                         </div>
-                        <button
-                          onClick={async () => {
-                            try {
-                              await axios.delete("/api/admin/invite/delete", { data: { id: inv.id } });
-                              setInvitations((prev) => prev.filter((i) => i.id !== inv.id));
-                              toast.success("Invitation cancelled");
-                            } catch {
-                              toast.error("Failed to delete invitation");
-                            }
-                          }}
-                          className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors shrink-0"
-                          title="Cancel invitation"
-                        >
-                          <Trash2 size={13} />
-                        </button>
+                        {isSuperAdmin && (
+                          <button
+                            onClick={async () => {
+                              try {
+                                await axios.delete("/api/admin/invite/delete", { data: { id: inv.id } });
+                                setInvitations((prev) => prev.filter((i) => i.id !== inv.id));
+                                toast.success("Invitation cancelled");
+                              } catch {
+                                toast.error("Failed to delete invitation");
+                              }
+                            }}
+                            className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors shrink-0"
+                            title="Cancel invitation"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
@@ -634,6 +647,7 @@ const Page = () => {
           invitation={editingMember}
           endpoint="/api/admin/members"
           idField="id"
+          inviterPermissions={inviterPermissions}
           onUpdated={(uid, perms) => {
             setMembers((prev) => prev.map((m) => m.uid === uid ? { ...m, permissions: perms } : m));
             setEditingMember(null);
