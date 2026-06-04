@@ -4,22 +4,30 @@ import { useRouter } from "next/navigation";
 import {
   Search, LayoutDashboard, Building2, Users, ClipboardList,
   Receipt, Settings, FileText, Landmark, Calculator, Wallet,
-  User, X, Loader2, CornerDownLeft,
+  User, X, Loader2, CornerDownLeft, Layers, FolderKanban,
+  Megaphone, CardSim, UserCog, Calendar, BarChart3,
 } from "lucide-react";
 import axios from "axios";
 
-/* ── Static page links ── */
+/* ── Static page links — must mirror Sidebar.jsx exactly ── */
 const PAGES = [
-  { label: "Dashboard",     sub: "Overview & stats",            href: "/admin",            icon: LayoutDashboard, permission: null         },
-  { label: "Companies",     sub: "Manage all companies",        href: "/admin/companies",  icon: Building2,       permission: "companies"  },
-  { label: "Employees",     sub: "View & manage staff",         href: "/admin/employees",  icon: Users,           permission: "employees"  },
-  { label: "Attendance",    sub: "Daily attendance records",    href: "/admin/attendance", icon: ClipboardList,   permission: "attendance" },
-  { label: "Expenses",      sub: "Expense tracking",            href: "/admin/expenses",   icon: Receipt,         permission: "accounts"   },
-  { label: "Templates",     sub: "Letter & contract templates", href: "/admin/templates",  icon: FileText,        permission: "templates"  },
-  { label: "Bank Accounts", sub: "Bank & payment accounts",     href: "/admin/banks",      icon: Landmark,        permission: "accounts"   },
-  { label: "Taxes",         sub: "Tax configurations",          href: "/admin/taxes",      icon: Calculator,      permission: "accounts"   },
-  { label: "Accounts",      sub: "User accounts",               href: "/admin/accounts",   icon: Wallet,          permission: "accounts"   },
-  { label: "Settings",      sub: "System preferences",          href: "/admin/settings",   icon: Settings,        permission: "settings"   },
+  { label: "Dashboard",           sub: "Overview & stats",              href: "/admin",                    icon: LayoutDashboard, permission: null            },
+  { label: "Companies",           sub: "Manage all companies",          href: "/admin/companies",          icon: Building2,       permission: "companies"     },
+  { label: "Employees",           sub: "View & manage staff",           href: "/admin/employees",          icon: Users,           permission: "employees"     },
+  { label: "Departments",         sub: "Manage departments",            href: "/admin/departments",        icon: Layers,          permission: "employees"     },
+  { label: "Templates",           sub: "Letter & contract templates",   href: "/admin/templates",          icon: FileText,        permission: "templates"     },
+  { label: "Attendance",          sub: "Daily attendance records",      href: "/admin/attendance",         icon: Calendar,        permission: "attendance"    },
+  { label: "Salary Report",       sub: "Attendance & salary report",    href: "/admin/attendance/report",  icon: BarChart3,       permission: "attendance"    },
+  { label: "Announcements",       sub: "Broadcast announcements",       href: "/admin/announcements",      icon: Megaphone,       permission: "announcements" },
+  { label: "Projects",            sub: "Manage projects",               href: "/admin/projects",           icon: FolderKanban,    permission: "tasks"         },
+  { label: "All Tasks",           sub: "View and manage tasks",         href: "/admin/tasks",              icon: ClipboardList,   permission: "tasks"         },
+  { label: "Accounts",            sub: "Financial accounts",            href: "/admin/accounts",           icon: Wallet,          permission: "accounts"      },
+  { label: "Bank Accounts",       sub: "Bank & payment accounts",       href: "/admin/banks",              icon: Landmark,        permission: "accounts"      },
+  { label: "Taxes",               sub: "Tax configurations",            href: "/admin/taxes",              icon: Calculator,      permission: "accounts"      },
+  { label: "Expenses",            sub: "Expense tracking",              href: "/admin/expenses",           icon: Receipt,         permission: "accounts"      },
+  { label: "Invoices",            sub: "Company invoices & billing",    href: "/admin/invoices",           icon: CardSim,         permission: "invoice"       },
+  { label: "Admin Members",       sub: "Manage admin team members",     href: "/admin/settings",           icon: UserCog,         permission: "members"       },
+  { label: "Settings",            sub: "System preferences",            href: "/admin/settings",           icon: Settings,        permission: "settings"      },
 ];
 
 const TYPE_ICON  = { employee: User,      company: Building2, template: FileText  };
@@ -141,7 +149,7 @@ export default function CommandPalette({ open, onClose, permissions = [], role }
 
   if (!open) return null;
 
-  const hasServer = visibleEmployees.length || visibleCompanies.length || visibleTemplates.length;
+  const hasServer = visibleEmployees.length > 0 || visibleCompanies.length > 0 || visibleTemplates.length > 0;
 
   /* render one group of items */
   const renderGroup = (label, items, category) => {
