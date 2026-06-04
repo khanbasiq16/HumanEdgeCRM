@@ -20,7 +20,7 @@ import { getallipwhitelist } from "@/features/Slice/IpwhiteSlice";
 import {
   Users, Layers, Building2, Wifi, Calendar, CheckCircle2,
   XCircle, Shield, ToggleLeft, ArrowRight, UserPlus, Mail,
-  ShieldCheck, Trash2, Pencil, RefreshCw, Copy, Check, X, Link2,
+  ShieldCheck, Trash2, Pencil, RefreshCw, Copy, Check, X, Link2, Globe,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -353,17 +353,34 @@ const Page = () => {
 
             <div className="divide-y divide-slate-100 max-h-64 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               {ipwhitelist?.length > 0 ? (
-                ipwhitelist.map((item, i) => (
-                  <div key={i} className="flex items-center gap-3 px-5 py-3.5">
-                    <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
-                      <Wifi size={14} className="text-amber-500" />
+                ipwhitelist.map((item, i) => {
+                  const isAnywhere = item.ip === "0.0.0.0/0";
+                  return (
+                    <div key={i} className={`flex items-center gap-3 px-5 py-3.5 ${isAnywhere ? "bg-emerald-50/60" : ""}`}>
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isAnywhere ? "bg-emerald-100" : "bg-amber-50"}`}>
+                        {isAnywhere
+                          ? <Globe size={14} className="text-emerald-600" />
+                          : <Wifi size={14} className="text-amber-500" />
+                        }
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className={`text-sm font-semibold truncate ${isAnywhere ? "text-emerald-800" : "text-slate-700"}`}>
+                            {item.networkName}
+                          </p>
+                          {isAnywhere && (
+                            <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
+                              Anywhere
+                            </span>
+                          )}
+                        </div>
+                        <p className={`text-xs font-mono truncate ${isAnywhere ? "text-emerald-500" : "text-slate-400"}`}>
+                          {item.ip}
+                        </p>
+                      </div>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-slate-700 truncate">{item.networkName}</p>
-                      <p className="text-xs text-slate-400 font-mono truncate">{item.ip}</p>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <div className="flex flex-col items-center justify-center py-10 gap-2">
                   <Wifi size={24} className="text-slate-200" />

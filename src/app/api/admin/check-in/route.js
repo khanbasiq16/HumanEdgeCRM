@@ -77,24 +77,28 @@ export async function POST(req) {
         const whitelist = whitelistSnap.data()?.whitelist || [];
 
         if (whitelist.length > 0) {
-            const partialIp = ip.split(".").slice(0, 3).join(".");
+            const hasUniversal = whitelist.some((item) => item.ip === "0.0.0.0/0");
 
-            const isAllowed = whitelist.some((item) => {
-                const partialWhitelistIp = item.ip.split(".").slice(0, 3).join(".");
-                return partialIp === partialWhitelistIp;
-            });
+            if (!hasUniversal) {
+                const partialIp = ip.split(".").slice(0, 3).join(".");
 
-            if (!isAllowed) {
-                console.log("❌ Blocked IP:", ip);
+                const isAllowed = whitelist.some((item) => {
+                    const partialWhitelistIp = item.ip.split(".").slice(0, 3).join(".");
+                    return partialIp === partialWhitelistIp;
+                });
 
-                return NextResponse.json(
-                    {
-                        success: false,
-                        error:
-                            "Check In Failed. Please Connect With the Office Network Use Local Internet 5G",
-                    },
-                    { status: 403 }
-                );
+                if (!isAllowed) {
+                    console.log("❌ Blocked IP:", ip);
+
+                    return NextResponse.json(
+                        {
+                            success: false,
+                            error:
+                                "Check In Failed. Please Connect With the Office Network Use Local Internet 5G",
+                        },
+                        { status: 403 }
+                    );
+                }
             }
         }
 
