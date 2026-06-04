@@ -426,7 +426,7 @@ function ProjectFormDialog({ open, onClose, form, setForm, onSubmit, loading, mo
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v && !loading) onClose(); }}>
-      <DialogContent className="sm:max-w-[520px] rounded-3xl p-0 overflow-hidden border border-slate-200/80 shadow-2xl shadow-slate-300/40 gap-0">
+      <DialogContent className="sm:max-w-[520px] rounded-3xl p-0 overflow-hidden border border-slate-200/80 shadow-2xl shadow-slate-300/40 gap-0 max-h-[90vh] flex flex-col">
 
         <AnimatePresence mode="wait">
           <motion.div
@@ -435,6 +435,7 @@ function ProjectFormDialog({ open, onClose, form, setForm, onSubmit, loading, mo
             animate={{ opacity: 1, scale: 1,    y: 0 }}
             exit={{    opacity: 0, scale: 0.97, y: 8 }}
             transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className="flex flex-col flex-1 min-h-0"
           >
             {/* ── Header bar (clean, no colored bg) ── */}
             <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-slate-100">
@@ -462,7 +463,7 @@ function ProjectFormDialog({ open, onClose, form, setForm, onSubmit, loading, mo
             </div>
 
             {/* ── Form body ── */}
-            <div className="px-6 py-5 space-y-5">
+            <div className="px-6 py-5 space-y-5 overflow-y-auto flex-1">
 
               {/* Title */}
               <div>
@@ -552,7 +553,7 @@ function ProjectFormDialog({ open, onClose, form, setForm, onSubmit, loading, mo
             </div>
 
             {/* ── Footer ── */}
-            <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-end gap-3 bg-slate-50/50">
+            <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-end gap-3 bg-slate-50/50 shrink-0">
               <button
                 onClick={() => !loading && onClose()}
                 disabled={loading}

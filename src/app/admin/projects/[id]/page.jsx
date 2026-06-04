@@ -9,13 +9,15 @@ import toast from "react-hot-toast";
 import {
   ArrowLeft, Plus, Search, Loader2, User, Calendar, MessageSquare,
   ChevronRight, Send, Save, CheckCircle2, Users, UserPlus, X, AlertCircle,
-  Pencil, Trash2, AlertTriangle,
+  Pencil, Trash2, AlertTriangle, Bold, Italic, List, ListOrdered, Heading2, Quote,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
 
 const TASK_STATUS = {
   pending:      { label: "Pending",     bg: "bg-slate-100",   text: "text-slate-600",   dot: "bg-slate-400"   },
@@ -28,6 +30,60 @@ const PRIORITY_STYLE = {
   medium: "bg-amber-100 text-amber-700",
   high:   "bg-red-100   text-red-600",
 };
+
+/* ── Toolbar button ── */
+const TB = ({ active, onClick, title, children }) => (
+  <button
+    type="button"
+    title={title}
+    onMouseDown={(e) => { e.preventDefault(); onClick(); }}
+    className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${
+      active ? "bg-blue-100 text-blue-700" : "text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+    }`}
+  >
+    {children}
+  </button>
+);
+
+/* ── Rich text editor ── */
+function ProjectRichEditor({ content, onChange, editorKey }) {
+  const editor = useEditor({
+    immediatelyRender: false,
+    extensions: [StarterKit],
+    content: content || "",
+    editorProps: {
+      attributes: {
+        class: "min-h-[100px] text-sm text-slate-700 focus:outline-none px-3 py-2.5 leading-relaxed",
+      },
+    },
+    onUpdate: ({ editor }) => onChange(editor.getHTML()),
+  });
+
+  useEffect(() => {
+    if (editor && content !== editor.getHTML()) {
+      editor.commands.setContent(content || "", false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editorKey]);
+
+  if (!editor) return null;
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-slate-50/60 overflow-hidden focus-within:border-blue-400 focus-within:bg-white transition-colors">
+      <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-slate-200 bg-white/80 flex-wrap">
+        <TB active={editor.isActive("bold")}              onClick={() => editor.chain().focus().toggleBold().run()}              title="Bold"><Bold size={12}/></TB>
+        <TB active={editor.isActive("italic")}            onClick={() => editor.chain().focus().toggleItalic().run()}            title="Italic"><Italic size={12}/></TB>
+        <div className="w-px h-4 bg-slate-200 mx-1" />
+        <TB active={editor.isActive("heading",{level:2})} onClick={() => editor.chain().focus().toggleHeading({level:2}).run()} title="Heading"><Heading2 size={12}/></TB>
+        <TB active={editor.isActive("bulletList")}        onClick={() => editor.chain().focus().toggleBulletList().run()}        title="Bullet List"><List size={12}/></TB>
+        <TB active={editor.isActive("orderedList")}       onClick={() => editor.chain().focus().toggleOrderedList().run()}       title="Numbered List"><ListOrdered size={12}/></TB>
+        <div className="w-px h-4 bg-slate-200 mx-1" />
+        <TB active={editor.isActive("blockquote")}        onClick={() => editor.chain().focus().toggleBlockquote().run()}        title="Quote"><Quote size={12}/></TB>
+      </div>
+      <EditorContent editor={editor} />
+    </div>
+  );
+}
 
 export default function ProjectDetailPage() {
   const { id }   = useParams();
@@ -43,9 +99,10 @@ export default function ProjectDetailPage() {
   const [sf,         setSf]         = useState("all");
 
   // Edit project dialog
-  const [editOpen,   setEditOpen]   = useState(false);
-  const [editSaving, setEditSaving] = useState(false);
-  const [editForm,   setEditForm]   = useState({ title: "", description: "", priority: "medium", status: "active", deadline: "" });
+  const [editOpen,    setEditOpen]    = useState(false);
+  const [editSaving,  setEditSaving]  = useState(false);
+  const [editEditorKey, setEditEditorKey] = useState(0);
+  const [editForm,    setEditForm]    = useState({ title: "", description: "", priority: "medium", status: "active", deadline: "" });
 
   // Delete project dialog
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -101,6 +158,7 @@ export default function ProjectDetailPage() {
       status:      project?.status || "active",
       deadline:    project?.deadline || "",
     });
+    setEditEditorKey((k) => k + 1);
     setEditOpen(true);
   };
 
@@ -310,7 +368,11 @@ export default function ProjectDetailPage() {
             </div>
             {project?.description && (
               <div
-                className="text-sm text-slate-400 mt-0.5 prose prose-sm max-w-none prose-p:my-0 prose-headings:my-0"
+                className="text-sm text-slate-500 mt-1.5 leading-relaxed
+                  [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5
+                  [&_li]:my-0.5 [&_p]:my-0.5 [&_h2]:font-bold [&_h2]:text-slate-700 [&_h2]:text-base [&_h2]:mt-1
+                  [&_strong]:font-semibold [&_strong]:text-slate-700 [&_em]:italic
+                  [&_blockquote]:border-l-2 [&_blockquote]:border-slate-300 [&_blockquote]:pl-3 [&_blockquote]:text-slate-400"
                 dangerouslySetInnerHTML={{ __html: project.description }}
               />
             )}
@@ -513,8 +575,11 @@ export default function ProjectDetailPage() {
               </div>
               <div>
                 <label className="text-xs font-semibold text-slate-600 block mb-1.5">Description</label>
-                <Textarea className="rounded-xl border-slate-200 resize-none" placeholder="What is this project about…" rows={3}
-                  value={editForm.description} onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))} />
+                <ProjectRichEditor
+                  editorKey={editEditorKey}
+                  content={editForm.description}
+                  onChange={(html) => setEditForm((f) => ({ ...f, description: html }))}
+                />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>

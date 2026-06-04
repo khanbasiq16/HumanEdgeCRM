@@ -427,9 +427,6 @@ const Page = () => {
                         <span className="text-xs text-slate-400 truncate">· {selTask.projectTitle}</span>
                       )}
                     </div>
-                    {selTask.description && (
-                      <p className="text-xs text-slate-500 mt-2">{selTask.description}</p>
-                    )}
                   </div>
 
                   {/* Status select */}
@@ -449,6 +446,19 @@ const Page = () => {
 
               {/* Scrollable body */}
               <div className="p-6 space-y-5 overflow-y-auto flex-1">
+
+                {/* Description */}
+                {selTask.description && (
+                  <div>
+                    <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2">Description</p>
+                    <div
+                      className="text-sm text-slate-700 bg-slate-50 rounded-xl px-4 py-3 border border-slate-100
+                        [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5
+                        [&_li]:my-1 [&_p]:my-0.5 [&_strong]:font-bold [&_em]:italic"
+                      dangerouslySetInnerHTML={{ __html: selTask.description }}
+                    />
+                  </div>
+                )}
 
                 {/* Admin Remark */}
                 <div>
