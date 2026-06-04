@@ -38,7 +38,7 @@ const RichEditor = ({ label, name, placeholder }) => {
 
   const handleInput = () => {
     syncFormats();
-    if (hiddenRef.current) hiddenRef.current.value = editorRef.current?.innerText ?? "";
+    if (hiddenRef.current) hiddenRef.current.value = editorRef.current?.innerHTML ?? "";
   };
 
   const Btn = ({ cmd, icon: Icon, active }) => (
