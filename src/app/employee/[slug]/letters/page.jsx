@@ -134,7 +134,25 @@ const buildLetterHTML = (letter) => {
     </div>
   ` : "";
 
-  const bodyHTML = (letter.blocks || []).map(renderBlockHTML).join("");
+  const bodyHTML = (() => {
+    const blocks = letter.blocks || [];
+    let html = "";
+    let i = 0;
+    while (i < blocks.length) {
+      if (blocks[i].type === "signature") {
+        const grp = [];
+        while (i < blocks.length && blocks[i].type === "signature") { grp.push(blocks[i]); i++; }
+        if (grp.length > 1) {
+          html += `<div style="display:flex;gap:24px;justify-content:space-between;margin-top:8px;">${grp.map(b => `<div style="flex:1">${renderBlockHTML(b)}</div>`).join("")}</div>`;
+        } else {
+          html += renderBlockHTML(grp[0]);
+        }
+      } else {
+        html += renderBlockHTML(blocks[i]); i++;
+      }
+    }
+    return html;
+  })();
 
   return `<!DOCTYPE html><html><head>
     <meta charset="UTF-8"/>

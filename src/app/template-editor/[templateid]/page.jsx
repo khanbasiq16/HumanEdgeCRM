@@ -44,80 +44,140 @@ const mkId = () => uuidv4();
 /* ─────────────────────────── Presets ────────────────────────── */
 const EMPLOYEE_PRESETS = {
   appreciation: { name:"Appreciation Letter", blocks:[
-    { type:"heading",   content:"Letter of Appreciation for Outstanding Performance", headingLevel:"h2", align:"center" },
+    { type:"heading",   content:"Letter of Appreciation", headingLevel:"h2", align:"center" },
     { type:"date-line", content:"Date: [Date]" },
+    { type:"text",      content:"Employee Name: [Employee Name]\nEmployee ID:   [Employee ID]\nDesignation:   [Designation]\nDepartment:    [Department]", align:"left" },
+    { type:"divider" },
     { type:"text",      content:"Dear [Employee Name],", align:"left" },
-    { type:"text",      content:"We are pleased to formally acknowledge and appreciate your exceptional performance and dedication towards your role at [Company Name]. Your consistent efforts, commitment to excellence, and ability to deliver results have significantly contributed to the growth and success of the organization.", align:"left" },
-    { type:"text",      content:"Your professionalism, work ethic, and positive attitude set a strong example for your peers and reflect the core values of our organization. The management recognizes your contributions and values the impact you have made within your department.", align:"left" },
-    { type:"text",      content:"We look forward to your continued success and contributions to [Company Name], and we are confident that you will achieve even greater milestones in the future.\n\nOnce again, thank you for your dedication and excellent performance.", align:"left" },
+    { type:"text",      content:"On behalf of the management and entire team at [Company Name], we are truly pleased to formally acknowledge your outstanding performance, unwavering dedication, and the significant contributions you have made to our organization.", align:"left" },
+    { type:"text",      content:"Your consistent commitment to excellence, professional conduct, and positive attitude have not only helped achieve departmental goals but have also set a commendable example for your colleagues. The management takes great pride in recognizing employees like you who go above and beyond their responsibilities.", align:"left" },
+    { type:"callout",   content:"Your efforts have directly contributed to the growth and success of [Company Name]. We deeply value your hard work and sincerely appreciate everything you bring to our team.", align:"left" },
+    { type:"text",      content:"We look forward to your continued growth within the organization and are confident that you will achieve even greater milestones in the future. Once again, thank you for your outstanding service and dedication.\n\nWarm regards,", align:"left" },
+    { type:"divider" },
     { type:"signature", label:"Authorized Signatory" },
+    { type:"signature", label:"HR Manager" },
   ]},
+
   offer: { name:"Offer Letter", blocks:[
     { type:"heading",   content:"Letter of Appointment", headingLevel:"h2", align:"center" },
     { type:"date-line", content:"Date: [Date]" },
+    { type:"text",      content:"To,\n[Employee Name]\n[Designation]", align:"left" },
+    { type:"divider" },
     { type:"text",      content:"Dear [Employee Name],", align:"left" },
-    { type:"text",      content:"We are pleased to offer you the position of [Designation] in the [Department] department at [Company Name]. This offer is contingent upon successful completion of our pre-employment requirements.", align:"left" },
-    { type:"text",      content:"Your joining date will be [Join Date] and your monthly compensation will be PKR [Salary].", align:"left" },
-    { type:"text",      content:"We look forward to welcoming you to our team and trust that you will prove to be a valuable asset to the organization.", align:"left" },
+    { type:"text",      content:"We are pleased to offer you the position of [Designation] in the [Department] Department at [Company Name]. After a thorough review of your qualifications and interview performance, we are confident that you will be a valuable addition to our team.", align:"left" },
+    { type:"heading",   content:"Terms & Conditions of Employment", headingLevel:"h3", align:"left" },
+    { type:"text",      content:"Position:          [Designation]\nDepartment:        [Department]\nDate of Joining:   [Join Date]\nEmployment Type:   Full-Time / Permanent\nMonthly Salary:    PKR [Salary]\nProbation Period:  3 Months", align:"left" },
+    { type:"callout",   content:"This offer is subject to successful verification of your educational qualifications, previous employment records, and satisfactory completion of any pre-employment requirements.", align:"left" },
+    { type:"text",      content:"During the probation period, either party may terminate the employment with 7 days written notice. Upon successful completion of probation, the standard notice period of 1 month shall apply.\n\nPlease sign and return a copy of this letter as your acceptance of the offer. We look forward to welcoming you to [Company Name].", align:"left" },
+    { type:"divider" },
     { type:"signature", label:"Authorized Signatory" },
+    { type:"signature", label:"Employee Acceptance — [Employee Name] / Date" },
   ]},
+
   joining: { name:"Joining Letter", blocks:[
-    { type:"heading",   content:"Welcome Letter", headingLevel:"h2", align:"center" },
+    { type:"heading",   content:"Joining / Welcome Letter", headingLevel:"h2", align:"center" },
     { type:"date-line", content:"Date: [Date]" },
+    { type:"text",      content:"To,\n[Employee Name]\n[Designation] — [Department]", align:"left" },
+    { type:"divider" },
     { type:"text",      content:"Dear [Employee Name],", align:"left" },
-    { type:"text",      content:"On behalf of the entire team at [Company Name], we are delighted to welcome you as [Designation] in the [Department] department. Your joining date is [Join Date].", align:"left" },
-    { type:"text",      content:"We are confident that your skills and experience will be a valuable asset to our organization. Welcome aboard!", align:"left" },
+    { type:"text",      content:"On behalf of the entire team at [Company Name], we are delighted to welcome you as [Designation] in the [Department] Department. We are excited to have you join us and look forward to the contributions you will bring.", align:"left" },
+    { type:"heading",   content:"Your Joining Details", headingLevel:"h3", align:"left" },
+    { type:"text",      content:"Employee ID:       [Employee ID]\nDesignation:       [Designation]\nDepartment:        [Department]\nDate of Joining:   [Join Date]\nMonthly Salary:    PKR [Salary]\nReporting To:      HR / Line Manager", align:"left" },
+    { type:"callout",   content:"Please report to the HR Department on your first day with all required original documents including CNIC, Educational Certificates, and Passport-size Photographs.", align:"left" },
+    { type:"text",      content:"We are confident that your skills, experience, and enthusiasm will make a positive impact. Please feel free to reach out to the HR team for any queries or assistance during your onboarding.\n\nWe wish you a rewarding and successful career with [Company Name]. Welcome aboard!", align:"left" },
+    { type:"divider" },
     { type:"signature", label:"Authorized Signatory" },
+    { type:"signature", label:"HR Manager" },
   ]},
+
   experience: { name:"Experience Letter", blocks:[
     { type:"heading",   content:"Experience Certificate", headingLevel:"h2", align:"center" },
-    { type:"heading",   content:"To Whom It May Concern",  headingLevel:"h3", align:"center" },
+    { type:"heading",   content:"To Whom It May Concern", headingLevel:"h3", align:"center" },
     { type:"date-line", content:"Date: [Date]" },
-    { type:"text",      content:"This is to certify that [Employee Name] (Employee ID: [Employee ID]) has worked with [Company Name] as [Designation] in the [Department] department from [From Date] to [To Date].", align:"left" },
-    { type:"text",      content:"During this period, [Employee Name] demonstrated professionalism, dedication, and excellent work performance. We wish them the best in their future endeavors.", align:"left" },
+    { type:"divider" },
+    { type:"text",      content:"This is to certify that Mr./Ms. [Employee Name] bearing Employee ID [Employee ID] has been a valued employee of [Company Name] and served in the capacity of [Designation] in the [Department] Department.", align:"left" },
+    { type:"text",      content:"Duration of Employment:   [From Date]  to  [To Date]\nDesignation:              [Designation]\nDepartment:               [Department]\nEmployee ID:              [Employee ID]", align:"left" },
+    { type:"text",      content:"During the tenure of employment, [Employee Name] demonstrated exceptional professionalism, strong work ethics, and a high level of dedication towards assigned responsibilities. Their performance has consistently met and often exceeded the expectations of the management.", align:"left" },
+    { type:"callout",   content:"[Employee Name] is leaving the organization on their own accord / upon completion of contract and we have no objection to their future employment. We wish them continued success in their career.", align:"left" },
+    { type:"text",      content:"This certificate is issued on the request of the employee for their future reference.", align:"left" },
+    { type:"divider" },
     { type:"signature", label:"Authorized Signatory" },
+    { type:"signature", label:"HR Manager — [Company Name]" },
   ]},
+
   internship: { name:"Internship Certificate", blocks:[
     { type:"heading",   content:"Internship Completion Certificate", headingLevel:"h2", align:"center" },
+    { type:"heading",   content:"To Whom It May Concern", headingLevel:"h3", align:"center" },
     { type:"date-line", content:"Date: [Date]" },
-    { type:"text",      content:"This is to certify that [Employee Name] has successfully completed an internship at [Company Name] as [Designation] in the [Department] department for a duration of [Duration].", align:"left" },
-    { type:"text",      content:"During the internship period, [Employee Name] showed great enthusiasm, dedication, and a keen desire to learn. We wish them continued success.", align:"left" },
+    { type:"divider" },
+    { type:"text",      content:"This is to certify that Mr./Ms. [Employee Name] has successfully completed their internship program at [Company Name] as [Designation] in the [Department] Department.", align:"left" },
+    { type:"text",      content:"Internship Duration:   [From Date]  to  [To Date]  ([Duration])\nDepartment:            [Department]\nDesignation:           [Designation]\nSupervisor:            HR / Line Manager", align:"left" },
+    { type:"text",      content:"Throughout the internship, [Employee Name] displayed a commendable level of enthusiasm, a strong desire to learn, and a professional approach towards all assigned tasks. They adapted quickly to the work environment and contributed positively to team activities.", align:"left" },
+    { type:"callout",   content:"We appreciate [Employee Name]'s efforts and dedication during their time with us. We wish them all the best in their academic and professional endeavors.", align:"left" },
+    { type:"text",      content:"This certificate is issued upon the successful completion of the internship program.", align:"left" },
+    { type:"divider" },
     { type:"signature", label:"Authorized Signatory" },
+    { type:"signature", label:"HR Manager — [Company Name]" },
   ]},
+
   warning: { name:"Warning Letter", blocks:[
     { type:"heading",   content:"Warning Letter", headingLevel:"h2", align:"center" },
     { type:"date-line", content:"Date: [Date]" },
+    { type:"text",      content:"To,\n[Employee Name]\nEmployee ID:   [Employee ID]\nDesignation:   [Designation]\nDepartment:    [Department]", align:"left" },
+    { type:"divider" },
     { type:"text",      content:"Dear [Employee Name],", align:"left" },
-    { type:"callout",   content:"This letter serves as a formal warning regarding your recent conduct and performance. Immediate improvement is required.", align:"left" },
-    { type:"text",      content:"Failure to improve may result in further disciplinary action, up to and including termination of employment.", align:"left" },
-    { type:"signature", label:"Authorized Signatory" },
-    { type:"signature", label:"Employee Signature & Date" },
+    { type:"callout",   content:"This letter serves as a formal written warning regarding your conduct and/or performance that has come to the attention of the management. This matter is being treated with utmost seriousness.", align:"left" },
+    { type:"heading",   content:"Nature of Violation / Concern", headingLevel:"h3", align:"left" },
+    { type:"text",      content:"The management has observed the following issues that are in violation of company policies and code of conduct:\n\n1. [Describe specific issue or misconduct here]\n2. [Additional concern if applicable]\n\nThe incident(s) occurred on [Date] and have been documented by the concerned department.", align:"left" },
+    { type:"text",      content:"You are hereby advised to immediately rectify the above-mentioned issues and ensure that such behavior/performance does not recur. Continued failure to meet the required standards will result in further disciplinary action, which may include suspension or termination of employment.", align:"left" },
+    { type:"callout",   content:"You are required to submit a written explanation regarding this matter within 3 working days of receiving this letter. Failure to respond will be treated as acceptance of the stated concerns.", align:"left" },
+    { type:"text",      content:"We sincerely hope that this serves as a constructive reminder and that you will make the necessary improvements. The management remains committed to supporting your growth within the organization.", align:"left" },
+    { type:"divider" },
+    { type:"signature", label:"Authorized Signatory / HR Manager" },
+    { type:"signature", label:"Employee Acknowledgement — [Employee Name] / Date" },
   ]},
+
   termination: { name:"Termination Letter", blocks:[
-    { type:"heading",   content:"Letter of Termination", headingLevel:"h2", align:"center" },
+    { type:"heading",   content:"Letter of Termination of Employment", headingLevel:"h2", align:"center" },
     { type:"date-line", content:"Date: [Date]" },
+    { type:"text",      content:"To,\n[Employee Name]\nEmployee ID:   [Employee ID]\nDesignation:   [Designation]\nDepartment:    [Department]", align:"left" },
+    { type:"divider" },
     { type:"text",      content:"Dear [Employee Name],", align:"left" },
-    { type:"text",      content:"We regret to inform you that your employment with [Company Name] as [Designation] in the [Department] department is hereby terminated effective [Date].", align:"left" },
-    { type:"callout",   content:"You are required to return all company property including access cards, equipment, and confidential documents on or before your last working day.", align:"left" },
-    { type:"text",      content:"Your final settlement will be processed in accordance with company policy and applicable labor laws.", align:"left" },
+    { type:"text",      content:"We regret to inform you that after careful consideration, the management of [Company Name] has decided to terminate your employment as [Designation] in the [Department] Department, effective [Date].", align:"left" },
+    { type:"heading",   content:"Reason for Termination", headingLevel:"h3", align:"left" },
+    { type:"text",      content:"[State the reason clearly — e.g., repeated policy violations, performance issues, redundancy, end of contract, etc.]", align:"left" },
+    { type:"callout",   content:"You are required to hand over all company property — including but not limited to access cards, laptops, documents, and any other assets — to the HR Department on or before your last working day.", align:"left" },
+    { type:"heading",   content:"Final Settlement", headingLevel:"h3", align:"left" },
+    { type:"text",      content:"Your final salary, pending dues, and any other applicable benefits will be settled and disbursed in accordance with company policy and applicable labor laws within [30] days of your last working day.", align:"left" },
+    { type:"text",      content:"Please ensure a smooth handover of all pending work and responsibilities to your team/manager before your departure. The HR team will guide you through the offboarding process.\n\nWe wish you the best in your future endeavors.", align:"left" },
+    { type:"divider" },
     { type:"signature", label:"Authorized Signatory" },
+    { type:"signature", label:"HR Manager — [Company Name]" },
   ]},
+
   payslip: { name:"Payslip / Salary Slip", blocks:[
     { type:"heading",   content:"Salary Slip", headingLevel:"h2", align:"center" },
+    { type:"text",      content:"Employee Name:   [Employee Name]\nEmployee ID:     [Employee ID]\nDesignation:     [Designation]\nDepartment:      [Department]", align:"left" },
     { type:"payslip",   period:"[Month] [Year]",
       earnings:[
-        { id:"pe1", label:"Basic Salary",          amount:"[Salary]" },
-        { id:"pe2", label:"House Rent Allowance",  amount:"" },
-        { id:"pe3", label:"Medical Allowance",     amount:"" },
-        { id:"pe4", label:"Transport Allowance",   amount:"" },
+        { id:"pe1", label:"Basic Salary",           amount:"[Salary]" },
+        { id:"pe2", label:"House Rent Allowance",   amount:"" },
+        { id:"pe3", label:"Medical Allowance",      amount:"" },
+        { id:"pe4", label:"Transport Allowance",    amount:"" },
+        { id:"pe5", label:"Special Allowance",      amount:"" },
+        { id:"pe6", label:"Overtime",               amount:"" },
       ],
       deductions:[
-        { id:"pd1", label:"Income Tax",            amount:"" },
-        { id:"pd2", label:"EOBI",                  amount:"" },
-        { id:"pd3", label:"Other Deductions",      amount:"" },
+        { id:"pd1", label:"Income Tax (WHT)",       amount:"" },
+        { id:"pd2", label:"EOBI Contribution",      amount:"" },
+        { id:"pd3", label:"SESSI / PESSI",          amount:"" },
+        { id:"pd4", label:"Loan / Advance",         amount:"" },
+        { id:"pd5", label:"Other Deductions",       amount:"" },
       ],
       netPay:"[Salary]" },
+    { type:"divider" },
     { type:"signature", label:"Authorized Signatory" },
+    { type:"signature", label:"Employee Acknowledgement — [Employee Name]" },
   ]},
 };
 
@@ -644,7 +704,8 @@ export default function TemplatePage() {
   const [cursor,        setCursor]        = useState(null);
   const [loading,       setLoading]       = useState(true);
   const [saving,        setSaving]        = useState(false);
-  const [showPresets,   setShowPresets]   = useState(false);
+  const [showPresets,      setShowPresets]      = useState(false);
+  const [presetDialogOpen, setPresetDialogOpen] = useState(false);
   const [sidebarTab,    setSidebarTab]    = useState("elements");
   const [activeTheme,   setActiveTheme]   = useState(DEFAULT_THEME);
   const [fontStack,     setFontStack]     = useState(DEFAULT_FONT);
@@ -716,6 +777,7 @@ export default function TemplatePage() {
     }));
     setTemplateName(p => (p==="Untitled Template"||!p) ? preset.name : p);
     setShowPresets(false);
+    setPresetDialogOpen(false);
     toast.success(`${preset.name} loaded`);
   };
 
@@ -993,7 +1055,7 @@ export default function TemplatePage() {
             <div className="mx-auto max-w-[794px]">
               <div
                 id="print-canvas"
-                className="bg-white shadow-[0_4px_40px_rgba(0,0,0,0.10)] min-h-[1123px] rounded-sm overflow-hidden"
+                className="bg-white shadow-[0_4px_40px_rgba(0,0,0,0.10)] min-h-[1123px] rounded-sm overflow-hidden flex flex-col"
                 style={{ fontFamily: fontStack.css }}
                 onClick={e=>{ if (e.target===e.currentTarget) setActiveId(null); }}
               >
@@ -1033,7 +1095,7 @@ export default function TemplatePage() {
                 )}
 
                 {/* ── Body blocks ── */}
-                <div className="px-14 py-8">
+                <div className="px-14 py-8 flex-1">
                   {blocks.length===0 ? (
                     <div className="flex flex-col items-center justify-center min-h-[500px] gap-4" onClick={e=>e.stopPropagation()}>
                       <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background:activeTheme.accent+"20" }}>
@@ -1042,7 +1104,7 @@ export default function TemplatePage() {
                       <p className="text-sm font-medium text-slate-300">Canvas is empty</p>
                       <p className="text-xs text-slate-200">Use Quick Start to load a template, or add elements manually</p>
                       <button
-                        onClick={()=>setShowPresets(true)}
+                        onClick={()=>setPresetDialogOpen(true)}
                         className="flex items-center gap-1.5 px-4 py-2 text-white rounded-xl text-xs font-semibold hover:opacity-90 transition-colors"
                         style={{ background:activeTheme.primary }}
                       >
@@ -1051,42 +1113,82 @@ export default function TemplatePage() {
                     </div>
                   ) : (
                     <div className="space-y-0.5">
-                      {blocks.map((block,idx)=>(
-                        <CanvasBlock
-                          key={block.id}
-                          block={block}
-                          isActive={activeId===block.id}
-                          isFirst={idx===0}
-                          isLast={idx===blocks.length-1}
-                          theme={activeTheme}
-                          onActivate={()=>setActiveId(block.id)}
-                          onChange={upd=>updateBlock(block.id,upd)}
-                          onRemove={()=>removeBlock(block.id)}
-                          onMoveUp={()=>moveBlock(block.id,-1)}
-                          onMoveDown={()=>moveBlock(block.id,1)}
-                          onCursorChange={setCursor}
-                        />
-                      ))}
+                      {(() => {
+                        const rows = [];
+                        let i = 0;
+                        while (i < blocks.length) {
+                          if (blocks[i].type === "signature") {
+                            const grp = [];
+                            while (i < blocks.length && blocks[i].type === "signature") {
+                              grp.push({ block: blocks[i], idx: i }); i++;
+                            }
+                            rows.push({ kind: "sig", grp });
+                          } else {
+                            rows.push({ kind: "single", block: blocks[i], idx: i }); i++;
+                          }
+                        }
+                        return rows.map((row, ri) => {
+                          if (row.kind === "sig") {
+                            return (
+                              <div key={ri} className={`flex gap-6 ${row.grp.length > 1 ? "justify-between" : ""}`}>
+                                {row.grp.map(({ block, idx }) => (
+                                  <div key={block.id} className={row.grp.length > 1 ? "flex-1" : "w-full"}>
+                                    <CanvasBlock
+                                      block={block}
+                                      isActive={activeId===block.id}
+                                      isFirst={idx===0}
+                                      isLast={idx===blocks.length-1}
+                                      theme={activeTheme}
+                                      onActivate={()=>setActiveId(block.id)}
+                                      onChange={upd=>updateBlock(block.id,upd)}
+                                      onRemove={()=>removeBlock(block.id)}
+                                      onMoveUp={()=>moveBlock(block.id,-1)}
+                                      onMoveDown={()=>moveBlock(block.id,1)}
+                                      onCursorChange={setCursor}
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          }
+                          return (
+                            <CanvasBlock
+                              key={row.block.id}
+                              block={row.block}
+                              isActive={activeId===row.block.id}
+                              isFirst={row.idx===0}
+                              isLast={row.idx===blocks.length-1}
+                              theme={activeTheme}
+                              onActivate={()=>setActiveId(row.block.id)}
+                              onChange={upd=>updateBlock(row.block.id,upd)}
+                              onRemove={()=>removeBlock(row.block.id)}
+                              onMoveUp={()=>moveBlock(row.block.id,-1)}
+                              onMoveDown={()=>moveBlock(row.block.id,1)}
+                              onCursorChange={setCursor}
+                            />
+                          );
+                        });
+                      })()}
                     </div>
                   )}
                 </div>
 
-                {/* ── Company Footer ── */}
-                {company && (
-                  <div className="px-14 pb-8 mt-auto">
-                    <div className="pt-4 text-center" style={{ borderTop:`1px solid ${activeTheme.divider}66`, fontFamily:"sans-serif" }}>
-                      {company.companyAddress && (
-                        <p className="text-[10px] text-slate-500 uppercase tracking-wide">{company.companyAddress}</p>
-                      )}
-                      {company.companyWebsite && (
-                        <p className="text-[10px] text-slate-400">{company.companyWebsite.replace(/^https?:\/\/(www\.)?/,"")}</p>
-                      )}
+                {/* ── Footer + Bottom strip — always at page bottom ── */}
+                <div className="mt-auto">
+                  {company && (
+                    <div className="px-14 pb-8">
+                      <div className="pt-4 text-center" style={{ borderTop:`1px solid ${activeTheme.divider}66`, fontFamily:"sans-serif" }}>
+                        {company.companyAddress && (
+                          <p className="text-[10px] text-slate-500 uppercase tracking-wide">{company.companyAddress}</p>
+                        )}
+                        {company.companyWebsite && (
+                          <p className="text-[10px] text-slate-400">{company.companyWebsite.replace(/^https?:\/\/(www\.)?/,"")}</p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
-
-                {/* ── Bottom color strip ── */}
-                <div style={{ background: activeTheme.headerBg, height: 4 }} />
+                  )}
+                  <div style={{ background: activeTheme.headerBg, height: 4 }} />
+                </div>
               </div>
 
               {/* Quick add row */}
@@ -1104,6 +1206,52 @@ export default function TemplatePage() {
           </main>
         </div>
       </div>
+      {/* ── Preset Picker Dialog ── */}
+      {presetDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={()=>setPresetDialogOpen(false)}>
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden"
+            onClick={e=>e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <div>
+                <p className="text-base font-extrabold text-slate-900">Choose a Template</p>
+                <p className="text-xs text-slate-400 mt-0.5">Select a preset to load its default content</p>
+              </div>
+              <button
+                onClick={()=>setPresetDialogOpen(false)}
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Grid */}
+            <div className="overflow-y-auto p-5">
+              <p className="text-[10px] font-extrabold text-violet-500 uppercase tracking-widest mb-3">
+                {(template?.role==="Admin"||template?.role==="Contract") ? "Contract Templates" : "Letter Templates"}
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {Object.entries((template?.role==="Admin"||template?.role==="Contract") ? CONTRACT_PRESETS : EMPLOYEE_PRESETS).map(([key, p]) => (
+                  <button
+                    key={key}
+                    onClick={()=>applyPreset(key)}
+                    className="group flex flex-col items-start gap-2 p-4 rounded-xl border-2 border-slate-100 bg-slate-50 hover:border-violet-400 hover:bg-violet-50 transition-all text-left"
+                  >
+                    {/* Color strip preview */}
+                    <div className="w-full h-1.5 rounded-full" style={{ background: activeTheme.primary }} />
+                    <div className="w-3/4 h-1 rounded-full bg-slate-200" />
+                    <div className="w-1/2 h-1 rounded-full bg-slate-200 mb-1" />
+                    <p className="text-xs font-bold text-slate-700 group-hover:text-violet-700 leading-snug">{p.name}</p>
+                    <p className="text-[10px] text-slate-400">{p.blocks.length} elements</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
