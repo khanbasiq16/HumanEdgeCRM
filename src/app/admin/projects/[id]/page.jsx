@@ -116,9 +116,10 @@ export default function ProjectDetailPage() {
   const [memberSearch,    setMemberSearch]    = useState("");
 
   // Create task dialog
-  const [createOpen, setCreateOpen] = useState(false);
-  const [creating,   setCreating]   = useState(false);
-  const [taskForm,   setTaskForm]   = useState({
+  const [createOpen,    setCreateOpen]    = useState(false);
+  const [creating,      setCreating]      = useState(false);
+  const [taskEditorKey, setTaskEditorKey] = useState(0);
+  const [taskForm,      setTaskForm]      = useState({
     title: "", description: "", assignedTo: "", priority: "medium", dueDate: "",
   });
 
@@ -398,6 +399,8 @@ export default function ProjectDetailPage() {
                   toast.error("Add at least one team member before creating tasks");
                   return;
                 }
+                setTaskForm({ title: "", description: "", assignedTo: "", priority: "medium", dueDate: "" });
+                setTaskEditorKey((k) => k + 1);
                 setCreateOpen(true);
               }}
               className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center gap-2"
@@ -715,59 +718,124 @@ export default function ProjectDetailPage() {
         </Dialog>
 
         {/* ── Create Task Dialog ─────────────────────────────────── */}
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogContent className="sm:max-w-md rounded-2xl p-6">
-            <DialogHeader><DialogTitle className="text-base font-bold">New Task</DialogTitle></DialogHeader>
-            <div className="space-y-4 my-2">
-              <div>
-                <label className="text-xs font-semibold text-slate-600 block mb-1.5">Task Title *</label>
-                <Input className="rounded-xl border-slate-200" placeholder="What needs to be done…"
-                  value={taskForm.title} onChange={(e) => setTaskForm((f) => ({ ...f, title: e.target.value }))} />
+        <Dialog open={createOpen} onOpenChange={(v) => { if (!v && !creating) setCreateOpen(false); }}>
+          <DialogContent className="sm:max-w-lg rounded-2xl p-0 overflow-hidden gap-0 max-h-[90vh] flex flex-col">
+
+            {/* Header */}
+            <div className="flex items-center gap-3 px-6 pt-5 pb-4 border-b border-slate-100 shrink-0">
+              <div className="w-9 h-9 rounded-2xl bg-blue-50 flex items-center justify-center shrink-0">
+                <CheckCircle2 size={16} className="text-blue-600" />
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-600 block mb-1.5">Description</label>
-                <Textarea className="rounded-xl border-slate-200 resize-none" placeholder="Task details…" rows={2}
-                  value={taskForm.description} onChange={(e) => setTaskForm((f) => ({ ...f, description: e.target.value }))} />
+                <p className="text-[15px] font-extrabold text-slate-900 leading-none">New Task</p>
+                <p className="text-xs text-slate-400 mt-0.5">{project?.title}</p>
               </div>
+            </div>
+
+            {/* Form body */}
+            <div className="px-6 py-5 space-y-5 overflow-y-auto flex-1">
+
+              {/* Title */}
               <div>
-                <label className="text-xs font-semibold text-slate-600 block mb-1.5">Assign To *</label>
-                <Select value={taskForm.assignedTo} onValueChange={(v) => setTaskForm((f) => ({ ...f, assignedTo: v }))}>
-                  <SelectTrigger className="rounded-xl border-slate-200 text-sm"><SelectValue placeholder="Select team member…" /></SelectTrigger>
-                  <SelectContent>
-                    {members.map((m) => (
-                      <SelectItem key={m.id} value={m.id}>
-                        {m.name} — {m.department || "—"}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-[10px] text-slate-400 mt-1">Only project team members can be assigned tasks</p>
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5">
+                  Task Title <span className="text-red-400 normal-case tracking-normal">*</span>
+                </label>
+                <input
+                  className="w-full text-[15px] font-semibold text-slate-900 placeholder:text-slate-300 bg-transparent border-0 border-b-2 border-slate-100 focus:border-blue-500 outline-none pb-2 transition-colors"
+                  placeholder="What needs to be done…"
+                  value={taskForm.title}
+                  onChange={(e) => setTaskForm((f) => ({ ...f, title: e.target.value }))}
+                  onKeyDown={(e) => e.key === "Enter" && !creating && taskForm.title.trim() && taskForm.assignedTo && handleCreateTask()}
+                />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+
+              {/* Description — rich text */}
+              <div>
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Description</label>
+                <ProjectRichEditor
+                  editorKey={taskEditorKey}
+                  content={taskForm.description}
+                  onChange={(html) => setTaskForm((f) => ({ ...f, description: html }))}
+                />
+              </div>
+
+              {/* Assign To */}
+              <div>
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest block mb-2">
+                  Assign To <span className="text-red-400 normal-case tracking-normal">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {members.map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setTaskForm((f) => ({ ...f, assignedTo: m.id }))}
+                      className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-left transition-all ${
+                        taskForm.assignedTo === m.id
+                          ? "border-blue-500 bg-blue-50 shadow-sm"
+                          : "border-slate-200 bg-white hover:border-slate-300"
+                      }`}
+                    >
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${
+                        taskForm.assignedTo === m.id ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-600"
+                      }`}>
+                        {m.name?.charAt(0)?.toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className={`text-xs font-bold truncate ${taskForm.assignedTo === m.id ? "text-blue-700" : "text-slate-700"}`}>{m.name}</p>
+                        <p className="text-[10px] text-slate-400 truncate">{m.department || "—"}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Priority + Due Date */}
+              <div className="grid grid-cols-2 gap-5">
                 <div>
-                  <label className="text-xs font-semibold text-slate-600 block mb-1.5">Priority</label>
-                  <Select value={taskForm.priority} onValueChange={(v) => setTaskForm((f) => ({ ...f, priority: v }))}>
-                    <SelectTrigger className="rounded-xl border-slate-200 text-sm"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">Low</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="high">High</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Priority</label>
+                  <div className="flex gap-1.5">
+                    {[
+                      { value:"low",    label:"Low",    color:"bg-slate-700 text-white border-slate-700",   idle:"border-slate-200 text-slate-500 hover:border-slate-400" },
+                      { value:"medium", label:"Med",    color:"bg-amber-500 text-white border-amber-500",   idle:"border-slate-200 text-slate-500 hover:border-amber-400" },
+                      { value:"high",   label:"High",   color:"bg-red-500   text-white border-red-500",     idle:"border-slate-200 text-slate-500 hover:border-red-400"   },
+                    ].map(({ value, label, color, idle }) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setTaskForm((f) => ({ ...f, priority: value }))}
+                        className={`flex-1 py-2 rounded-xl border text-[10px] font-bold transition-all ${taskForm.priority === value ? color : idle}`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-600 block mb-1.5">Due Date</label>
-                  <Input type="date" className="rounded-xl border-slate-200"
-                    value={taskForm.dueDate} onChange={(e) => setTaskForm((f) => ({ ...f, dueDate: e.target.value }))} />
+                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Due Date</label>
+                  <div className="relative">
+                    <Calendar size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    <Input type="date" className="pl-8 rounded-xl border-slate-200 bg-slate-50 focus:bg-white text-sm"
+                      value={taskForm.dueDate} onChange={(e) => setTaskForm((f) => ({ ...f, dueDate: e.target.value }))} />
+                  </div>
                 </div>
               </div>
             </div>
-            <DialogFooter className="gap-2">
-              <Button variant="outline" className="rounded-xl" onClick={() => setCreateOpen(false)} disabled={creating}>Cancel</Button>
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl" onClick={handleCreateTask} disabled={creating}>
-                {creating ? <><Loader2 size={14} className="animate-spin mr-1.5" />Creating…</> : "Create Task"}
-              </Button>
-            </DialogFooter>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-2 shrink-0">
+              <button onClick={() => !creating && setCreateOpen(false)} disabled={creating}
+                className="px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-all disabled:opacity-40">
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateTask}
+                disabled={creating || !taskForm.title.trim() || !taskForm.assignedTo}
+                className="flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {creating ? <><Loader2 size={13} className="animate-spin" />Creating…</> : "Create Task"}
+              </button>
+            </div>
           </DialogContent>
         </Dialog>
 
