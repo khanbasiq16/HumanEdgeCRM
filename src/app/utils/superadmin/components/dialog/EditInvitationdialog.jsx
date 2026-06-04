@@ -9,15 +9,20 @@ import {
 import {
   Loader2, Users, Building2, CalendarDays, DollarSign,
   FileText, Settings, ShieldCheck, CheckSquare, Square, Save,
+  ClipboardList, Megaphone, Receipt, UserCog,
 } from "lucide-react";
 
 const MODULES = [
-  { id: "employees",  label: "Employees & Departments", desc: "Employees, departments, projects & tasks", icon: Users        },
-  { id: "companies",  label: "Companies",               desc: "Create and manage company profiles",       icon: Building2    },
-  { id: "attendance", label: "Attendance",              desc: "View and manage attendance records",       icon: CalendarDays },
-  { id: "accounts",   label: "Accounts & Finance",      desc: "Accounts, banks, taxes and expenses",      icon: DollarSign   },
-  { id: "templates",  label: "Templates",               desc: "Create and assign letter templates",       icon: FileText     },
-  { id: "settings",   label: "Settings Page Only",      desc: "IP whitelist, toggles, configuration",    icon: Settings     },
+  { id: "employees",     label: "Employees & Departments", desc: "Employees, departments, HR management",      icon: Users        },
+  { id: "companies",     label: "Companies",               desc: "Create and manage company profiles",         icon: Building2    },
+  { id: "attendance",    label: "Attendance",              desc: "View and manage attendance records",         icon: CalendarDays },
+  { id: "accounts",      label: "Accounts & Finance",      desc: "Accounts, banks, taxes and expenses",        icon: DollarSign   },
+  { id: "invoice",       label: "Invoices",                desc: "Access and manage company invoices",         icon: Receipt      },
+  { id: "tasks",         label: "Tasks & Projects",        desc: "View and manage tasks and projects",         icon: ClipboardList},
+  { id: "announcements", label: "Announcements",           desc: "Create and broadcast announcements",         icon: Megaphone    },
+  { id: "members",       label: "Admin Members",           desc: "Invite and manage admin team members",       icon: UserCog      },
+  { id: "templates",     label: "Templates",               desc: "Create and assign letter templates",         icon: FileText     },
+  { id: "settings",      label: "Settings Page Only",      desc: "IP whitelist, toggles, configuration",      icon: Settings     },
 ];
 
 const EditInvitationdialog = ({ open, setOpen, invitation, onUpdated, endpoint = "/api/admin/invite/edit", idField = "id" }) => {

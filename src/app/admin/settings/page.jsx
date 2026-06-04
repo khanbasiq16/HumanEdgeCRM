@@ -20,9 +20,80 @@ import { getallipwhitelist } from "@/features/Slice/IpwhiteSlice";
 import {
   Users, Layers, Building2, Wifi, Calendar, CheckCircle2,
   XCircle, Shield, ToggleLeft, ArrowRight, UserPlus, Mail,
-  ShieldCheck, Trash2, Pencil, RefreshCw,
+  ShieldCheck, Trash2, Pencil, RefreshCw, Copy, Check, X, Link2,
 } from "lucide-react";
 import Link from "next/link";
+
+/* ── Page Link Dialog (auto-close) ──────────────────────── */
+const PageLinkDialog = ({ open, onClose, title, url }) => {
+  const [copied, setCopied] = React.useState(false);
+  const timerRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (open) {
+      timerRef.current = setTimeout(onClose, 8000);
+    }
+    return () => clearTimeout(timerRef.current);
+  }, [open, onClose]);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 sm:p-0">
+      <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px]" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-sm p-5 z-10 animate-in fade-in slide-in-from-bottom-4 duration-200">
+        {/* Auto-close progress bar */}
+        <div className="absolute top-0 left-0 right-0 h-[3px] rounded-t-2xl overflow-hidden">
+          <div
+            className="h-full bg-emerald-400 origin-left"
+            style={{ animation: "shrink 8s linear forwards" }}
+          />
+        </div>
+
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 w-6 h-6 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+        >
+          <X size={13} />
+        </button>
+
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
+            <Link2 size={16} className="text-emerald-600" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-slate-800">{title} Enabled</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">Share this link to allow access</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+          <p className="flex-1 text-xs text-slate-600 font-mono truncate">{url}</p>
+          <button
+            onClick={handleCopy}
+            className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              copied
+                ? "bg-emerald-500 text-white"
+                : "bg-white border border-slate-200 text-slate-600 hover:border-blue-300 hover:text-blue-600"
+            }`}
+          >
+            {copied ? <Check size={12} /> : <Copy size={12} />}
+            {copied ? "Copied!" : "Copy"}
+          </button>
+        </div>
+
+        <p className="text-[10px] text-slate-400 text-center mt-3">Auto-closes in 8 seconds</p>
+      </div>
+      <style>{`@keyframes shrink { from { transform: scaleX(1); } to { transform: scaleX(0); } }`}</style>
+    </div>
+  );
+};
 
 /* ── Stat card ─────────────────────────────────────────── */
 const StatCard = ({ icon: Icon, label, value, accent, href }) => {
@@ -55,12 +126,16 @@ const SectionHeader = ({ icon: Icon, title, action }) => (
 );
 
 const MODULE_LABELS = {
-  employees:  "Employees",
-  companies:  "Companies",
-  attendance: "Attendance",
-  accounts:   "Accounts",
-  templates:  "Templates",
-  settings:   "Settings",
+  employees:     "Employees",
+  companies:     "Companies",
+  attendance:    "Attendance",
+  accounts:      "Accounts",
+  invoice:       "Invoices",
+  tasks:         "Tasks",
+  announcements: "Announcements",
+  members:       "Members",
+  templates:     "Templates",
+  settings:      "Settings",
 };
 
 const Page = () => {
@@ -75,8 +150,10 @@ const Page = () => {
   const [editMemberOpen, setEditMemberOpen]   = useState(false);
   const [editingMember, setEditingMember]     = useState(null);
   const [fixingStuck,   setFixingStuck]       = useState(false);
+  const [linkDialog, setLinkDialog] = useState({ open: false, title: "", url: "" });
   const router  = useRouter();
   const dispatch = useDispatch();
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
 
   const { department } = useSelector((s) => s.Department);
   const { ipwhitelist } = useSelector((s) => s.Ipwhitelist);
@@ -98,10 +175,15 @@ const Page = () => {
 
   const handleToggleSignup = async () => {
     setToggling(true);
+    const newVal = !signupAccess;
     try {
-      await axios.post("/api/update-signup-access", { signupAccess: !signupAccess });
-      setSignupAccess(!signupAccess);
-      toast.success(`Signup page ${!signupAccess ? "enabled" : "disabled"}`);
+      await axios.post("/api/update-signup-access", { signupAccess: newVal });
+      setSignupAccess(newVal);
+      if (newVal) {
+        setLinkDialog({ open: true, title: "Admin Signup Page", url: `${origin}/superadmin/sign-up` });
+      } else {
+        toast.success("Signup page disabled");
+      }
     } catch {
       toast.error("Failed to update signup setting");
     } finally {
@@ -111,10 +193,15 @@ const Page = () => {
 
   const handleToggleEmpReg = async () => {
     setEmpRegToggling(true);
+    const newVal = !empRegAccess;
     try {
-      await axios.post("/api/update-employee-reg-access", { employeeRegAccess: !empRegAccess });
-      setEmpRegAccess(!empRegAccess);
-      toast.success(`Employee registration ${!empRegAccess ? "enabled" : "disabled"}`);
+      await axios.post("/api/update-employee-reg-access", { employeeRegAccess: newVal });
+      setEmpRegAccess(newVal);
+      if (newVal) {
+        setLinkDialog({ open: true, title: "Employee Registration Page", url: `${origin}/register` });
+      } else {
+        toast.success("Employee registration disabled");
+      }
     } catch {
       toast.error("Failed to update employee registration setting");
     } finally {
@@ -531,6 +618,14 @@ const Page = () => {
         </div>
 
       </div>
+      {/* Page link dialog */}
+      <PageLinkDialog
+        open={linkDialog.open}
+        onClose={() => setLinkDialog((p) => ({ ...p, open: false }))}
+        title={linkDialog.title}
+        url={linkDialog.url}
+      />
+
       {/* Edit member permissions dialog */}
       {editingMember && (
         <EditInvitationdialog

@@ -1,6 +1,6 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
-import { Bell, Search, Menu, X, ShieldCheck, Settings, LogOut, ChevronDown } from "lucide-react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
+import { Bell, Search, Menu, X, ShieldCheck, Settings, LogOut, ChevronDown, ShieldAlert, ShieldPlus, ShieldMinus } from "lucide-react";
 import Image from "next/image";
 import { useSelector, useDispatch } from "react-redux";
 import { useRouter } from "next/navigation";
@@ -16,7 +16,44 @@ const Header = ({ onMobileMenu, mobileOpen }) => {
   const router     = useRouter();
   const [paletteOpen,   setPaletteOpen]   = useState(false);
   const [dropdownOpen,  setDropdownOpen]  = useState(false);
+  const [bellOpen,      setBellOpen]      = useState(false);
+  const [notifications, setNotifications] = useState([]);
   const dropdownRef = useRef(null);
+  const bellRef     = useRef(null);
+
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  const fetchNotifications = useCallback(async () => {
+    if (!user?.uid) return;
+    try {
+      const res = await axios.get(`/api/admin/notifications/${user.uid}`);
+      if (res.data.success) setNotifications(res.data.notifications || []);
+    } catch { /* silent */ }
+  }, [user?.uid]);
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
+
+  const handleBellOpen = async () => {
+    setBellOpen((o) => !o);
+    if (!bellOpen && unreadCount > 0) {
+      try {
+        await axios.patch(`/api/admin/notifications/${user.uid}`);
+        setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      } catch { /* silent */ }
+    }
+  };
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (bellRef.current && !bellRef.current.contains(e.target)) setBellOpen(false);
+    };
+    if (bellOpen) document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [bellOpen]);
 
   useEffect(() => {
     const handler = (e) => {
@@ -110,10 +147,66 @@ const Header = ({ onMobileMenu, mobileOpen }) => {
 
         {/* ── Right section ── */}
         <div className="flex items-center gap-2 ml-auto shrink-0">
-          <button className="relative w-9 h-9 flex items-center justify-center rounded-lg hover:bg-slate-100 transition-colors">
-            <Bell size={18} className="text-slate-500" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
-          </button>
+          {/* Bell with notification panel */}
+          <div className="relative" ref={bellRef}>
+            <button
+              onClick={handleBellOpen}
+              className="relative w-9 h-9 flex items-center justify-center rounded-lg hover:bg-slate-100 transition-colors"
+            >
+              <Bell size={18} className="text-slate-500" />
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 min-w-[16px] h-4 px-0.5 flex items-center justify-center rounded-full bg-red-500 text-white text-[9px] font-bold ring-2 ring-white">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </button>
+
+            {bellOpen && (
+              <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+                  <p className="text-sm font-bold text-slate-800">Notifications</p>
+                  {unreadCount === 0 && <span className="text-[10px] text-slate-400">All caught up</span>}
+                </div>
+                <div className="max-h-72 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  {notifications.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-10 gap-2">
+                      <Bell size={22} className="text-slate-200" />
+                      <p className="text-xs text-slate-400">No notifications yet</p>
+                    </div>
+                  ) : (
+                    notifications.map((n) => {
+                      const isAdded   = n.type === "permission_added";
+                      const isRemoved = n.type === "permission_removed";
+                      const iconBg    = isAdded ? "bg-emerald-100" : isRemoved ? "bg-red-100" : "bg-violet-100";
+                      const iconColor = isAdded ? "text-emerald-600" : isRemoved ? "text-red-500" : "text-violet-600";
+                      const NotifIcon = isAdded ? ShieldPlus : isRemoved ? ShieldMinus : ShieldAlert;
+                      const rowBg     = n.isRead ? "" : isAdded ? "bg-emerald-50/40" : isRemoved ? "bg-red-50/30" : "bg-blue-50/40";
+                      return (
+                        <div
+                          key={n.id}
+                          className={`flex items-start gap-3 px-4 py-3 border-b border-slate-50 last:border-0 transition-colors ${rowBg}`}
+                        >
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${iconBg}`}>
+                            <NotifIcon size={14} className={iconColor} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-slate-800 leading-snug">{n.title}</p>
+                            <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">{n.body}</p>
+                            {n.createdAt && (
+                              <p className="text-[10px] text-slate-400 mt-1">
+                                {new Date(n.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                              </p>
+                            )}
+                          </div>
+                          {!n.isRead && <span className={`w-2 h-2 rounded-full shrink-0 mt-1.5 ${isAdded ? "bg-emerald-500" : isRemoved ? "bg-red-500" : "bg-blue-500"}`} />}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
 
           <div className="hidden sm:block w-px h-7 bg-slate-200 mx-1" />
 

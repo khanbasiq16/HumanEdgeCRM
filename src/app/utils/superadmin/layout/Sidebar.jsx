@@ -4,7 +4,7 @@ import {
   Home, Calendar, LogOut, Users, PersonStanding, CardSim,
   NotepadTextDashed, Settings, ArrowLeft, Building, DollarSign,
   Receipt, BadgeDollarSign, ChevronLeft, ChevronRight, Landmark, Layers,
-  FolderKanban, ClipboardList, BarChart3, ChevronDown, Megaphone,
+  FolderKanban, ClipboardList, BarChart3, ChevronDown, Megaphone, UserCog,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
@@ -31,19 +31,21 @@ const Sidebar = ({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) => {
   const can          = (p) => isSuperAdmin || perms.includes(p);
 
   const allDashboardLinks = [
-    { href: "/admin",               label: "Dashboard",     icon: Home,             perm: null         },
-    { href: "/admin/companies",     label: "Companies",     icon: Building,         perm: "companies"  },
-    { href: "/admin/employees",     label: "Employees",     icon: Users,            perm: "employees"  },
-    { href: "/admin/departments",   label: "Departments",   icon: Layers,           perm: "employees"  },
-    { href: "/admin/templates",     label: "Templates",     icon: NotepadTextDashed,perm: "templates"  },
-    { type: "attendance-group",     perm: "attendance"                                                 },
-    { href: "/admin/announcements", label: "Announcements", icon: Megaphone,        perm: null         },
-    { href: "/admin/projects",      label: "Projects",      icon: FolderKanban,     perm: "employees"  },
-    { href: "/admin/tasks",         label: "All Tasks",     icon: ClipboardList,    perm: "employees"  },
-    { href: "/admin/accounts",      label: "Accounts",      icon: DollarSign,       perm: "accounts"   },
-    { href: "/admin/banks",         label: "Bank Accounts", icon: Landmark,         perm: "accounts"   },
-    { href: "/admin/taxes",         label: "Taxes",         icon: BadgeDollarSign,  perm: "accounts"   },
-    { href: "/admin/expenses",      label: "Expenses",      icon: Receipt,          perm: "accounts"   },
+    { href: "/admin",               label: "Dashboard",     icon: Home,             perm: null              },
+    { href: "/admin/companies",     label: "Companies",     icon: Building,         perm: "companies"       },
+    { href: "/admin/employees",     label: "Employees",     icon: Users,            perm: "employees"       },
+    { href: "/admin/departments",   label: "Departments",   icon: Layers,           perm: "employees"       },
+    { href: "/admin/templates",     label: "Templates",     icon: NotepadTextDashed,perm: "templates"       },
+    { type: "attendance-group",     perm: "attendance"                                                      },
+    { href: "/admin/announcements", label: "Announcements", icon: Megaphone,        perm: "announcements"   },
+    { href: "/admin/projects",      label: "Projects",      icon: FolderKanban,     perm: "tasks"           },
+    { href: "/admin/tasks",         label: "All Tasks",     icon: ClipboardList,    perm: "tasks"           },
+    { href: "/admin/accounts",      label: "Accounts",      icon: DollarSign,       perm: "accounts"        },
+    { href: "/admin/banks",         label: "Bank Accounts", icon: Landmark,         perm: "accounts"        },
+    { href: "/admin/taxes",         label: "Taxes",         icon: BadgeDollarSign,  perm: "accounts"        },
+    { href: "/admin/expenses",      label: "Expenses",      icon: Receipt,          perm: "accounts"        },
+    { href: "/admin/invoices",      label: "Invoices",      icon: CardSim,          perm: "invoice"         },
+    { href: "/admin/settings",      label: "Members",       icon: UserCog,          perm: "members"         },
   ];
 
   const attendanceSubLinks = [
