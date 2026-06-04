@@ -8,8 +8,15 @@ import {
   ArrowLeft, Save, Trash2, ChevronUp, ChevronDown,
   Heading1, AlignLeft, AlignCenter, AlignRight, Minus, PenLine,
   Calendar, Loader2, Building2, Tag, Type, Wand2, Receipt,
-  Image as ImageIcon, Palette, FileDown, Info, Layers,
+  Image as ImageIcon, Palette, FileDown, Info, Layers, Fingerprint, X, GripVertical,
 } from "lucide-react";
+import {
+  DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragOverlay,
+} from "@dnd-kit/core";
+import {
+  SortableContext, useSortable, verticalListSortingStrategy, arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 
 /* ─────────────────────────── Themes ─────────────────────────── */
@@ -238,6 +245,199 @@ const SIG_FONTS = [
   { id:"caveat",   name:"Caveat",         css:"'Caveat', cursive"         },
 ];
 
+/* ─────────────────── Stamp utilities ─────────────────────── */
+function _esc(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
+function generateStampSVG({ topText="COMPANY NAME HERE", bottomText="STATE HERE", centerText="SEAL", middleText="", color="#6b7280", size=200, logoSrc="" }){
+  const S=Number(size)||200, cx=S/2, cy=S/2;
+  const r1=S*0.455, r2=S*0.415, r3=S*0.280, rt=S*0.350;
+  const col=color||"#6b7280";
+  const uid=Math.random().toString(36).slice(2,7);
+  const topArc=`M ${(cx-rt).toFixed(1)},${cy} A ${rt},${rt} 0 0,0 ${(cx+rt).toFixed(1)},${cy}`;
+  const tf=Math.round(S*0.068), bf=Math.round(S*0.058), cf=Math.round(S*0.115), mf=Math.round(S*0.058);
+  if(logoSrc){
+    const imgR=r3*0.82, imgSize=imgR*2, imgX=(cx-imgR).toFixed(1), imgY=(cy-imgR).toFixed(1);
+    const centerTextY=middleText?(cy-r3*0.38).toFixed(1):cy.toFixed(1);
+    return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${S}" height="${S}" viewBox="0 0 ${S} ${S}"><defs><clipPath id="cc${uid}"><circle cx="${cx}" cy="${cy}" r="${imgR.toFixed(1)}"/></clipPath><path id="ta${uid}" d="${topArc}"/></defs><circle cx="${cx}" cy="${cy}" r="${r1}" fill="none" stroke="${col}" stroke-width="1.2" stroke-dasharray="2.5 2.5"/><circle cx="${cx}" cy="${cy}" r="${r2}" fill="none" stroke="${col}" stroke-width="2.5"/><circle cx="${cx}" cy="${cy}" r="${r3}" fill="none" stroke="${col}" stroke-width="1.5"/><image href="${logoSrc}" x="${imgX}" y="${imgY}" width="${imgSize.toFixed(1)}" height="${imgSize.toFixed(1)}" preserveAspectRatio="xMidYMid meet" clip-path="url(#cc${uid})"/><text font-size="${tf}" font-family="Arial,sans-serif" font-weight="bold" fill="${col}" letter-spacing="2.5"><textPath href="#ta${uid}" startOffset="50%" text-anchor="middle">${_esc(topText)}</textPath></text><g transform="rotate(180,${cx},${cy})"><text font-size="${bf}" font-family="Arial,sans-serif" fill="${col}" letter-spacing="2"><textPath href="#ta${uid}" startOffset="50%" text-anchor="middle">${_esc(bottomText)}</textPath></text></g>${middleText?`<text x="${cx}" y="${centerTextY}" text-anchor="middle" dominant-baseline="middle" font-size="${mf}" font-family="Arial,sans-serif" fill="${col}" letter-spacing="2">${_esc(middleText)}</text>`:""}</svg>`;
+  }
+  const centerY=(middleText?(cy+cf*0.4):(cy+cf*0.18)).toFixed(1);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${S}" height="${S}" viewBox="0 0 ${S} ${S}"><circle cx="${cx}" cy="${cy}" r="${r1}" fill="none" stroke="${col}" stroke-width="1.2" stroke-dasharray="2.5 2.5"/><circle cx="${cx}" cy="${cy}" r="${r2}" fill="none" stroke="${col}" stroke-width="2.5"/><circle cx="${cx}" cy="${cy}" r="${r3}" fill="none" stroke="${col}" stroke-width="1.5"/><defs><path id="ta${uid}" d="${topArc}"/></defs><text font-size="${tf}" font-family="Arial,sans-serif" font-weight="bold" fill="${col}" letter-spacing="2.5"><textPath href="#ta${uid}" startOffset="50%" text-anchor="middle">${_esc(topText)}</textPath></text><g transform="rotate(180,${cx},${cy})"><text font-size="${bf}" font-family="Arial,sans-serif" fill="${col}" letter-spacing="2"><textPath href="#ta${uid}" startOffset="50%" text-anchor="middle">${_esc(bottomText)}</textPath></text></g>${middleText?`<text x="${cx}" y="${(cy-r3*0.38).toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-size="${mf}" font-family="Arial,sans-serif" fill="${col}" letter-spacing="2">${_esc(middleText)}</text>`:""}<text x="${cx}" y="${centerY}" text-anchor="middle" dominant-baseline="middle" font-size="${cf}" font-family="Arial,sans-serif" font-weight="bold" fill="${col}">${_esc(centerText)}</text></svg>`;
+}
+
+async function toBase64DataUrl(src){
+  if(!src) return "";
+  if(src.startsWith("data:")) return src;
+  try{ const res=await fetch(src); const blob=await res.blob(); return await new Promise((ok,err)=>{ const r=new FileReader(); r.onload=ev=>ok(ev.target.result); r.onerror=err; r.readAsDataURL(blob); }); }catch{ return ""; }
+}
+
+const STAMP_COLORS = ["#6b7280","#1e3a8a","#111827","#b91c1c","#166534","#6d28d9"];
+
+/* ─── Stamp Editor Modal ─── */
+const StampEditorModal = ({ stamp, companyName, companyLogo, onSave, onClose, onInsert }) => {
+  const [topText,     setTopText]     = useState((stamp?.topText    || companyName || "COMPANY NAME HERE").toUpperCase());
+  const [bottomText,  setBottomText]  = useState((stamp?.bottomText || "STATE HERE").toUpperCase());
+  const [centerText,  setCenterText]  = useState((stamp?.centerText || "SEAL").toUpperCase());
+  const [middleText,  setMiddleText]  = useState((stamp?.middleText || "").toUpperCase());
+  const [color,       setColor]       = useState(stamp?.color  || "#6b7280");
+  const [size,        setSize]        = useState(stamp?.size   || 200);
+  const [logoSrc,     setLogoSrc]     = useState(stamp?.logoSrc || "");
+  const [logoLoading, setLogoLoading] = useState(false);
+  const logoRef = useRef(null);
+
+  const svgStr  = generateStampSVG({ topText, bottomText, centerText, middleText, color, size, logoSrc });
+  const dataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgStr)}`;
+  const current = { ...(stamp||{}), id: stamp?.id || Date.now().toString(), topText, bottomText, centerText, middleText, color, size, logoSrc };
+
+  const handleFile = async (e) => {
+    const file = e.target.files?.[0]; if(!file) return;
+    if(!file.type.startsWith("image/")){ toast.error("Select an image"); return; }
+    setLogoLoading(true);
+    try{ const b64=await new Promise((ok,er)=>{ const r=new FileReader(); r.onload=ev=>ok(ev.target.result); r.onerror=er; r.readAsDataURL(file); }); setLogoSrc(b64); }
+    catch{ toast.error("Failed to read image"); }
+    finally{ setLogoLoading(false); e.target.value=""; }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[400] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col" style={{maxHeight:"92vh"}}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
+          <div className="flex items-center gap-2"><Fingerprint size={17} className="text-blue-600"/><h2 className="text-base font-bold text-slate-800">Stamp Editor</h2></div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><X size={15}/></button>
+        </div>
+        <div className="flex flex-1 overflow-hidden">
+          <div className="w-[55%] p-5 space-y-4 overflow-y-auto border-r border-slate-100 [&::-webkit-scrollbar]:hidden">
+            {[["Top Text (Company Name)",topText,v=>setTopText(v.toUpperCase()),"COMPANY NAME"],["Bottom Text (City/State)",bottomText,v=>setBottomText(v.toUpperCase()),"CITY / STATE"],["Center Text",centerText,v=>setCenterText(v.toUpperCase()),"SEAL"],["Middle Text (optional)",middleText,v=>setMiddleText(v.toUpperCase()),"e.g. REGISTERED"]].map(([lbl,val,set,ph])=>(
+              <div key={lbl}>
+                <p className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1">{lbl}</p>
+                <input value={val} onChange={e=>set(e.target.value)} placeholder={ph} className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2 outline-none focus:border-blue-400 bg-white tracking-wide"/>
+              </div>
+            ))}
+            <div>
+              <p className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">Logo Inside Stamp</p>
+              <input ref={logoRef} type="file" accept="image/*" className="hidden" onChange={handleFile}/>
+              {logoSrc ? (
+                <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                  <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-slate-300 flex items-center justify-center bg-white shrink-0"><img src={logoSrc} alt="" className="w-full h-full object-contain"/></div>
+                  <div className="flex-1"><p className="text-xs font-semibold text-slate-700">Logo added</p><p className="text-[10px] text-slate-400">Shows inside stamp circle</p></div>
+                  <button onClick={()=>setLogoSrc("")} className="text-[10px] text-red-400 hover:text-red-600 font-semibold px-2 py-1 rounded-lg hover:bg-red-50">Remove</button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <button onClick={()=>logoRef.current?.click()} disabled={logoLoading} className="w-full flex items-center justify-center gap-2 py-2.5 border-2 border-dashed border-slate-300 hover:border-blue-400 hover:bg-blue-50 rounded-xl text-sm text-slate-500 hover:text-blue-600 font-medium transition-all disabled:opacity-60">
+                    {logoLoading?<Loader2 size={14} className="animate-spin"/>:<ImageIcon size={14}/>} {logoLoading?"Loading…":"Upload Logo"}
+                  </button>
+                  {companyLogo && (
+                    <button onClick={async()=>{ setLogoLoading(true); const b=await toBase64DataUrl(companyLogo); if(b) setLogoSrc(b); else toast.error("Could not load logo"); setLogoLoading(false); }} disabled={logoLoading} className="w-full flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-xl hover:bg-violet-50 hover:border-violet-300 text-xs font-semibold text-slate-600 hover:text-violet-700 transition-all disabled:opacity-60">
+                      <img src={companyLogo} alt="" className="w-5 h-5 rounded object-contain border border-slate-100"/> Use Company Logo
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+            <div>
+              <p className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">Ink Color</p>
+              <div className="flex flex-wrap gap-2 items-center">
+                {STAMP_COLORS.map(c=>(
+                  <button key={c} onClick={()=>setColor(c)} className={`w-7 h-7 rounded-full border-2 transition-all ${color===c?"border-blue-500 scale-110 shadow":"border-slate-200 hover:border-slate-400"}`} style={{background:c}}/>
+                ))}
+                <div className="relative w-7 h-7 rounded-full border-2 border-slate-200 overflow-hidden cursor-pointer">
+                  <input type="color" value={color} onChange={e=>setColor(e.target.value)} className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"/>
+                  <div className="w-full h-full" style={{background:color}}/>
+                </div>
+              </div>
+            </div>
+            <div>
+              <p className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">Size: {size}px</p>
+              <input type="range" min={100} max={280} value={size} onChange={e=>setSize(Number(e.target.value))} className="w-full accent-blue-600"/>
+              <div className="flex justify-between text-[10px] text-slate-400 mt-0.5"><span>Small</span><span>Large</span></div>
+            </div>
+          </div>
+          <div className="flex-1 flex flex-col items-center justify-center p-5 bg-slate-50/60">
+            <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-4">Live Preview</p>
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 flex items-center justify-center" style={{minWidth:200,minHeight:200}}>
+              <img src={dataUrl} alt="stamp preview" style={{width:Math.min(size,200),height:Math.min(size,200),objectFit:"contain"}}/>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-white shrink-0">
+          <button onClick={onClose} className="text-sm text-slate-400 hover:text-slate-600 font-medium px-3 py-1.5">Cancel</button>
+          <div className="flex gap-2">
+            <button onClick={()=>{ onSave(current); toast.success("Stamp saved!"); }} className="px-4 py-2 text-sm font-semibold border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-700 transition-colors">Save Stamp</button>
+            <button onClick={()=>onInsert(dataUrl, size)} className="flex items-center gap-2 px-4 py-2 text-sm font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors">
+              <Fingerprint size={13}/> Add to Letter
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ─── Stamp Panel (sidebar) ─── */
+const StampPanel = ({ company, onInsert }) => {
+  const compKey = `stamps_letter_${company?.id || company?.name || "default"}`;
+  const loadStamps = () => { try{ return JSON.parse(localStorage.getItem(compKey)||"[]"); }catch{ return []; } };
+  const [stamps,  setStamps]  = useState(loadStamps);
+  const [editing, setEditing] = useState(null);
+  const persist = (arr) => { setStamps(arr); localStorage.setItem(compKey, JSON.stringify(arr)); };
+  const handleSave   = (s)  => persist(stamps.some(x=>x.id===s.id)?stamps.map(x=>x.id===s.id?s:x):[...stamps,s]);
+  const handleDelete = (id) => persist(stamps.filter(s=>s.id!==id));
+  const companyLogo  = company?.companylogo || company?.companyLogo || "";
+
+  return (
+    <>
+      <div className="p-4 space-y-4">
+        <div className="bg-violet-50 border border-violet-200 rounded-xl p-3">
+          <p className="text-[11px] text-violet-800 font-medium leading-relaxed">Create your company stamp and insert it into the letter.</p>
+        </div>
+        <button onClick={()=>setEditing(false)} className="w-full flex items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold transition-colors">
+          <Fingerprint size={14}/> Create New Stamp
+        </button>
+        {stamps.length > 0 && (
+          <div>
+            <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2">Saved Stamps</p>
+            <div className="space-y-2">
+              {stamps.map(s=>{
+                const svg=generateStampSVG(s);
+                const url=`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+                return (
+                  <div key={s.id} className="border border-slate-200 rounded-xl overflow-hidden hover:border-blue-300 transition-all">
+                    <div className="flex items-center gap-3 p-3 bg-slate-50">
+                      <img src={url} alt="stamp" className="w-14 h-14 object-contain shrink-0"/>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-slate-700 truncate">{s.topText}</p>
+                        <p className="text-[10px] text-slate-400">{s.logoSrc?"With logo":s.centerText}</p>
+                        <p className="text-[9px] text-slate-300">{s.size}px</p>
+                      </div>
+                    </div>
+                    <div className="flex border-t border-slate-100">
+                      <button onClick={()=>setEditing(s)} className="flex-1 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Edit</button>
+                      <div className="w-px bg-slate-100"/>
+                      <button onClick={()=>onInsert(url, s.size)} className="flex-1 py-2 text-xs font-bold text-blue-600 hover:bg-blue-50 transition-colors">Insert</button>
+                      <div className="w-px bg-slate-100"/>
+                      <button onClick={()=>handleDelete(s.id)} className="px-3 py-2 text-red-400 hover:bg-red-50 transition-colors text-xs">✕</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+      {editing !== null && (
+        <StampEditorModal
+          stamp={editing||null}
+          companyName={company?.name}
+          companyLogo={companyLogo}
+          onSave={handleSave}
+          onClose={()=>setEditing(null)}
+          onInsert={(url,size)=>{ onInsert(url,size); setEditing(null); }}
+        />
+      )}
+    </>
+  );
+};
+
 const ELEMENT_TYPES = [
   { type:"heading",   label:"Heading",    icon:Heading1,   desc:"Title / section header" },
   { type:"text",      label:"Paragraph",  icon:AlignLeft,  desc:"Body text paragraph"    },
@@ -245,8 +445,9 @@ const ELEMENT_TYPES = [
   { type:"image",     label:"Image",      icon:ImageIcon,  desc:"Photo or logo"          },
   { type:"date-line", label:"Date Line",  icon:Calendar,   desc:"Right-aligned date"     },
   { type:"divider",   label:"Divider",    icon:Minus,      desc:"Horizontal separator"   },
-  { type:"signature", label:"Signature",  icon:PenLine,    desc:"Signature field"        },
-  { type:"payslip",   label:"Payslip",    icon:Receipt,    desc:"Salary slip table"      },
+  { type:"signature", label:"Signature",  icon:PenLine,       desc:"Signature field"        },
+  { type:"payslip",   label:"Payslip",    icon:Receipt,       desc:"Salary slip table"      },
+  { type:"stamp",     label:"Stamp",      icon:Fingerprint,   desc:"Company seal / stamp"   },
 ];
 
 const makeBlock = (type, overrides = {}) => {
@@ -260,6 +461,9 @@ const makeBlock = (type, overrides = {}) => {
     width:        "100%",
     caption:      "",
   };
+  if (type==="stamp") {
+    Object.assign(base, { stampSrc: "", stampSize: 160, align: "left" });
+  }
   if (type==="payslip") {
     Object.assign(base, {
       period:"[Month] [Year]",
@@ -374,7 +578,7 @@ const AlignBtn = ({ cur, val, icon: Icon, onClick }) => (
   </button>
 );
 
-const CanvasBlock = ({ block, isActive, isFirst, isLast, theme, onActivate, onChange, onRemove, onMoveUp, onMoveDown, onCursorChange }) => {
+const CanvasBlock = ({ block, isActive, isFirst, isLast, theme, onActivate, onChange, onRemove, onMoveUp, onMoveDown, onCursorChange, dragHandle }) => {
   const textareaRef = useRef(null);
   const autoResize  = useCallback(() => {
     if (textareaRef.current) {
@@ -583,6 +787,23 @@ const CanvasBlock = ({ block, isActive, isFirst, isLast, theme, onActivate, onCh
         );
       }
 
+      case "stamp": {
+        const alignClass = block.align==="center" ? "mx-auto" : block.align==="right" ? "ml-auto" : "";
+        return (
+          <div className="py-2">
+            {block.stampSrc ? (
+              <div className={`flex ${block.align==="center"?"justify-center":block.align==="right"?"justify-end":"justify-start"}`}>
+                <img src={block.stampSrc} alt="stamp" style={{ width: block.stampSize||160, height: block.stampSize||160, objectFit:"contain" }}/>
+              </div>
+            ) : (
+              <div className={`flex items-center justify-center border-2 border-dashed border-slate-200 rounded-xl bg-slate-50 text-slate-300 text-xs font-medium ${alignClass}`} style={{ width:160, height:160 }}>
+                <div className="text-center"><Fingerprint size={28} className="mx-auto mb-1 opacity-40"/><p>No stamp yet</p><p className="text-[10px]">Use Stamp tab to add</p></div>
+              </div>
+            )}
+          </div>
+        );
+      }
+
       case "payslip": {
         const updateRow = (section,rowId,field,val) => onChange({ [section]:block[section].map(r=>r.id===rowId?{...r,[field]:val}:r) });
         const removeRow = (section,rowId) => onChange({ [section]:block[section].filter(r=>r.id!==rowId) });
@@ -687,10 +908,37 @@ const CanvasBlock = ({ block, isActive, isFirst, isLast, theme, onActivate, onCh
         <div className="w-px h-3 bg-slate-200 mx-0.5" />
         <button onMouseDown={e=>{e.preventDefault();e.stopPropagation();onRemove();}} className="p-0.5 rounded hover:bg-red-50 text-slate-400 hover:text-red-500"><Trash2 size={11} /></button>
       </div>
+      {/* Drag handle — shown on hover on the left */}
+      {dragHandle && (
+        <div
+          {...dragHandle}
+          className="absolute left-[-22px] top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing p-1 text-slate-300 hover:text-slate-500 transition-opacity"
+          title="Drag to reorder"
+        >
+          <GripVertical size={14}/>
+        </div>
+      )}
       {renderContent()}
     </div>
   );
 };
+
+/* ─── Sortable wrapper for CanvasBlock ─── */
+function SortableCanvasBlock(props) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: props.block.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.35 : 1,
+    position: "relative",
+    zIndex: isDragging ? 50 : undefined,
+  };
+  return (
+    <div ref={setNodeRef} style={style}>
+      <CanvasBlock {...props} dragHandle={{ ...attributes, ...listeners }} />
+    </div>
+  );
+}
 
 /* ─────────────────────────── Main Page ───────────────────────── */
 export default function TemplatePage() {
@@ -789,6 +1037,19 @@ export default function TemplatePage() {
     if ((dir<0&&idx===0)||(dir>0&&idx===prev.length-1)) return prev;
     const arr = [...prev]; [arr[idx],arr[idx+dir]] = [arr[idx+dir],arr[idx]]; return arr;
   });
+
+  const [draggingId, setDraggingId] = useState(null);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  const handleDragStart = ({ active }) => setDraggingId(active.id);
+  const handleDragEnd   = ({ active, over }) => {
+    setDraggingId(null);
+    if (!over || active.id === over.id) return;
+    setBlocks(prev => {
+      const oldIdx = prev.findIndex(b => b.id === active.id);
+      const newIdx = prev.findIndex(b => b.id === over.id);
+      return arrayMove(prev, oldIdx, newIdx);
+    });
+  };
 
   const insertShortcode = (code) => {
     if (!activeId) return;
@@ -914,9 +1175,10 @@ export default function TemplatePage() {
             {/* Sidebar tabs */}
             <div className="flex border-b border-slate-100 shrink-0">
               {[
-                { id:"elements", icon:Layers,  label:"Elements" },
-                { id:"design",   icon:Palette, label:"Design"   },
-                { id:"vars",     icon:Tag,     label:"Variables" },
+                { id:"elements", icon:Layers,      label:"Elements"  },
+                { id:"design",   icon:Palette,     label:"Design"    },
+                { id:"stamp",    icon:Fingerprint, label:"Stamp"     },
+                { id:"vars",     icon:Tag,         label:"Variables" },
               ].map(tab=>(
                 <button
                   key={tab.id}
@@ -1025,6 +1287,21 @@ export default function TemplatePage() {
               )}
 
               {/* ── Variables tab ── */}
+              {/* ── Stamp tab ── */}
+              {sidebarTab==="stamp" && (
+                <StampPanel
+                  company={company}
+                  onInsert={(url, size) => {
+                    const b = makeBlock("stamp");
+                    b.stampSrc  = url;
+                    b.stampSize = Math.min(size, 200);
+                    setBlocks(p => [...p, b]);
+                    setActiveId(b.id);
+                    toast.success("Stamp added to letter!");
+                  }}
+                />
+              )}
+
               {sidebarTab==="vars" && (
                 <div className="px-3 pt-4 pb-4">
                   <div className="flex items-center gap-1.5 mb-2">
@@ -1112,64 +1389,80 @@ export default function TemplatePage() {
                       </button>
                     </div>
                   ) : (
-                    <div className="space-y-0.5">
-                      {(() => {
-                        const rows = [];
-                        let i = 0;
-                        while (i < blocks.length) {
-                          if (blocks[i].type === "signature") {
-                            const grp = [];
-                            while (i < blocks.length && blocks[i].type === "signature") {
-                              grp.push({ block: blocks[i], idx: i }); i++;
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragStart={handleDragStart}
+                      onDragEnd={handleDragEnd}
+                    >
+                      <SortableContext items={blocks.map(b=>b.id)} strategy={verticalListSortingStrategy}>
+                        <div className="space-y-0.5">
+                          {(() => {
+                            const rows = [];
+                            let i = 0;
+                            while (i < blocks.length) {
+                              if (blocks[i].type === "signature") {
+                                const grp = [];
+                                while (i < blocks.length && blocks[i].type === "signature") {
+                                  grp.push({ block: blocks[i], idx: i }); i++;
+                                }
+                                rows.push({ kind: "sig", grp });
+                              } else {
+                                rows.push({ kind: "single", block: blocks[i], idx: i }); i++;
+                              }
                             }
-                            rows.push({ kind: "sig", grp });
-                          } else {
-                            rows.push({ kind: "single", block: blocks[i], idx: i }); i++;
-                          }
-                        }
-                        return rows.map((row, ri) => {
-                          if (row.kind === "sig") {
-                            return (
-                              <div key={ri} className={`flex gap-6 ${row.grp.length > 1 ? "justify-between" : ""}`}>
-                                {row.grp.map(({ block, idx }) => (
-                                  <div key={block.id} className={row.grp.length > 1 ? "flex-1" : "w-full"}>
-                                    <CanvasBlock
-                                      block={block}
-                                      isActive={activeId===block.id}
-                                      isFirst={idx===0}
-                                      isLast={idx===blocks.length-1}
-                                      theme={activeTheme}
-                                      onActivate={()=>setActiveId(block.id)}
-                                      onChange={upd=>updateBlock(block.id,upd)}
-                                      onRemove={()=>removeBlock(block.id)}
-                                      onMoveUp={()=>moveBlock(block.id,-1)}
-                                      onMoveDown={()=>moveBlock(block.id,1)}
-                                      onCursorChange={setCursor}
-                                    />
+                            return rows.map((row, ri) => {
+                              if (row.kind === "sig") {
+                                return (
+                                  <div key={ri} className={`flex gap-6 ${row.grp.length > 1 ? "justify-between" : ""}`}>
+                                    {row.grp.map(({ block, idx }) => (
+                                      <div key={block.id} className={row.grp.length > 1 ? "flex-1" : "w-full"}>
+                                        <SortableCanvasBlock
+                                          block={block}
+                                          isActive={activeId===block.id}
+                                          isFirst={idx===0}
+                                          isLast={idx===blocks.length-1}
+                                          theme={activeTheme}
+                                          onActivate={()=>setActiveId(block.id)}
+                                          onChange={upd=>updateBlock(block.id,upd)}
+                                          onRemove={()=>removeBlock(block.id)}
+                                          onMoveUp={()=>moveBlock(block.id,-1)}
+                                          onMoveDown={()=>moveBlock(block.id,1)}
+                                          onCursorChange={setCursor}
+                                        />
+                                      </div>
+                                    ))}
                                   </div>
-                                ))}
-                              </div>
-                            );
-                          }
-                          return (
-                            <CanvasBlock
-                              key={row.block.id}
-                              block={row.block}
-                              isActive={activeId===row.block.id}
-                              isFirst={row.idx===0}
-                              isLast={row.idx===blocks.length-1}
-                              theme={activeTheme}
-                              onActivate={()=>setActiveId(row.block.id)}
-                              onChange={upd=>updateBlock(row.block.id,upd)}
-                              onRemove={()=>removeBlock(row.block.id)}
-                              onMoveUp={()=>moveBlock(row.block.id,-1)}
-                              onMoveDown={()=>moveBlock(row.block.id,1)}
-                              onCursorChange={setCursor}
-                            />
-                          );
-                        });
-                      })()}
-                    </div>
+                                );
+                              }
+                              return (
+                                <SortableCanvasBlock
+                                  key={row.block.id}
+                                  block={row.block}
+                                  isActive={activeId===row.block.id}
+                                  isFirst={row.idx===0}
+                                  isLast={row.idx===blocks.length-1}
+                                  theme={activeTheme}
+                                  onActivate={()=>setActiveId(row.block.id)}
+                                  onChange={upd=>updateBlock(row.block.id,upd)}
+                                  onRemove={()=>removeBlock(row.block.id)}
+                                  onMoveUp={()=>moveBlock(row.block.id,-1)}
+                                  onMoveDown={()=>moveBlock(row.block.id,1)}
+                                  onCursorChange={setCursor}
+                                />
+                              );
+                            });
+                          })()}
+                        </div>
+                      </SortableContext>
+                      <DragOverlay>
+                        {draggingId ? (
+                          <div className="bg-white border-2 border-blue-400 rounded-lg px-3 py-2 shadow-xl opacity-90 text-xs font-semibold text-blue-600">
+                            Moving block…
+                          </div>
+                        ) : null}
+                      </DragOverlay>
+                    </DndContext>
                   )}
                 </div>
 
