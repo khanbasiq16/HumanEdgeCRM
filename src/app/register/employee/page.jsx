@@ -27,7 +27,7 @@ import { BANKS } from "@/app/utils/constants/banks";
 
 /* ── Design tokens matching the app theme ── */
 const inputCls =
-  "pl-9 h-11 text-sm bg-slate-50 border-slate-200 rounded-xl focus-visible:ring-blue-500 focus-visible:ring-1 placeholder:text-slate-400 w-full";
+  "pl-9 h-11 text-sm bg-slate-50 border-slate-200 rounded-xl focus-visible:ring-blue-500 focus-visible:ring-1 placeholder:text-slate-400 w-full [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
 const labelCls = "text-xs font-bold text-slate-600 uppercase tracking-wider";
 const iconCls  = "absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none";
 
@@ -311,8 +311,8 @@ export default function EmployeeRegisterPage() {
       </div>
 
       {/* ── Right Panel ── */}
-      <div className="flex-1 bg-white flex items-center justify-center px-6 sm:px-10 overflow-y-auto">
-        <div className="w-full max-w-md py-10">
+      <div className="flex-1 bg-white overflow-y-auto px-6 sm:px-10">
+        <div className="w-full max-w-md mx-auto py-10">
 
           {/* Mobile brand */}
           <div className="flex items-center gap-2 mb-8 lg:hidden">
@@ -460,9 +460,9 @@ export default function EmployeeRegisterPage() {
 
                   {selectedDepartment === "Sales" && (
                     <div className="space-y-1.5">
-                      <Label className={labelCls}>Monthly Sales Target (PKR)</Label>
+                      <Label className={labelCls}>Monthly Sales Target (USD)</Label>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold pointer-events-none">Rs</span>
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold pointer-events-none">$</span>
                         <Input type="number" value={form.salesTarget} onChange={set("salesTarget")} placeholder="e.g. 50000" className={inputCls} />
                       </div>
                     </div>
