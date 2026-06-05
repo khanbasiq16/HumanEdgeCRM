@@ -10,6 +10,8 @@ import {
 } from "@/components/ui/select";
 import axios from "axios";
 import toast from "react-hot-toast";
+import PhoneInput, { isValidPhoneNumber } from "react-phone-number-input";
+import "react-phone-number-input/style.css";
 import { useDispatch, useSelector } from "react-redux";
 import { createemployees } from "@/features/Slice/EmployeeSlice";
 import {
@@ -56,6 +58,9 @@ const Employeedailog = () => {
   const [selectedBankName, setSelectedBankName]     = useState("");
   const [bankCode, setBankCode]                     = useState("");
   const [bankOpen, setBankOpen]                     = useState(false);
+  const [phoneValue, setPhoneValue]                 = useState("");
+  const [phoneError, setPhoneError]                 = useState("");
+  const [accountError, setAccountError]             = useState("");
 
   const dispatch = useDispatch();
   const { department } = useSelector((s) => s.Department);
@@ -88,9 +93,20 @@ const Employeedailog = () => {
     setBankCode(bank?.code || "");
   };
 
+  const handleAccountNumberChange = (e) => {
+    const v = e.target.value.replace(/\D/g, "");
+    e.target.value = v;
+    if (!v)          return setAccountError("");
+    if (v.length < 10)  return setAccountError("Account number must be at least 10 digits");
+    if (v.length > 24)  return setAccountError("Account number too long");
+    setAccountError("");
+  };
+
   const formHandler = async (e) => {
     e.preventDefault();
     if (!password || passwordError) return;
+    if (phoneValue && !isValidPhoneNumber(phoneValue)) return toast.error("Enter a valid phone number");
+    if (accountError) return toast.error(accountError);
     if (!selectedDepartment) { toast.error("Please select a department"); return; }
     if (selectedCompanies.length === 0) { toast.error("Please select a company"); return; }
 
@@ -102,7 +118,7 @@ const Employeedailog = () => {
       formData.append("employeeAddress",   e.target.employeeAddress.value);
       formData.append("employeeemail",     e.target.employeeemail.value);
       formData.append("employeepassword",  password);
-      formData.append("employeePhone",     e.target.employeePhone.value);
+      formData.append("employeePhone",     phoneValue);
       formData.append("employeeCNIC",      e.target.employeeCNIC.value);
       formData.append("employeeSalary",    e.target.employeeSalary.value);
       formData.append("department",        selectedDepartment);
@@ -135,10 +151,13 @@ const Employeedailog = () => {
         setSelectedDepartment("");
         setSelectedCompanies([]);
         setPassword("");
+        setPhoneValue("");
+        setPhoneError("");
         setDateOfJoining(today);
         setSelectedBankName("");
         setBankCode("");
         setBankOpen(false);
+        setAccountError("");
         setOpen(false);
       }
     } catch {
@@ -192,7 +211,24 @@ const Employeedailog = () => {
               </Field>
 
               <Field label="Phone Number" icon={Phone}>
-                <Input className={inputCls} name="employeePhone" placeholder="+92 300 1234567" />
+                <PhoneInput
+                  international
+                  defaultCountry="PK"
+                  value={phoneValue}
+                  onChange={(val) => {
+                    setPhoneValue(val || "");
+                    if (!val)                          setPhoneError("");
+                    else if (!isValidPhoneNumber(val)) setPhoneError("Enter a valid phone number");
+                    else                               setPhoneError("");
+                  }}
+                  placeholder="+92 300 1234567"
+                  className={`phone-input-wrapper${phoneError ? " phone-input-error" : ""}`}
+                />
+                {phoneError && (
+                  <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+                    <span className="w-1 h-1 rounded-full bg-red-500 inline-block" /> {phoneError}
+                  </p>
+                )}
               </Field>
 
               <Field label="CNIC Number" required icon={CreditCard}>
@@ -255,7 +291,18 @@ const Employeedailog = () => {
               </Field>
 
               <Field label="Account Number" icon={CreditCard}>
-                <Input className={inputCls} name="bankAccountNumber" placeholder="e.g. 1234567890" />
+                <Input
+                  className={`${inputCls} ${accountError ? "border-red-400 focus-visible:ring-red-400" : ""}`}
+                  name="bankAccountNumber"
+                  placeholder="e.g. 1234567890"
+                  inputMode="numeric"
+                  onChange={handleAccountNumberChange}
+                />
+                {accountError ? (
+                  <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+                    <span className="w-1 h-1 rounded-full bg-red-500 inline-block" /> {accountError}
+                  </p>
+                ) : null}
               </Field>
 
               {/* Password — full width */}

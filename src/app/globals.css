@@ -199,6 +199,15 @@
   color: #94a3b8;
 }
 
+.phone-input-error {
+  border-color: #f87171 !important;
+}
+
+.phone-input-error:focus-within {
+  box-shadow: 0 0 0 1px #f87171 !important;
+  border-color: #f87171 !important;
+}
+
 /* ── Tiptap / ProseMirror editor styles ───────────────── */
 .ProseMirror { outline: none; }
 .ProseMirror p { margin: 0 0 4px; }

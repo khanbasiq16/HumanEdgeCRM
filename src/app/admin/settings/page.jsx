@@ -8,8 +8,6 @@ import { useRouter } from "next/navigation";
 import SuperAdminlayout from "@/app/utils/superadmin/layout/SuperAdmin";
 import Superbreadcrumb from "@/app/utils/superadmin/components/breadcrumbs/Superbreadcrumb";
 import Ipwhitelistdialog from "@/app/utils/superadmin/components/dialog/Ipwhitelistdialog";
-import InviteMemberdialog from "@/app/utils/superadmin/components/dialog/InviteMemberdialog";
-import EditInvitationdialog from "@/app/utils/superadmin/components/dialog/EditInvitationdialog";
 import { Switch } from "@/components/ui/switch";
 
 import { createcompany }    from "@/features/Slice/CompanySlice";
@@ -19,8 +17,8 @@ import { getallipwhitelist } from "@/features/Slice/IpwhiteSlice";
 
 import {
   Users, Layers, Building2, Wifi, Calendar, CheckCircle2,
-  XCircle, Shield, ToggleLeft, ArrowRight, UserPlus, Mail,
-  ShieldCheck, Trash2, Pencil, RefreshCw, Copy, Check, X, Link2, Globe,
+  XCircle, Shield, ToggleLeft, ArrowRight, UserPlus,
+  ShieldCheck, RefreshCw, Copy, Check, X, Link2, Globe,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -73,20 +71,20 @@ const PageLinkDialog = ({ open, onClose, title, url }) => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl">
-          <p className="flex-1 text-xs text-slate-600 font-mono truncate">{url}</p>
-          <button
-            onClick={handleCopy}
-            className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              copied
-                ? "bg-emerald-500 text-white"
-                : "bg-white border border-slate-200 text-slate-600 hover:border-blue-300 hover:text-blue-600"
-            }`}
-          >
-            {copied ? <Check size={12} /> : <Copy size={12} />}
-            {copied ? "Copied!" : "Copy"}
-          </button>
+        <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl mb-2">
+          <p className="text-xs text-slate-600 font-mono break-all leading-relaxed">{url}</p>
         </div>
+        <button
+          onClick={handleCopy}
+          className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+            copied
+              ? "bg-emerald-500 text-white"
+              : "bg-blue-600 hover:bg-blue-700 text-white"
+          }`}
+        >
+          {copied ? <Check size={14} /> : <Copy size={14} />}
+          {copied ? "Copied!" : "Copy Link"}
+        </button>
 
         <p className="text-[10px] text-slate-400 text-center mt-3">Auto-closes in 8 seconds</p>
       </div>
@@ -94,6 +92,119 @@ const PageLinkDialog = ({ open, onClose, title, url }) => {
     </div>
   );
 };
+
+/* ── Skeleton helpers ───────────────────────────────────── */
+const Sk = ({ className }) => (
+  <div className={`animate-pulse bg-slate-100 rounded-lg ${className}`} />
+);
+
+const SettingsSkeleton = () => (
+  <div className="space-y-6">
+    {/* Stats row */}
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {[...Array(4)].map((_, i) => (
+        <div key={i} className="bg-white rounded-2xl border border-slate-200/80 p-5 flex items-center gap-4">
+          <Sk className="w-12 h-12 rounded-2xl shrink-0" />
+          <div className="space-y-2 flex-1">
+            <Sk className="h-3 w-16" />
+            <Sk className="h-7 w-10" />
+          </div>
+        </div>
+      ))}
+    </div>
+
+    {/* System controls + IP whitelist */}
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {[...Array(2)].map((_, i) => (
+        <div key={i} className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+            <Sk className="w-4 h-4 rounded" />
+            <Sk className="h-4 w-36" />
+          </div>
+          <div className="p-5 space-y-3">
+            {[...Array(3)].map((_, j) => (
+              <div key={j} className="flex items-center gap-3 p-4 rounded-xl bg-slate-50 border border-slate-100">
+                <Sk className="w-9 h-9 rounded-lg shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <Sk className="h-3.5 w-40" />
+                  <Sk className="h-3 w-52" />
+                </div>
+                <Sk className="w-10 h-5 rounded-full shrink-0" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+
+    {/* Admin members */}
+    <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden">
+      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Sk className="w-4 h-4 rounded" />
+          <Sk className="h-4 w-36" />
+        </div>
+        <Sk className="h-8 w-32 rounded-lg" />
+      </div>
+      <div className="divide-y divide-slate-100">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="flex items-center gap-3 px-5 py-4">
+            <Sk className="w-9 h-9 rounded-full shrink-0" />
+            <div className="flex-1 space-y-2">
+              <Sk className="h-3.5 w-32" />
+              <Sk className="h-3 w-44" />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Sk className="h-5 w-18 rounded-full" />
+              <Sk className="h-5 w-20 rounded-full" />
+              <Sk className="w-7 h-7 rounded-lg" />
+              <Sk className="w-7 h-7 rounded-lg" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    {/* Recent employees table */}
+    <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden">
+      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Sk className="w-4 h-4 rounded" />
+          <Sk className="h-4 w-36" />
+        </div>
+        <Sk className="h-4 w-28 rounded" />
+      </div>
+      <div className="px-5 py-4 space-y-3.5">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="flex items-center gap-4">
+            <Sk className="w-8 h-8 rounded-full shrink-0" />
+            <Sk className="h-3.5 w-28 flex-none" />
+            <Sk className="h-3.5 w-20 flex-none" />
+            <Sk className="h-3.5 w-24 flex-none" />
+            <Sk className="h-5 w-16 rounded-full ml-auto" />
+          </div>
+        ))}
+      </div>
+    </div>
+
+    {/* Maintenance */}
+    <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden">
+      <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+        <Sk className="w-4 h-4 rounded" />
+        <Sk className="h-4 w-40" />
+      </div>
+      <div className="p-5">
+        <div className="flex items-center justify-between gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+          <div className="space-y-2 flex-1">
+            <Sk className="h-4 w-44" />
+            <Sk className="h-3 w-72" />
+          </div>
+          <Sk className="h-9 w-24 rounded-lg shrink-0" />
+        </div>
+      </div>
+    </div>
+  </div>
+);
 
 /* ── Stat card ─────────────────────────────────────────── */
 const StatCard = ({ icon: Icon, label, value, accent, href }) => {
@@ -140,17 +251,13 @@ const MODULE_LABELS = {
 
 const Page = () => {
   const [ipdialog, setIpdialog]             = useState(false);
-  const [invitedialog, setInvitedialog]     = useState(false);
   const [signupAccess, setSignupAccess]     = useState(false);
   const [toggling, setToggling]             = useState(false);
   const [empRegAccess, setEmpRegAccess]     = useState(false);
   const [empRegToggling, setEmpRegToggling] = useState(false);
-  const [members, setMembers]         = useState([]);
-  const [invitations, setInvitations] = useState([]);
-  const [editMemberOpen, setEditMemberOpen]   = useState(false);
-  const [editingMember, setEditingMember]     = useState(null);
   const [fixingStuck,   setFixingStuck]       = useState(false);
   const [linkDialog, setLinkDialog] = useState({ open: false, title: "", url: "" });
+  const [loading, setLoading]       = useState(true);
   const router  = useRouter();
   const dispatch = useDispatch();
   const origin = typeof window !== "undefined" ? window.location.origin : "";
@@ -161,20 +268,16 @@ const Page = () => {
   const { employees }   = useSelector((s) => s.Employee);
   const { companies }   = useSelector((s) => s.Company);
 
-  const isSuperAdmin      = user?.role === "superAdmin";
-  const inviterPermissions = isSuperAdmin ? null : (user?.permissions || []);
 
   useEffect(() => {
-    axios.get("/api/get-all-department").then((r) => dispatch(createdepartment(r.data.departments))).catch(console.error);
-    axios.get("/api/get-all-employees").then((r)  => dispatch(createemployees(r.data.employees))).catch(console.error);
-    axios.get("/api/get-all-companies").then((r)  => dispatch(createcompany(r.data.companies))).catch(console.error);
-    axios.get("/api/get-ipwhitelist").then((r)    => dispatch(getallipwhitelist(r.data.whitelist))).catch(console.error);
-    axios.get("/api/get-signup-access").then((r)      => setSignupAccess(r.data.signupAccess)).catch(console.error);
-    axios.get("/api/get-employee-reg-access").then((r) => setEmpRegAccess(r.data.employeeRegAccess)).catch(console.error);
-    axios.get("/api/admin/members").then((r) => {
-      setMembers(r.data.members || []);
-      setInvitations(r.data.invitations || []);
-    }).catch(console.error);
+    Promise.allSettled([
+      axios.get("/api/get-all-department").then((r) => dispatch(createdepartment(r.data.departments))),
+      axios.get("/api/get-all-employees").then((r)  => dispatch(createemployees(r.data.employees))),
+      axios.get("/api/get-all-companies").then((r)  => dispatch(createcompany(r.data.companies))),
+      axios.get("/api/get-ipwhitelist").then((r)    => dispatch(getallipwhitelist(r.data.whitelist))),
+      axios.get("/api/get-signup-access").then((r)      => setSignupAccess(r.data.signupAccess)),
+      axios.get("/api/get-employee-reg-access").then((r) => setEmpRegAccess(r.data.employeeRegAccess)),
+    ]).finally(() => setLoading(false));
   }, []);
 
   const handleToggleSignup = async () => {
@@ -235,7 +338,9 @@ const Page = () => {
     <SuperAdminlayout>
       <Superbreadcrumb path="Settings" />
 
-      <div className="space-y-6">
+      {loading ? <SettingsSkeleton /> : null}
+
+      <div className={`space-y-6 ${loading ? "hidden" : ""}`}>
 
         {/* ── Stats row ─────────────────────────────────── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -391,158 +496,6 @@ const Page = () => {
           </div>
         </div>
 
-        {/* ── Admin Members ────────────────────────────── */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden">
-          <SectionHeader
-            icon={ShieldCheck}
-            title={`Admin Members${members.length + invitations.length > 0 ? ` · ${members.length + invitations.length}` : ""}`}
-            action={
-              isSuperAdmin ? (
-                <InviteMemberdialog
-                  open={invitedialog}
-                  setOpen={setInvitedialog}
-                  invitedBy={user?.name || user?.email || "Admin"}
-                  inviterPermissions={inviterPermissions}
-                />
-              ) : null
-            }
-          />
-          <div className="divide-y divide-slate-100">
-            {members.length === 0 && invitations.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-10 gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center">
-                  <UserPlus size={20} className="text-slate-300" />
-                </div>
-                <div className="text-center">
-                  <p className="text-sm font-semibold text-slate-400">No admin members yet</p>
-                  <p className="text-xs text-slate-300 mt-0.5">Invite team members to collaborate</p>
-                </div>
-              </div>
-            ) : (
-              <>
-                {/* Accepted members */}
-                {members.map((m) => {
-                  const initials = (m.name || m.email || "?").split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
-                  return (
-                    <div key={m.uid} className="flex items-center gap-3 px-5 py-3.5">
-                      <div className="w-9 h-9 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center text-xs font-bold shrink-0">
-                        {initials}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-semibold text-slate-700 truncate">{m.name || "—"}</p>
-                          <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200 shrink-0 flex items-center gap-1">
-                            <CheckCircle2 size={9} /> Active
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <Mail size={10} className="text-slate-400 shrink-0" />
-                          <p className="text-xs text-slate-400 truncate">{m.email}</p>
-                        </div>
-                      </div>
-                      <div className="shrink-0 flex items-center gap-2">
-                        <div className="flex flex-wrap gap-1 max-w-36 justify-end">
-                          {(m.permissions || []).slice(0, 3).map((p) => (
-                            <span key={p} className="px-2 py-0.5 text-[10px] font-semibold bg-blue-50 text-blue-600 border border-blue-100 rounded-full">
-                              {MODULE_LABELS[p] || p}
-                            </span>
-                          ))}
-                          {(m.permissions || []).length > 3 && (
-                            <span className="px-2 py-0.5 text-[10px] font-semibold bg-slate-100 text-slate-500 border border-slate-200 rounded-full">
-                              +{(m.permissions || []).length - 3}
-                            </span>
-                          )}
-                        </div>
-                        {isSuperAdmin && (
-                          <>
-                            <button
-                              onClick={() => { setEditingMember({ id: m.uid, email: m.email, permissions: m.permissions || [] }); setEditMemberOpen(true); }}
-                              className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-50 transition-colors shrink-0"
-                              title="Edit permissions"
-                            >
-                              <Pencil size={13} />
-                            </button>
-                            <button
-                              onClick={async () => {
-                                try {
-                                  await axios.delete("/api/admin/members", { data: { uid: m.uid } });
-                                  setMembers((prev) => prev.filter((x) => x.uid !== m.uid));
-                                  toast.success("Member removed");
-                                } catch {
-                                  toast.error("Failed to remove member");
-                                }
-                              }}
-                              className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors shrink-0"
-                              title="Remove member"
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {/* Pending invitations */}
-                {invitations.map((inv) => {
-                  const initials = (inv.email || "?")[0].toUpperCase();
-                  return (
-                    <div key={inv.id} className="flex items-center gap-3 px-5 py-3.5 bg-amber-50/40">
-                      <div className="w-9 h-9 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center text-xs font-bold shrink-0 border border-amber-200 border-dashed">
-                        {initials}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-semibold text-slate-500 truncate">{inv.email}</p>
-                          <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 text-[10px] font-bold border border-amber-200 shrink-0 flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse inline-block" />
-                            Pending
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-400 mt-0.5">
-                          Invited by {inv.invitedBy} · expires {new Date(inv.expiresAt).toLocaleDateString("en-GB")}
-                        </p>
-                      </div>
-                      <div className="shrink-0 flex items-center gap-2">
-                        <div className="flex flex-wrap gap-1 max-w-36 justify-end">
-                          {(inv.permissions || []).slice(0, 2).map((p) => (
-                            <span key={p} className="px-2 py-0.5 text-[10px] font-semibold bg-amber-50 text-amber-600 border border-amber-100 rounded-full">
-                              {MODULE_LABELS[p] || p}
-                            </span>
-                          ))}
-                          {(inv.permissions || []).length > 2 && (
-                            <span className="px-2 py-0.5 text-[10px] font-semibold bg-slate-100 text-slate-500 border border-slate-200 rounded-full">
-                              +{(inv.permissions || []).length - 2}
-                            </span>
-                          )}
-                        </div>
-                        {isSuperAdmin && (
-                          <button
-                            onClick={async () => {
-                              try {
-                                await axios.delete("/api/admin/invite/delete", { data: { id: inv.id } });
-                                setInvitations((prev) => prev.filter((i) => i.id !== inv.id));
-                                toast.success("Invitation cancelled");
-                              } catch {
-                                toast.error("Failed to delete invitation");
-                              }
-                            }}
-                            className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors shrink-0"
-                            title="Cancel invitation"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </>
-            )}
-          </div>
-        </div>
-
         {/* ── Recent Employees ──────────────────────────── */}
         <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden">
           <SectionHeader
@@ -656,21 +609,6 @@ const Page = () => {
         url={linkDialog.url}
       />
 
-      {/* Edit member permissions dialog */}
-      {editingMember && (
-        <EditInvitationdialog
-          open={editMemberOpen}
-          setOpen={setEditMemberOpen}
-          invitation={editingMember}
-          endpoint="/api/admin/members"
-          idField="id"
-          inviterPermissions={inviterPermissions}
-          onUpdated={(uid, perms) => {
-            setMembers((prev) => prev.map((m) => m.uid === uid ? { ...m, permissions: perms } : m));
-            setEditingMember(null);
-          }}
-        />
-      )}
     </SuperAdminlayout>
   );
 };

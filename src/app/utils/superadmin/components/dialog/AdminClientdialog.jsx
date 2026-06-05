@@ -10,9 +10,18 @@ import toast from "react-hot-toast";
 import { useSelector } from "react-redux";
 import {
   Users, Loader2, Plus, Globe, Mail, Phone, MapPin, Briefcase,
-  Package, Building2, ChevronDown, Search,
+  Package, Building2, ChevronDown, Search, Check, UserCheck,
   Bold, Italic, Underline, List, ListOrdered,
 } from "lucide-react";
+
+const EMP_COLORS = [
+  "bg-blue-100 text-blue-700",
+  "bg-violet-100 text-violet-700",
+  "bg-emerald-100 text-emerald-700",
+  "bg-amber-100 text-amber-700",
+  "bg-rose-100 text-rose-700",
+  "bg-cyan-100 text-cyan-700",
+];
 
 /* ── Minimal rich text editor ── */
 const RichEditor = ({ value = "", onChange, placeholder = "" }) => {
@@ -105,6 +114,8 @@ const AdminClientdialog = ({ setClients }) => {
   const [employees, setEmployees]               = useState([]);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [employeeDropOpen, setEmployeeDropOpen] = useState(false);
+  const [employeeSearch, setEmployeeSearch]     = useState("");
+  const empContainerRef = useRef(null);
 
   const [projectsDetails, setProjectsDetails]   = useState("");
   const [packageDetails, setPackageDetails]     = useState("");
@@ -116,6 +127,8 @@ const AdminClientdialog = ({ setClients }) => {
     setSelectedCompany(null);
     setCompanySearch("");
     setSelectedEmployee(null);
+    setEmployeeSearch("");
+    setEmployeeDropOpen(false);
     setProjectsDetails("");
     setPackageDetails("");
   }, [open]);
@@ -128,7 +141,15 @@ const AdminClientdialog = ({ setClients }) => {
           axios.get("/api/get-all-employees"),
         ]);
         if (cRes.data.success) setCompanies(cRes.data.companies || []);
-        if (eRes.data.success) setEmployees(eRes.data.employees || []);
+        if (eRes.data.success) {
+          const salesOnly = (eRes.data.employees || []).filter((e) => {
+            const dept = typeof e.department === "string"
+              ? e.department
+              : (e.department?.departmentName || "");
+            return dept.trim().toLowerCase().includes("sales");
+          });
+          setEmployees(salesOnly);
+        }
       } catch {
         toast.error("Failed to load companies / employees");
       }
@@ -139,6 +160,22 @@ const AdminClientdialog = ({ setClients }) => {
   const filteredCompanies = companies.filter((c) =>
     (c.name || c.companyslug || "").toLowerCase().includes(companySearch.toLowerCase())
   );
+
+  const filteredEmployees = employees.filter((e) =>
+    (e.employeeName || "").toLowerCase().includes(employeeSearch.toLowerCase()) ||
+    (e.employeeemail || "").toLowerCase().includes(employeeSearch.toLowerCase())
+  );
+
+  useEffect(() => {
+    if (!employeeDropOpen) return;
+    const handler = (e) => {
+      if (empContainerRef.current && !empContainerRef.current.contains(e.target)) {
+        setEmployeeDropOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [employeeDropOpen]);
 
   const handleClose = () => {
     setOpen(false);
@@ -263,42 +300,75 @@ const AdminClientdialog = ({ setClients }) => {
               </Field>
 
               {/* Employee dropdown */}
-              <Field label="Assign Employee" icon={Users}>
-                <div className="relative">
+              <Field label="Assign Employee" icon={UserCheck}>
+                <div className="relative" ref={empContainerRef}>
                   <button
                     type="button"
-                    onClick={() => setEmployeeDropOpen((o) => !o)}
-                    className="w-full h-9 flex items-center justify-between px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm hover:border-blue-400 transition-colors"
+                    onClick={() => { setEmployeeDropOpen((o) => !o); setEmployeeSearch(""); }}
+                    className={`w-full h-9 flex items-center justify-between px-3 bg-slate-50 border rounded-lg text-sm transition-colors ${employeeDropOpen ? "border-blue-400 ring-1 ring-blue-100" : "border-slate-200 hover:border-blue-400"}`}
                   >
-                    <span className={selectedEmployee ? "text-slate-800 truncate" : "text-slate-400"}>
-                      {selectedEmployee ? selectedEmployee.employeeName : "Optional…"}
-                    </span>
-                    <div className="flex items-center gap-1.5 shrink-0 ml-1">
+                    {selectedEmployee ? (
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-[9px] font-bold ${EMP_COLORS[employees.indexOf(selectedEmployee) % EMP_COLORS.length]}`}>
+                          {(selectedEmployee.employeeName || "").split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
+                        </div>
+                        <span className="text-slate-800 truncate text-sm font-medium">{selectedEmployee.employeeName}</span>
+                      </div>
+                    ) : (
+                      <span className="text-slate-400">Optional…</span>
+                    )}
+                    <div className="flex items-center gap-1 shrink-0 ml-1">
                       {selectedEmployee && (
                         <span
-                          onMouseDown={(e) => { e.stopPropagation(); setSelectedEmployee(null); setEmployeeDropOpen(false); }}
-                          className="text-slate-400 hover:text-red-500 text-xs leading-none"
+                          onMouseDown={(e) => { e.stopPropagation(); setSelectedEmployee(null); }}
+                          className="w-4 h-4 flex items-center justify-center rounded-full hover:bg-red-100 text-slate-400 hover:text-red-500 text-[10px] transition-colors"
                         >✕</span>
                       )}
-                      <ChevronDown size={14} className="text-slate-400" />
+                      <ChevronDown size={14} className={`text-slate-400 transition-transform ${employeeDropOpen ? "rotate-180" : ""}`} />
                     </div>
                   </button>
+
                   {employeeDropOpen && (
                     <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden">
-                      <div className="max-h-40 overflow-y-auto">
-                        {employees.length === 0 ? (
-                          <p className="px-4 py-2.5 text-xs text-slate-400">No employees</p>
-                        ) : employees.map((emp) => (
-                          <button
-                            key={emp.id}
-                            type="button"
-                            onMouseDown={() => { setSelectedEmployee(emp); setEmployeeDropOpen(false); }}
-                            className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
-                          >
-                            <span className="font-medium">{emp.employeeName}</span>
-                            {emp.employeeemail && <span className="text-xs text-slate-400 ml-1.5">({emp.employeeemail})</span>}
-                          </button>
-                        ))}
+                      {/* Search */}
+                      <div className="p-2 border-b border-slate-100">
+                        <div className="relative">
+                          <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                          <input
+                            autoFocus
+                            value={employeeSearch}
+                            onChange={(e) => setEmployeeSearch(e.target.value)}
+                            placeholder="Search employee…"
+                            className="w-full h-7 pl-7 pr-2 text-xs bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-blue-500"
+                          />
+                        </div>
+                      </div>
+                      <div className="max-h-44 overflow-y-auto [&::-webkit-scrollbar]:hidden">
+                        {filteredEmployees.length === 0 ? (
+                          <p className="px-4 py-3 text-xs text-slate-400 text-center">No employees found</p>
+                        ) : filteredEmployees.map((emp, idx) => {
+                          const initials = (emp.employeeName || "").split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+                          const isSelected = selectedEmployee?.id === emp.id;
+                          return (
+                            <button
+                              key={emp.id}
+                              type="button"
+                              onMouseDown={() => { setSelectedEmployee(emp); setEmployeeDropOpen(false); setEmployeeSearch(""); }}
+                              className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${isSelected ? "bg-blue-50" : "hover:bg-slate-50"}`}
+                            >
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${EMP_COLORS[idx % EMP_COLORS.length]}`}>
+                                {initials}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-semibold text-slate-800 truncate">{emp.employeeName}</p>
+                                {emp.employeeemail && (
+                                  <p className="text-[11px] text-slate-400 truncate">{emp.employeeemail}</p>
+                                )}
+                              </div>
+                              {isSelected && <Check size={13} className="text-blue-600 shrink-0" />}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   )}

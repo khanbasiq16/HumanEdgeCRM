@@ -14,14 +14,14 @@ import {
 } from "@tanstack/react-table";
 import {
   Search, ChevronLeft, ChevronRight, Copy, ExternalLink,
-  Check, Building2, Users, Filter, Trash2, AlertTriangle,
+  Check, Building2, Users, Filter, Trash2, AlertTriangle, Loader2,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
 import toast from "react-hot-toast";
 
-/* ── Confirm Delete Dialog ── */
-const ConfirmDelete = ({ name, onConfirm, onCancel }) => (
+/* ── Confirm Delete Dialog (single & bulk) ── */
+const ConfirmDelete = ({ name, count, onConfirm, onCancel, deleting }) => (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6 space-y-4">
       <div className="flex items-center gap-3">
@@ -29,25 +29,37 @@ const ConfirmDelete = ({ name, onConfirm, onCancel }) => (
           <AlertTriangle size={18} className="text-red-500" />
         </div>
         <div>
-          <p className="text-sm font-bold text-slate-900">Delete Client</p>
+          <p className="text-sm font-bold text-slate-900">
+            {count ? `Delete ${count} Clients` : "Delete Client"}
+          </p>
           <p className="text-xs text-slate-400 mt-0.5">This action cannot be undone</p>
         </div>
       </div>
       <p className="text-sm text-slate-600">
-        Are you sure you want to delete <span className="font-semibold text-slate-900">{name}</span>?
+        {count
+          ? <>Are you sure you want to delete <span className="font-semibold text-slate-900">{count} selected clients</span>? All their data will be permanently removed.</>
+          : <>Are you sure you want to delete <span className="font-semibold text-slate-900">{name}</span>?</>}
       </p>
       <div className="flex items-center justify-end gap-3 pt-1">
         <button
           onClick={onCancel}
-          className="px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"
+          disabled={deleting}
+          className="px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           Cancel
         </button>
         <button
           onClick={onConfirm}
-          className="px-4 py-2 text-sm font-semibold text-white bg-red-500 hover:bg-red-600 rounded-xl transition-colors"
+          disabled={deleting}
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-red-500 hover:bg-red-600 disabled:opacity-60 disabled:cursor-not-allowed rounded-xl transition-colors"
         >
-          Delete
+          {deleting ? (
+            <><Loader2 size={14} className="animate-spin" /> Deleting…</>
+          ) : count ? (
+            `Delete ${count}`
+          ) : (
+            "Delete"
+          )}
         </button>
       </div>
     </div>
@@ -69,8 +81,10 @@ const ListAllClients = () => {
   const [loading, setLoading]           = useState(true);
   const [copiedId, setCopiedId]         = useState(null);
   const [companyFilter, setCompanyFilter] = useState("all");
-  const [deleteTarget, setDeleteTarget] = useState(null); // { id, name }
-  const [deleting, setDeleting]         = useState(false);
+  const [deleteTarget, setDeleteTarget]   = useState(null); // { id, name }
+  const [deleting, setDeleting]           = useState(false);
+  const [rowSelection, setRowSelection]   = useState({});
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -113,6 +127,36 @@ const ListAllClients = () => {
     } finally {
       setDeleting(false);
       setDeleteTarget(null);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const selectedRows = table.getFilteredSelectedRowModel().rows;
+    const ids = selectedRows.map((r) => r.original.id);
+    if (!ids.length) return;
+    setDeleting(true);
+    try {
+      const results = await Promise.allSettled(
+        ids.map((id) => axios.delete(`/api/delete-client/${id}`))
+      );
+      const succeeded = results.filter(
+        (r) => r.status === "fulfilled" && r.value?.data?.success
+      ).length;
+      const succeededIds = ids.filter(
+        (_, i) => results[i].status === "fulfilled" && results[i].value?.data?.success
+      );
+      setClients((prev) => prev.filter((c) => !succeededIds.includes(c.id)));
+      setRowSelection({});
+      setBulkDeleteConfirm(false);
+      if (succeeded === ids.length) {
+        toast.success(`${succeeded} client${succeeded !== 1 ? "s" : ""} deleted`);
+      } else {
+        toast.error(`${succeeded} deleted, ${ids.length - succeeded} failed`);
+      }
+    } catch {
+      toast.error("Error deleting clients");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -251,6 +295,8 @@ const ListAllClients = () => {
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    onRowSelectionChange: setRowSelection,
+    state: { rowSelection },
   });
 
   const totalCount    = table.getFilteredRowModel().rows.length;
@@ -262,7 +308,16 @@ const ListAllClients = () => {
       <ConfirmDelete
         name={deleteTarget.name}
         onConfirm={handleDelete}
-        onCancel={() => setDeleteTarget(null)}
+        onCancel={() => !deleting && setDeleteTarget(null)}
+        deleting={deleting}
+      />
+    )}
+    {bulkDeleteConfirm && (
+      <ConfirmDelete
+        count={table.getFilteredSelectedRowModel().rows.length}
+        onConfirm={handleBulkDelete}
+        onCancel={() => !deleting && setBulkDeleteConfirm(false)}
+        deleting={deleting}
       />
     )}
     <Card className="p-6 rounded-xl shadow-md flex flex-col min-h-[64vh]">
@@ -304,6 +359,16 @@ const ListAllClients = () => {
             <span className="text-xs text-slate-400 font-medium ml-auto">
               {selectedCount > 0 ? `${selectedCount} selected · ` : ""}{totalCount} clients
             </span>
+
+            {selectedCount > 0 && (
+              <button
+                onClick={() => setBulkDeleteConfirm(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors"
+              >
+                <Trash2 size={13} />
+                Delete Selected ({selectedCount})
+              </button>
+            )}
 
             <AdminClientdialog setClients={setClients} />
           </div>

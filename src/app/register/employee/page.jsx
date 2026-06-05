@@ -10,7 +10,7 @@ import {
   ArrowRight, ArrowLeft, CheckCircle2, ClipboardCheck, BarChart3,
   FileText, UserPlus, Briefcase, Landmark, Hash,
 } from "lucide-react";
-import PhoneInput from "react-phone-number-input";
+import PhoneInput, { isValidPhoneNumber } from "react-phone-number-input";
 import "react-phone-number-input/style.css";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -87,7 +87,7 @@ export default function EmployeeRegisterPage() {
   const [bankOpen,           setBankOpen]           = useState(false);
   const [phoneValue,         setPhoneValue]         = useState("");
   const [success,            setSuccess]            = useState(null);
-  const [fieldErrors,        setFieldErrors]        = useState({ email: "", cnic: "", accountNumber: "" });
+  const [fieldErrors,        setFieldErrors]        = useState({ email: "", cnic: "", accountNumber: "", phone: "" });
   const [form,               setForm]               = useState({
     employeeName: "", employeeemail: "", employeePhone: "",
     employeeCNIC: "", employeeAddress: "", employeeSalary: "",
@@ -180,6 +180,7 @@ export default function EmployeeRegisterPage() {
       if (!form.employeeemail.trim()) return toast.error("Email is required");
       if (fieldErrors.email)          return toast.error(fieldErrors.email);
       if (!phoneValue)                return toast.error("Phone number is required");
+      if (fieldErrors.phone)          return toast.error(fieldErrors.phone);
     }
     if (step === 1) {
       if (!selectedCompanyId)         return toast.error("Select a company");
@@ -395,10 +396,20 @@ export default function EmployeeRegisterPage() {
                       international
                       defaultCountry="PK"
                       value={phoneValue}
-                      onChange={setPhoneValue}
+                      onChange={(val) => {
+                        setPhoneValue(val || "");
+                        if (!val)                          setFieldError("phone", "");
+                        else if (!isValidPhoneNumber(val)) setFieldError("phone", "Enter a valid phone number");
+                        else                               setFieldError("phone", "");
+                      }}
                       placeholder="+92 3XX XXXXXXX"
-                      className="phone-input-wrapper"
+                      className={`phone-input-wrapper${fieldErrors.phone ? " phone-input-error" : ""}`}
                     />
+                    {fieldErrors.phone && (
+                      <p className="text-xs text-red-500 flex items-center gap-1">
+                        <span className="w-1 h-1 rounded-full bg-red-500 inline-block" /> {fieldErrors.phone}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}

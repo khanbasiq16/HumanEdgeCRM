@@ -46,7 +46,7 @@ const Sidebar = ({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) => {
     { href: "/admin/taxes",         label: "Taxes",         icon: BadgeDollarSign,  perm: "accounts"        },
     { href: "/admin/expenses",      label: "Expenses",      icon: Receipt,          perm: "accounts"        },
     { href: "/admin/invoices",      label: "Invoices",      icon: CardSim,          perm: "invoice"         },
-    { href: "/admin/settings",      label: "Members",       icon: UserCog,          perm: "members"         },
+    { href: "/admin/members",        label: "Members",       icon: UserCog,          perm: "members"         },
   ];
 
   const attendanceSubLinks = [

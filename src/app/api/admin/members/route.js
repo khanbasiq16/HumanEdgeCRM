@@ -1,4 +1,4 @@
-import { adminDb } from "@/lib/firebaseAdmin";
+import { adminDb, adminAuth } from "@/lib/firebaseAdmin";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -99,7 +99,15 @@ export async function DELETE(req) {
   try {
     const { uid } = await req.json();
     if (!uid) return NextResponse.json({ success: false, error: "UID required" }, { status: 400 });
-    await adminDb.collection("users").doc(uid).delete();
+
+    await Promise.all([
+      adminDb.collection("users").doc(uid).delete(),
+      adminAuth.deleteUser(uid).catch((err) => {
+        // user-not-found means they were already removed from Auth — not a fatal error
+        if (err.code !== "auth/user-not-found") throw err;
+      }),
+    ]);
+
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

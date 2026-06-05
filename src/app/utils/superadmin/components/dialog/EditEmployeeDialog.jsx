@@ -12,6 +12,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import axios from "axios";
 import toast from "react-hot-toast";
+import PhoneInput, { isValidPhoneNumber } from "react-phone-number-input";
+import "react-phone-number-input/style.css";
+import { CheckCircle2 } from "lucide-react";
 import {
   Pencil, Loader2, Users, Mail, Phone, MapPin, CreditCard, DollarSign,
   Clock, Calendar, Briefcase, Target, Landmark, Hash, ChevronsUpDown,
@@ -41,9 +44,12 @@ const Section = ({ title, subtitle }) => (
 
 /* ── Main component ─────────────────────────────────────── */
 const EditEmployeeDialog = ({ employee, setemployee, open: externalOpen, onOpenChange }) => {
-  const [loading, setLoading]         = useState(false);
+  const [loading, setLoading]           = useState(false);
   const [internalOpen, setInternalOpen] = useState(false);
   const [bankOpen, setBankOpen]         = useState(false);
+  const [cnicError, setCnicError]       = useState("");
+  const [phoneError, setPhoneError]     = useState("");
+  const [accountError, setAccountError] = useState("");
 
   const isControlled = externalOpen !== undefined;
   const open    = isControlled ? externalOpen  : internalOpen;
@@ -59,6 +65,9 @@ const EditEmployeeDialog = ({ employee, setemployee, open: externalOpen, onOpenC
   const { department } = useSelector((s) => s.Department);
 
   useEffect(() => {
+    setCnicError("");
+    setPhoneError("");
+    setAccountError("");
     if (employee) {
       setFormData({
         employeeName:      employee.employeeName      || "",
@@ -85,14 +94,36 @@ const EditEmployeeDialog = ({ employee, setemployee, open: externalOpen, onOpenC
 
   const handleDepartmentChange = (value) => setFormData((p) => ({ ...p, department: value }));
 
+  const handleCNICChange = (e) => {
+    let raw = e.target.value.replace(/\D/g, "").slice(0, 13);
+    let formatted = raw;
+    if (raw.length > 5)  formatted = raw.slice(0, 5) + "-" + raw.slice(5);
+    if (raw.length > 12) formatted = raw.slice(0, 5) + "-" + raw.slice(5, 12) + "-" + raw.slice(12);
+    setFormData((p) => ({ ...p, employeeCNIC: formatted }));
+    const valid = /^\d{5}-\d{7}-\d$/.test(formatted);
+    setCnicError(raw.length === 0 ? "" : valid ? "" : "Format must be XXXXX-XXXXXXX-X");
+  };
+
   const handleBankSelect = (bankName) => {
     const bank = BANKS.find((b) => b.name === bankName);
     setFormData((p) => ({ ...p, bankName, bankCode: bank?.code || "" }));
     setBankOpen(false);
   };
 
+  const handleAccountNumberChange = (e) => {
+    const v = e.target.value.replace(/\D/g, "");
+    setFormData((p) => ({ ...p, bankAccountNumber: v }));
+    if (!v)             return setAccountError("");
+    if (v.length < 10)  return setAccountError("Account number must be at least 10 digits");
+    if (v.length > 24)  return setAccountError("Account number too long");
+    setAccountError("");
+  };
+
   const formHandler = async (e) => {
     e.preventDefault();
+    if (cnicError)    return toast.error(cnicError);
+    if (phoneError)   return toast.error(phoneError);
+    if (accountError) return toast.error(accountError);
     setLoading(true);
     try {
       const res = await axios.post(`/api/update-employee/${employee?.employeeId}`, formData);
@@ -156,11 +187,45 @@ const EditEmployeeDialog = ({ employee, setemployee, open: externalOpen, onOpenC
               </Field>
 
               <Field label="Phone Number" icon={Phone}>
-                <Input className={inputCls} name="employeePhone" value={formData.employeePhone} onChange={handleChange} />
+                <PhoneInput
+                  international
+                  defaultCountry="PK"
+                  value={formData.employeePhone}
+                  onChange={(val) => {
+                    setFormData((p) => ({ ...p, employeePhone: val || "" }));
+                    if (!val)                          setPhoneError("");
+                    else if (!isValidPhoneNumber(val)) setPhoneError("Enter a valid phone number");
+                    else                               setPhoneError("");
+                  }}
+                  placeholder="+92 300 1234567"
+                  className={`phone-input-wrapper${phoneError ? " phone-input-error" : ""}`}
+                />
+                {phoneError && (
+                  <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+                    <span className="w-1 h-1 rounded-full bg-red-500 inline-block" /> {phoneError}
+                  </p>
+                )}
               </Field>
 
               <Field label="CNIC Number" required icon={CreditCard}>
-                <Input className={inputCls} name="employeeCNIC" value={formData.employeeCNIC} onChange={handleChange} required />
+                <Input
+                  className={`${inputCls} ${cnicError ? "border-red-400 focus-visible:ring-red-400" : ""}`}
+                  name="employeeCNIC"
+                  value={formData.employeeCNIC}
+                  onChange={handleCNICChange}
+                  placeholder="42201-1234567-8"
+                  maxLength={15}
+                  required
+                />
+                {cnicError ? (
+                  <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+                    <span className="w-1 h-1 rounded-full bg-red-500 inline-block" /> {cnicError}
+                  </p>
+                ) : formData.employeeCNIC.length === 15 && (
+                  <p className="text-xs text-blue-600 flex items-center gap-1 mt-1">
+                    <CheckCircle2 size={11} /> Valid CNIC
+                  </p>
+                )}
               </Field>
 
               <div className="md:col-span-2">
@@ -222,12 +287,22 @@ const EditEmployeeDialog = ({ employee, setemployee, open: externalOpen, onOpenC
 
               <Field label="Account Number" icon={CreditCard}>
                 <Input
-                  className={inputCls}
+                  className={`${inputCls} ${accountError ? "border-red-400 focus-visible:ring-red-400" : ""}`}
                   name="bankAccountNumber"
                   value={formData.bankAccountNumber}
-                  onChange={handleChange}
+                  onChange={handleAccountNumberChange}
                   placeholder="e.g. 1234567890"
+                  inputMode="numeric"
                 />
+                {accountError ? (
+                  <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+                    <span className="w-1 h-1 rounded-full bg-red-500 inline-block" /> {accountError}
+                  </p>
+                ) : formData.bankAccountNumber?.length >= 10 && (
+                  <p className="text-xs text-blue-600 flex items-center gap-1 mt-1">
+                    <CheckCircle2 size={11} /> Valid account number
+                  </p>
+                )}
               </Field>
 
               {/* ── Work Details ───────────────────────────── */}
