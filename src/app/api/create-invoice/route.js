@@ -27,7 +27,9 @@ export async function POST(req) {
       user_id,
       invoiceAmount,
       Description,
-      type
+      type,
+      assignedEmployeeId,
+      assignedEmployeeName,
     } = body;
 
     if (!clientId || !invoiceNumber || !companySlug) {
@@ -72,6 +74,8 @@ export async function POST(req) {
       user_id,
       invoiceAmount: Number(invoiceAmount) || 0,
       invoiceLink,
+      assignedEmployeeId: assignedEmployeeId || null,
+      assignedEmployeeName: assignedEmployeeName || null,
       createdAt: Timestamp.now(),
     });
 

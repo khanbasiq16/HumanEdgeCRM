@@ -33,6 +33,7 @@ const Sidebar = ({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) => {
   const allDashboardLinks = [
     { href: "/admin",               label: "Dashboard",     icon: Home,             perm: null              },
     { href: "/admin/companies",     label: "Companies",     icon: Building,         perm: "companies"       },
+    { href: "/admin/clients",       label: "Clients",       icon: PersonStanding,   perm: "companies"       },
     { href: "/admin/employees",     label: "Employees",     icon: Users,            perm: "employees"       },
     { href: "/admin/departments",   label: "Departments",   icon: Layers,           perm: "employees"       },
     { href: "/admin/templates",     label: "Templates",     icon: NotepadTextDashed,perm: "templates"       },

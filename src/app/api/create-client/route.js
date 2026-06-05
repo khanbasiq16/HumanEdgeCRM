@@ -55,6 +55,7 @@ export async function POST(req) {
       id: clientId,
       companyId: companyData.id,
       companyName: companyData.name,
+      companySlug: companyData.companyslug,
       clientName: body.clientName,
       clientEmail,
       clientAddress: body.clientAddress,
@@ -62,6 +63,8 @@ export async function POST(req) {
       projectsDetails: body.projectsDetails,
       packageDetails: body.packageDetails,
       clientWebsite: body.clientWebsite,
+      assignedEmployeeId:   body.assignedEmployeeId   || null,
+      assignedEmployeeName: body.assignedEmployeeName || null,
       createdAt: new Date().toISOString(),
     };
 

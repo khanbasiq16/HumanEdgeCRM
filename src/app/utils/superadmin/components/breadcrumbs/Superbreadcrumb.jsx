@@ -5,9 +5,11 @@ import TemplateDialog from "../dialog/TemplateDialog";
 import AccountDialog from "../dialog/Accountsdialog";
 import BankDialog from "../dialog/BankDialog";
 import ExpenseDialog from "../dialog/ExpenseDialog";
+import AdminInvoicedialog from "../dialog/AdminInvoicedialog";
+import AdminClientdialog from "../dialog/AdminClientdialog";
 import { ChevronRight, Home } from "lucide-react";
 
-const Superbreadcrumb = ({ path, path2, expensesCategories, bankaccounts, setExpenses }) => {
+const Superbreadcrumb = ({ path, path2, expensesCategories, bankaccounts, setExpenses, setInvoices, setClients }) => {
   const displayName = path.toLowerCase() === "banks" ? "Bank Accounts" : path;
   const displayName2 = path2 ? (path2.toLowerCase() === "banks" ? "Bank Accounts" : path2) : null;
 
@@ -41,6 +43,8 @@ const Superbreadcrumb = ({ path, path2, expensesCategories, bankaccounts, setExp
          path === "Accountants"? <AccountDialog /> :
          path === "Banks"      ? <BankDialog /> :
          path === "Expenses"   ? <ExpenseDialog expensesCategories={expensesCategories} bankaccounts={bankaccounts} setExpenses={setExpenses} /> :
+         path === "Invoices"   ? <AdminInvoicedialog setInvoices={setInvoices} /> :
+         path === "Clients"    ? <AdminClientdialog setClients={setClients} /> :
          null}
       </div>
     </div>
