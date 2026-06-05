@@ -55,7 +55,6 @@ const Checkin = ({ isCheckedIn, setIsCheckedin, setIsCheckedout }) => {
   /* ── core API call ────────────────────────────────────── */
   const doCheckin = async (noteText = "") => {
     setLoading(true);
-    // const tid = toast.loading("Verifying identity…");
     try {
       const ip  = await getIP();
       const res = await axios.post("/api/check-in", {
@@ -74,10 +73,21 @@ const Checkin = ({ isCheckedIn, setIsCheckedin, setIsCheckedout }) => {
         setConfirmModal(false);
         setNote("");
         return true;
+      } else {
+        toast.error(res.data.error || res.data.message || "Check-in failed");
+        setConfirmModal(false);
+        setNoteModal(false);
+        resetSlider();
+        return false;
       }
     } catch (err) {
-      toast.dismiss(tid);
-      toast.error(err.response?.data?.error || "Check-in failed");
+      const message =
+        err.response?.data?.error ||
+        err.response?.data?.message ||
+        "Check-in failed. Please try again.";
+      setConfirmModal(false);
+      setNoteModal(false);
+      toast.error(message);
       resetSlider();
       return false;
     } finally {

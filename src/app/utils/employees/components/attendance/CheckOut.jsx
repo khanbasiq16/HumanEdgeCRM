@@ -105,7 +105,6 @@ const CheckOut = ({ isCheckedIn, isCheckedout, setIsCheckedout, setIsCheckedin }
   /* ── core API call ────────────────────────────────────── */
   const doCheckout = async (noteText = null) => {
     setLoading(true);
-    // const tid = toast.loading("Processing check-out…");
     try {
       const ip           = await getIP();
       const checkInStart = user?.startTime || stopwatchStartTime;
@@ -132,10 +131,19 @@ const CheckOut = ({ isCheckedIn, isCheckedout, setIsCheckedout, setIsCheckedin }
         setDialogOpen(false);
         setNote("");
         return true;
+      } else {
+        toast.error(res.data.error || res.data.message || "Check-out failed");
+        setDialogOpen(false);
+        resetSlider();
+        return false;
       }
     } catch (err) {
-      toast.dismiss(tid);
-      toast.error(err.response?.data?.error || "Check-out failed");
+      const message =
+        err.response?.data?.error ||
+        err.response?.data?.message ||
+        "Check-out failed. Please try again.";
+      setDialogOpen(false);
+      toast.error(message);
       resetSlider();
       return false;
     } finally {
