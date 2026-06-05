@@ -14,7 +14,7 @@ import axios               from "axios";
 import { resetCheckOut }   from "@/features/Slice/CheckOutSlice";
 import SwipeSlider         from "./SwipeSlider";
 
-const Checkin = ({ isCheckedIn, setIsCheckedin, setIsCheckedout }) => {
+const Checkin = ({ isCheckedIn, setIsCheckedin, setIsCheckedout, onCheckinDone }) => {
   const { user } = useSelector((state) => state.User);
   const dispatch = useDispatch();
 
@@ -72,6 +72,7 @@ const Checkin = ({ isCheckedIn, setIsCheckedin, setIsCheckedout }) => {
         setNoteModal(false);
         setConfirmModal(false);
         setNote("");
+        onCheckinDone?.();
         return true;
       } else {
         toast.error(res.data.error || res.data.message || "Check-in failed");

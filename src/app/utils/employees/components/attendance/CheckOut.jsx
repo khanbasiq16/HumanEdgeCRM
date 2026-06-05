@@ -14,7 +14,7 @@ import axios from "axios";
 import { updateCheckOut } from "@/features/Slice/UserSlice";
 import SwipeSlider from "./SwipeSlider";
 
-const CheckOut = ({ isCheckedIn, isCheckedout, setIsCheckedout, setIsCheckedin }) => {
+const CheckOut = ({ isCheckedIn, isCheckedout, setIsCheckedout, setIsCheckedin, onCheckoutDone }) => {
   const { user }                             = useSelector((state) => state.User);
   const { startTime: stopwatchStartTime }    = useSelector((state) => state.Stopwatch);
   const dispatch        = useDispatch();
@@ -130,6 +130,7 @@ const CheckOut = ({ isCheckedIn, isCheckedout, setIsCheckedout, setIsCheckedin }
         setElapsedSecs(0);
         setDialogOpen(false);
         setNote("");
+        onCheckoutDone?.();
         return true;
       } else {
         toast.error(res.data.error || res.data.message || "Check-out failed");

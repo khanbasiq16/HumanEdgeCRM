@@ -10,8 +10,45 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import {
   Clock, Timer, Clock3, CheckCheck, CalendarDays,
-  Building2, User,
+  Building2, User, CheckCircle2, LogOut,
 } from "lucide-react";
+
+const COOLDOWN_SECS = 60;
+
+const CooldownCard = ({ type, secs }) => {
+  const isCheckin = type === "checkin";
+  return (
+    <div className="flex flex-col items-center py-8 gap-5 text-center">
+      <div className={`w-20 h-20 rounded-2xl flex items-center justify-center border-2 ${
+        isCheckin ? "bg-blue-50 border-blue-200" : "bg-emerald-50 border-emerald-200"
+      }`}>
+        {isCheckin
+          ? <CheckCircle2 size={36} className="text-blue-500" />
+          : <LogOut     size={36} className="text-emerald-500" />}
+      </div>
+      <div>
+        <p className="text-base font-extrabold text-slate-900">
+          {isCheckin ? "Checked In Successfully!" : "Checked Out Successfully!"}
+        </p>
+        <p className="text-sm text-slate-400 mt-1">
+          {isCheckin ? "Checkout will be available shortly" : "You're all done for today!"}
+        </p>
+      </div>
+      <div className={`flex items-center gap-3 px-5 py-3 rounded-2xl border ${
+        isCheckin ? "bg-blue-50 border-blue-200" : "bg-emerald-50 border-emerald-200"
+      }`}>
+        <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-extrabold text-xl tabular-nums ${
+          isCheckin ? "bg-blue-100 text-blue-700" : "bg-emerald-100 text-emerald-700"
+        }`}>
+          {secs}
+        </div>
+        <p className={`text-sm font-semibold ${isCheckin ? "text-blue-700" : "text-emerald-700"}`}>
+          {isCheckin ? "seconds until checkout\nis available" : "seconds until check-in\nis available"}
+        </p>
+      </div>
+    </div>
+  );
+};
 
 /* ── live karachi clock ──────────────────────────────────── */
 const useKarachiClock = () => {
@@ -80,6 +117,8 @@ const Page = () => {
   const [isCheckedIn,   setIsCheckedin]  = useState(false);
   const [isCheckedout,  setIsCheckedout] = useState(false);
   const [loading,       setLoading]      = useState(true);
+  const [cooldownType,  setCooldownType] = useState(null);  // "checkin" | "checkout" | null
+  const [cooldownSecs,  setCooldownSecs] = useState(0);
 
   const { slug } = useParams();
   const { user } = useSelector((s) => s.User);
@@ -111,7 +150,22 @@ const Page = () => {
     })();
   }, [user?.employeeId]);
 
-  const step    = isCheckedout ? 3 : isCheckedIn ? 1 : 0;
+  /* ── cooldown countdown ───────────────────────────────── */
+  useEffect(() => {
+    if (cooldownSecs <= 0) return;
+    const id = setTimeout(() => {
+      setCooldownSecs(s => {
+        if (s <= 1) { setCooldownType(null); return 0; }
+        return s - 1;
+      });
+    }, 1000);
+    return () => clearTimeout(id);
+  }, [cooldownSecs]);
+
+  const handleCheckinDone  = () => { setCooldownType("checkin");  setCooldownSecs(COOLDOWN_SECS); };
+  const handleCheckoutDone = () => { setCooldownType("checkout"); setCooldownSecs(COOLDOWN_SECS); };
+
+  const step    = cooldownType === "checkout" ? 3 : (isCheckedIn || cooldownType === "checkin") ? 1 : 0;
   const allDone = isCheckedout;
   const { time, ampm } = fmtClock(now);
 
@@ -163,16 +217,18 @@ const Page = () => {
           </div>
           <div className={`
             inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border shrink-0
-            ${isCheckedIn && !isCheckedout
-              ? "bg-blue-50 text-blue-700 border-blue-200"
-              : allDone
+            ${cooldownType === "checkout"
               ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+              : (isCheckedIn || cooldownType === "checkin")
+              ? "bg-blue-50 text-blue-700 border-blue-200"
               : "bg-slate-50 text-slate-500 border-slate-200"}
           `}>
             <span className={`w-1.5 h-1.5 rounded-full
-              ${isCheckedIn && !isCheckedout ? "bg-blue-500 animate-pulse" : allDone ? "bg-emerald-500" : "bg-slate-400"}
+              ${cooldownType === "checkout" ? "bg-emerald-500"
+                : (isCheckedIn || cooldownType === "checkin") ? "bg-blue-500 animate-pulse"
+                : "bg-slate-400"}
             `} />
-            {allDone ? "Done" : isCheckedIn ? "Working" : "Not Started"}
+            {cooldownType === "checkout" ? "Done" : (isCheckedIn || cooldownType === "checkin") ? "Working" : "Not Started"}
           </div>
         </div>
 
@@ -184,6 +240,9 @@ const Page = () => {
               <div className="w-8 h-8 border-[3px] border-blue-500 border-t-transparent rounded-full animate-spin" />
               <p className="text-sm text-slate-400">Loading attendance status…</p>
             </div>
+
+          ) : cooldownType ? (
+            <CooldownCard type={cooldownType} secs={cooldownSecs} />
 
           ) : allDone ? (
             <div className="flex flex-col items-center py-8 gap-4 text-center">
@@ -203,6 +262,7 @@ const Page = () => {
               isCheckedIn={isCheckedIn}
               setIsCheckedin={setIsCheckedin}
               setIsCheckedout={setIsCheckedout}
+              onCheckinDone={handleCheckinDone}
             />
           ) : (
             <CheckOut
@@ -210,6 +270,7 @@ const Page = () => {
               isCheckedout={isCheckedout}
               setIsCheckedout={setIsCheckedout}
               setIsCheckedin={setIsCheckedin}
+              onCheckoutDone={handleCheckoutDone}
             />
           )}
         </div>
