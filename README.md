@@ -14,6 +14,7 @@ A full-stack SaaS HR management platform built with **Next.js 15**, **Firebase**
 - [Database Collections](#database-collections)
 - [Getting Started](#getting-started)
 - [Environment Variables](#environment-variables)
+- [Testing](#testing)
 - [Available Scripts](#available-scripts)
 - [Deployment](#deployment)
 - [Contributing](#contributing)
@@ -351,13 +352,160 @@ NEXT_PUBLIC_BASE_URL=http://localhost:3000
 
 ---
 
+## Testing
+
+HumanEdge includes a comprehensive **E2E (End-to-End) test suite** for the entire backend API, written with **Jest** and **next/jest**. All API route handlers are tested in isolation using mocked Firebase and third-party dependencies.
+
+### Test Results
+
+```
+Test Suites : 14 passed, 14 total
+Tests       : 172 passed, 172 total
+Snapshots   : 0
+Time        : ~1 second
+Status      : ✅ All Passing
+```
+
+### Test Stack
+
+| Tool | Purpose |
+|---|---|
+| **Jest** | Test runner and assertion library |
+| **next/jest** | SWC-based transformer for Next.js App Router routes |
+| **jest-environment-node** | Node.js test environment (not jsdom) |
+| **jsonwebtoken** | Token generation in auth and middleware tests |
+| Custom `__mocks__/uuid.js` | CJS-compatible mock for uuid v13 (ESM-only) |
+
+### Test Structure
+
+```
+tests/
+├── helpers/
+│   ├── request.js          # NextRequest factory (createRequest, GET, POST, PUT, DELETE)
+│   ├── auth.js             # JWT token helpers (adminToken, employeeToken, etc.)
+│   └── mockData.js         # Mock data factories (makeEmployee, makeCompany, makeBank, etc.)
+│
+├── auth/
+│   ├── admin-signin.test.js        # POST /api/admin/signin (8 tests)
+│   ├── employee-signin.test.js     # POST /api/check-in-sign-in (12 tests)
+│   └── logout.test.js              # GET  /api/logout (3 tests)
+│
+├── employees/
+│   ├── create-employee.test.js     # POST /api/create-employee (8 tests)
+│   └── get-employees.test.js       # GET  /api/get-all-employees (4 tests)
+│
+├── attendance/
+│   ├── check-in.test.js            # POST /api/check-in (14 tests)
+│   └── check-out.test.js           # POST /api/check-out (13 tests)
+│
+├── companies/
+│   └── companies.test.js           # GET  /api/get-all-companies
+│                                   # GET  /api/get-company/[id] (9 tests)
+│
+├── departments/
+│   └── departments.test.js         # POST /api/create-department
+│                                   # GET  /api/get-all-department (8 tests)
+│
+├── clients/
+│   └── clients.test.js             # POST /api/create-client
+│                                   # GET  /api/get-all-clients/[slug] (9 tests)
+│
+├── invoices/
+│   └── invoices.test.js            # POST /api/create-invoice
+│                                   # GET  /api/get-invoice/[id] (13 tests)
+│
+├── projects/
+│   └── projects.test.js            # POST /api/projects/create
+│                                   # POST /api/tasks/create (20 tests)
+│
+├── accounting/
+│   └── banks.test.js               # POST /api/acounts/banks/create
+│                                   # POST /api/acounts/banks/add-balance
+│                                   # POST /api/acounts/banks/transfer
+│                                   # GET  /api/acounts/banks/get-all-banks (18 tests)
+│
+└── middleware/
+    └── middleware.test.js          # src/middleware.js — JWT auth, RBAC,
+                                    # token refresh, public/protected routes (13 tests)
+```
+
+### What Each Suite Covers
+
+**Auth Tests**
+- Valid login returns 200 with JWT tokens and cookies
+- Missing fields → 400, wrong password → 401, wrong role → 403
+- User not found → 404, Firestore error → 500
+
+**Attendance Tests**
+- IP whitelist enforcement (universal `0.0.0.0/0`, CIDR subnet, blocked IP)
+- Duplicate shift guard (already checked in → 400)
+- Status logic: `On Time`, `Late`, `Short Day`, `Half Day`
+- Checkout status: `On Time Check Out`, `Early Check Out`, `Late Check Out`
+- `updateDoc` called with correct attendance fields and timestamps
+
+**Middleware Tests**
+- Unauthenticated access redirects to `/`
+- Valid token passes through for correct role
+- Expired access token + valid refresh token → auto-renews token cookie
+- Both tokens expired → redirect to `/` and clear cookies
+- Role mismatch redirects (admin → employee route, employee → admin route)
+- superAdmin access to admin routes
+
+**Bank / Accounting Tests**
+- Bank creation: accountant lookup, setDoc, updateDoc, bankslug generation
+- Add balance: 3-step getDoc chain (bank → user → re-fetch), balance arithmetic
+- Transfer: currency conversion (fromRate → USD → toRate), missing currency → 400
+- 2 updateDoc calls per transfer (debit from, credit to)
+
+### Running Tests
+
+```bash
+# Run all tests
+npm test
+
+# Run all tests without coverage
+npx jest --no-coverage
+
+# Run with coverage report
+npm run test:coverage
+
+# Watch mode (re-runs on file save)
+npm run test:watch
+
+# Run a single test file
+npx jest tests/auth/admin-signin.test.js
+
+# Run a specific test by name
+npx jest -t "returns 200 on successful check-in"
+
+# Run an entire folder
+npx jest tests/attendance/
+npx jest tests/auth/
+npx jest tests/accounting/
+```
+
+### Key Design Decisions
+
+| Decision | Reason |
+|---|---|
+| `jest.resetAllMocks()` in global `beforeEach` | Prevents `mockResolvedValueOnce` queue bleeding between tests |
+| `setupDefaults()` in each test file's `beforeEach` | Re-establishes sync mock implementations cleared by `resetAllMocks` |
+| Plain function in `__mocks__/uuid.js` | uuid v13 is ESM-only; `jest.fn()` would be cleared by `resetAllMocks` |
+| `jose` fully mocked in middleware tests | jose v6 is ESM-only and cannot be required in Jest's CJS mode |
+| `testEnvironment: "node"` | API routes run server-side, not in a browser DOM |
+
+---
+
 ## Available Scripts
 
 ```bash
-npm run dev       # Start development server with Turbopack
-npm run build     # Build for production
-npm run start     # Start production server
-npm run lint      # Run ESLint
+npm run dev            # Start development server with Turbopack
+npm run build          # Build for production
+npm run start          # Start production server
+npm run lint           # Run ESLint
+npm test               # Run all 172 E2E tests
+npm run test:watch     # Run tests in watch mode
+npm run test:coverage  # Run tests with coverage report
 ```
 
 ---
