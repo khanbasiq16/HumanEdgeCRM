@@ -1,236 +1,397 @@
-### 🛠 HumanEdge Tool
+# HumanEdge — Multi HR Company Tool
 
-A modern web application built with Next.js for managing HR workflows in a multi-company environment.
-This project provides a frontend interface that can be connected to an HR backend (API) to handle employees, companies, roles, and inter-company operations.
+A full-stack SaaS HR management platform built with **Next.js 15**, **Firebase**, and **Tailwind CSS**. HumanEdge enables organizations to manage employees, companies, clients, contracts, invoices, attendance, and finances — all from a single, role-based platform.
 
-⚠️ Note: The current repository is a Next.js scaffold; the backend APIs and business logic for HR and multi-company features should be implemented separately or integrated with a suitable backend service.
+---
 
-### 📌 Table of Contents
+## Table of Contents
 
-About the Project
+- [About the Project](#about-the-project)
+- [Tech Stack](#tech-stack)
+- [Features](#features)
+- [User Roles](#user-roles)
+- [Project Structure](#project-structure)
+- [Database Collections](#database-collections)
+- [Getting Started](#getting-started)
+- [Environment Variables](#environment-variables)
+- [Available Scripts](#available-scripts)
+- [Deployment](#deployment)
+- [Contributing](#contributing)
+- [License](#license)
 
-Tech Stack
+---
 
-Features
+## About the Project
 
-Getting Started
+**HumanEdge** is an enterprise-grade HR management system designed for multi-company environments. It provides dedicated portals for Super Admins, Employees, and Accountants — each with tailored functionality and access controls.
 
-Available Scripts
+Key highlights:
+- Multi-company architecture with per-company data isolation
+- Role-based dashboards (Admin, Employee, Accounts)
+- Real-time attendance tracking with check-in / check-out
+- Contract and template management with a visual canvas editor
+- Invoicing with Stripe payment integration
+- Full accounting module (banks, expenses, loans, taxes)
+- PWA-ready for mobile use
 
-Folder Structure
+---
 
-Environment Variables
+## Tech Stack
 
-Deployment
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 15.5.7 (App Router) |
+| UI | React 18.3.1, Tailwind CSS 4.1.17 |
+| Component Library | shadcn/ui (Radix UI primitives) |
+| Icons | Lucide React |
+| Charts | Recharts 3.4.1 |
+| Data Tables | TanStack React Table 8.21.3 |
+| State Management | Redux Toolkit 2.9.0 + Redux Persist |
+| Database | Firebase Firestore (NoSQL) |
+| Authentication | Firebase Auth (email/password) |
+| File Storage | Cloudinary (images), Firebase Storage |
+| Email | Nodemailer (Gmail SMTP) |
+| Payments | Stripe 19.1.0 |
+| Rich Text Editor | Tiptap, React Quill |
+| Canvas Editor | Fabric.js |
+| Calendar | FullCalendar 6.1.20 |
+| Drag & Drop | dnd-kit |
+| Document Export | jsPDF, ExcelJS, PPTX Gen JS |
+| PDF Rendering | @react-pdf/renderer 4.3.1 |
+| Animations | Framer Motion |
+| HTTP Client | Axios |
+| JWT | Jose |
+| PWA | next-pwa 5.6.0 |
+| Build Tool | Turbopack |
 
-Contributing
+---
 
-License
+## Features
 
-### 🧠 About the Project
+### Authentication & Authorization
+- Email/password login via Firebase Auth
+- Role-based access control: `superAdmin`, `admin`, `employee`, `accounts`
+- JWT-based session management (access + refresh tokens)
+- Automatic token refresh via Next.js middleware
+- Forgot password and password reset via email
+- Invitation system with secure token links
 
-Multi HR Company Tool is intended to be a web-based platform allowing HR teams to:
+### Admin Dashboard
+- KPI overview cards (companies, employees, departments, clients, invoices, expenses)
+- Interactive area charts, bar charts, and pie charts
+- Quick-action navigation
+- Admin notification center
+- Global search functionality
 
-Manage employees across multiple companies
+### Employee Management
+- Create, view, update, and deactivate employees
+- Assign employees to one or multiple companies
+- Employee profile: contact info, salary, designation, bank details, CNIC
+- Employee self-service profile updates and password change
+- Bulk operations and export
 
-View and update employee profiles
+### Multi-Company Management
+- Create and manage unlimited companies
+- Per-company isolation of clients, invoices, contracts, and employees
+- Company logo upload via Cloudinary
+- Company social media links (Facebook, Instagram, LinkedIn)
+- Timezone configuration per company
 
-Assign roles, departments, and company associations
+### Attendance & Time Tracking
+- One-tap check-in / check-out for employees
+- Real-time attendance status
+- Daily attendance records with timestamps
+- Attendance history and reports
+- Bulk attendance import
+- Admin-side attendance management and status overrides
 
-Utilize features like company selection, dashboard views, and user authentication
+### Department Management
+- Create departments and associate them with companies
+- Link employees to departments
+- Department status management
 
-The frontend is built using Next.js, offering server-side rendering, routing, and API integration capabilities.
+### Client Management
+- Create and manage clients per company
+- Client contact information and status tracking
+- Both admin and employee portals can manage clients
 
-### 🧰 Tech Stack
-Component	Technology
-Frontend	Next.js (React)
-Styling	Tailwind CSS / CSS Modules
-Rendering	Server-Side Rendering (SSR) / Static
-Deployment	Vercel / Netlify
+### Invoicing & Billing
+- Create invoices with line items
+- Invoice status tracking: draft → sent → paid / expired
+- Email invoices directly to clients
+- Stripe payment integration for online invoice payments
+- Export invoices to PDF or Excel
+- Employee-assigned invoices
 
-The application uses standard Next.js conventions (app, pages, or src structure) and development tools like ESLint and Prettier.
+### Contract & Template Management
+- Create reusable contract templates with dynamic fields
+- Generate contracts from templates
+- Rich-text contract editing (Tiptap)
+- Visual canvas-based contract design (Fabric.js)
+- Contract signing workflow (draft → sent → signed)
+- Email contracts to recipients
+- Employee and company contract history
 
-### ✨ Features
+### Financial Management (Accounts Portal)
+- Bank account creation and balance management
+- Fund transfers between accounts
+- Loan tracking and repayment management
+- Expense categorization and reporting
+- Tax calculation module
+- Salary export reports
+- Currency management
 
-The features below should be implemented or integrated with backend services as needed.
+### Project & Task Management
+- Create projects and assign team members
+- Task creation with priority and status (to-do, in-progress, completed)
+- Task comments and collaboration
+- Project invitation system via email
+- Project-based task grouping
 
-✔ User Authentication (login/logout)
-✔ Dashboard overview
-✔ Company selection & multi-company context
-✔ Employee listing & profile pages
-✔ Role & department management
-✔ API integrations for HR data
+### Announcements & Notifications
+- Company-wide announcements
+- In-app employee notifications (read/unread tracking)
+- Email notifications via Nodemailer
+- Holiday/leave calendar with FullCalendar
 
-If this app is intended to integrate with Odoo HR multi-company modules (like hr_employee_multi_company), backend endpoints must expose data accordingly. 
-Odoo Community
+### Additional Features
+- Progressive Web App (PWA) support
+- Drag-and-drop interfaces (dnd-kit)
+- IP whitelist management
+- Image proxy for optimized external image loading
+- OTP verification system
 
-### 🚀 Getting Started 
+---
 
-Clone the Repository
+## User Roles
+
+| Role | Access |
+|---|---|
+| **Super Admin** | Full platform access — manages all companies, employees, settings |
+| **Admin** | Company-level management — employees, departments, clients, contracts, invoices |
+| **Employee** | Personal dashboard — attendance, company data, clients, contracts, invoices |
+| **Accounts** | Financial portal — banks, expenses, loans, tax, transfers |
+
+---
+
+## Project Structure
+
+```
+multi_hr_company_tool/
+├── public/                    # Static assets, PWA icons & manifests
+├── src/
+│   ├── app/
+│   │   ├── page.js            # Login page
+│   │   ├── register/          # Employee registration
+│   │   ├── forgot-password/   # Password recovery
+│   │   ├── reset-password/    # Password reset
+│   │   ├── accept-invite/     # Invitation acceptance
+│   │   │
+│   │   ├── admin/             # Admin portal
+│   │   │   ├── page.jsx       # Admin dashboard
+│   │   │   ├── employees/     # Employee management
+│   │   │   ├── companies/     # Company management
+│   │   │   ├── departments/   # Department management
+│   │   │   ├── clients/       # Client management
+│   │   │   ├── invoices/      # Invoice management
+│   │   │   ├── contracts/     # Contract management
+│   │   │   ├── templates/     # Contract templates
+│   │   │   ├── projects/      # Project management
+│   │   │   ├── attendance/    # Attendance records
+│   │   │   ├── expenses/      # Expense tracking
+│   │   │   ├── banks/         # Bank management
+│   │   │   ├── holidays/      # Holiday management
+│   │   │   ├── announcements/ # Announcements
+│   │   │   ├── members/       # Admin team members
+│   │   │   ├── taxes/         # Tax management
+│   │   │   └── settings/      # Admin settings
+│   │   │
+│   │   ├── employee/[slug]/   # Employee portal
+│   │   │   ├── page.jsx       # Employee dashboard
+│   │   │   ├── attendance/    # Check-in/out & history
+│   │   │   ├── companies/     # Assigned companies
+│   │   │   └── company/[id]/  # Company-specific data
+│   │   │       ├── clients/
+│   │   │       ├── contracts/
+│   │   │       └── invoices/
+│   │   │
+│   │   ├── accounts/[slug]/   # Accounts portal
+│   │   │   ├── banks/         # Bank management
+│   │   │   ├── expenses/      # Expenses
+│   │   │   ├── tax/           # Tax calculations
+│   │   │   └── settings/
+│   │   │
+│   │   ├── contract-editor/   # Visual contract editor (Fabric.js)
+│   │   ├── template-editor/   # Template designer
+│   │   ├── invoice/           # Invoice detail view
+│   │   │
+│   │   └── api/               # Next.js API routes
+│   │       ├── check-in/
+│   │       ├── check-out/
+│   │       ├── create-employee/
+│   │       ├── create-company/
+│   │       ├── create-invoice/
+│   │       ├── create-contract/
+│   │       ├── templates/
+│   │       ├── projects/
+│   │       ├── tasks/
+│   │       ├── acounts/        # Accounting APIs
+│   │       ├── admin/          # Admin-specific APIs
+│   │       └── ...
+│   │
+│   ├── components/            # Shared React components
+│   ├── features/              # Redux state slices
+│   ├── lib/                   # Firebase config, utilities, Redux store
+│   ├── middleware.js           # JWT auth & role-based routing
+│   └── globals.css            # Global Tailwind styles
+│
+├── .env.local                 # Environment variables
+├── next.config.mjs            # Next.js config (PWA, image optimization)
+├── tailwind.config.js         # Tailwind CSS config
+├── components.json            # shadcn/ui config
+├── vercel.json                # Vercel deployment config
+└── package.json               # Dependencies & scripts
+```
+
+---
+
+## Database Collections
+
+HumanEdge uses **Firebase Firestore** with the following main collections:
+
+| Collection | Purpose |
+|---|---|
+| `employees` | Employee profiles, salary, bank info, attendance |
+| `companies` | Company details, assigned employees, logo, social links |
+| `departments` | Departments linked to companies |
+| `clients` | Clients associated with companies |
+| `invoices` | Invoices with status, amounts, client/company links |
+| `contracts` | Contract instances generated from templates |
+| `templates` | Contract templates with dynamic fields |
+| `expenses` | Expense records by employee and company |
+| `banks` | Bank accounts managed by accountants |
+| `projects` | Projects with assigned team members |
+| `tasks` | Tasks under projects with status and comments |
+| `announcements` | Company-wide announcements |
+| `holidays` | Holiday/leave records per company |
+| `notifications` | Employee in-app notifications |
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+ 
+- npm or yarn
+- Firebase project with Firestore and Authentication enabled
+- Cloudinary account (for image uploads)
+- Stripe account (for payment processing)
+- Gmail account with App Password (for email sending)
+
+### Installation
+
+```bash
+# Clone the repository
 git clone https://github.com/khanbasiq16/multi_hr_company_tool.git
 cd multi_hr_company_tool
 
-Install Dependencies
-
-Using npm:
-
+# Install dependencies
 npm install
 
+# Set up environment variables
+cp .env.example .env.local
+# Fill in your keys in .env.local
 
-Or using yarn:
-
-yarn install
-
-### 🧪 Available Scripts
-
-In the project directory, you can run:
-
+# Run development server
 npm run dev
+```
 
-Runs the app in development mode.
-Open http://localhost:3000
- to view it in the browser.
+Open [http://localhost:3000](http://localhost:3000) to view the app.
 
-npm run build
+---
 
-Builds the application for production.
+## Environment Variables
 
-npm run start
+Create a `.env.local` file in the project root with the following variables:
 
-Runs the built production application locally.
+```env
+# Firebase Client Config
+NEXT_PUBLIC_FIREBASE_API_KEY=
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
+NEXT_PUBLIC_FIREBASE_APP_ID=
 
-npm run lint
+# Firebase Admin SDK (Service Account)
+FIREBASE_PROJECT_ID=
+FIREBASE_CLIENT_EMAIL=
+FIREBASE_PRIVATE_KEY=
 
-Runs ESLint to analyze code quality.
+# JWT
+JWT_SECRET=
 
+# Email (Nodemailer / Gmail SMTP)
+EMAIL_USER=
+EMAIL_PASS=
 
-### 🔐 Environment Variables
+# Cloudinary
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
 
-Create a .env.local file in the project root:
+# Stripe
+STRIPE_SECRET_KEY=
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
 
-NEXT_PUBLIC_API_URL=https://your-backend.com/api
-NEXT_PUBLIC_APP_NAME=MultiHRTool
+# App Base URL
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
+```
 
+---
 
-Any additional configuration (like auth keys) should be added here for secure API access.
+## Available Scripts
 
-### 📦 Deployment
+```bash
+npm run dev       # Start development server with Turbopack
+npm run build     # Build for production
+npm run start     # Start production server
+npm run lint      # Run ESLint
+```
 
-This app can be deployed to platforms like Vercel, Netlify, or AWS Amplify.
+---
 
-Vercel Deployment
+## Deployment
 
-Install Vercel CLI:
+### Deploy to Vercel (Recommended)
 
+```bash
+# Install Vercel CLI
 npm i -g vercel
 
-
-Deploy:
-
+# Deploy
 vercel
+```
 
+Add all environment variables from `.env.local` to your Vercel project settings.
 
-Follow the interactive prompts to finish deployment.
+A `vercel.json` file is already included for configuration.
 
-### 🤝 Contributing
+---
+
+## Contributing
 
 Contributions are welcome!
 
-Fork the repository
+1. Fork the repository
+2. Create your feature branch: `git checkout -b feature/your-feature`
+3. Commit your changes: `git commit -m "Add your feature"`
+4. Push to the branch: `git push origin feature/your-feature`
+5. Open a Pull Request
 
-Create your feature branch (git checkout -b feature/new-feature)
+---
 
-Commit your changes (git commit -m "Add new feature")
+## License
 
-Push to the branch (git push origin feature/new-feature)
-
-Open a Pull Request
-
-### 📜 License
-
-This project is open-source and available under the MIT License — see the LICENSE file for details.
-
-### ❓About Multi-Company Context
-
-For true multi-company support (backend), consider using frameworks or integrations that support it natively, such as:
-
-Odoo multi-company modules for backend HR data, roles, and company models. 
-Odoo Community
-
-Custom REST APIs exposing employee, company, and permission endpoints.
-
-### 📁 Recommended Folder Structure
-
-```text
-multi_hr_company_tool/
-├── .github/              # GitHub config (CI, Actions etc.)
-├── node_modules/         # Installed dependencies
-├── public/               # Static assets
-│   ├── favicon.ico
-│   ├── images/
-│   │   └── logo.png
-│   └── fonts/
-├── src/                  # Source files (main app code)
-│   ├── app/              # Next.js App Router routes
-│   │   ├── api/          # Backend API routes
-│   │   │   ├── auth/     # Auth API (login, logout)
-│   │   │   └── employees/# Employee related API
-│   │   ├── dashboard/    # Dashboard pages
-│   │   │   ├── page.jsx  # Dashboard main page
-│   │   │   └── layout.jsx# Dashboard layout
-│   │   ├── auth/         # Authentication views
-│   │   │   ├── login/
-│   │   │   │   └── page.jsx
-│   │   │   └── signup/
-│   │   │       └── page.jsx
-│   │   ├── companies/    # Company routes
-│   │   │   ├── page.jsx  # All companies list
-│   │   │   └── [id]/     # Single company dynamic route
-│   │   │       └── page.jsx
-│   │   ├── employees/    # Employee related pages
-│   │   │   ├── page.jsx  # Employee list
-│   │   │   └── [id]/     # Single employee profile
-│   │   │       └── page.jsx
-│   │   ├── settings/     # Settings pages
-│   │   │   └── page.jsx
-│   │   ├── layout.jsx    # Root layout (header, nav etc.)
-│   │   ├── loading.jsx   # Global loading state
-│   │   └── not-found.jsx # 404 page
-│   ├── components/       # Shared React components
-│   │   ├── Navbar/
-│   │   │   └── Navbar.jsx
-│   │   ├── Sidebar/
-│   │   │   └── Sidebar.jsx
-│   │   ├── EmployeeCard.jsx
-│   │   ├── CompanyCard.jsx
-│   │   └── UI/           # Small UI parts (buttons, inputs)
-│   │       ├── Button.jsx
-│   │       └── Input.jsx
-│   ├── hooks/            # Custom React hooks
-│   │   ├── useAuth.js
-│   │   └── useFetch.js
-│   ├── services/         # API communication logic
-│   │   ├── apiClient.js  # Axios or fetch wrapper
-│   │   ├── authService.js
-│   │   ├── companyService.js
-│   │   └── employeeService.js
-│   ├── context/          # React Context API providers
-│   │   └── AuthContext.js
-│   ├── utils/            # Helpers & utilities
-│   │   ├── formatDate.js
-│   │   └── storage.js
-│   ├── styles/           # Tailwind / global CSS
-│   │   ├── globals.css
-│   │   └── tailwind.css
-│   ├── config/           # App configuration
-│   │   └── routes.js
-│   └── types/            # PropTypes or TypeScript types
-│       └── index.d.ts
-├── .env.local            # Local environment variables
-├── .eslintrc.js          # Linting rules
-├── .prettierrc           # Prettier config
-├── next.config.js        # Next.js configuration
-├── tailwind.config.js    # Tailwind CSS config
-└── package.json          # NPM scripts & dependencies
-...
-
+This project is open-source and available under the [MIT License](LICENSE).
