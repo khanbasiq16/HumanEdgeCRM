@@ -6,7 +6,7 @@ import {
   ClipboardCheck, Building, FileText, ClipboardList, Mail,
   FileSignature, Plus, X, Search, MapPin,
   User, Loader2, Building2, Receipt,
-  Hash, DollarSign, FolderKanban,
+  Hash, DollarSign, FolderKanban, CalendarCheck,
 } from "lucide-react";
 import Clientdialog from "@/app/utils/employees/components/dialog/Clientdialog";
 import { usePathname, useRouter } from "next/navigation";
@@ -160,6 +160,7 @@ const Sidebar = ({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) => {
   let dashboardLinks = [
     { href: `/employee/${employeeSlug}`,            label: "Dashboard",   icon: Home,          badge: null },
     { href: `/employee/${employeeSlug}/attendance`, label: "Attendance",  icon: Calendar,      badge: null },
+    { href: `/employee/${employeeSlug}/leaves`,     label: "Leave",       icon: CalendarCheck, badge: null },
     { href: `/employee/${employeeSlug}/tasks`,      label: "My Tasks",    icon: ClipboardList, badge: null },
     { href: `/employee/${employeeSlug}/projects`,   label: "My Projects", icon: FolderKanban,  badge: null },
     { href: `/employee/${employeeSlug}/letters`,    label: "My Letters",  icon: Mail,          badge: unreadLetters || null },

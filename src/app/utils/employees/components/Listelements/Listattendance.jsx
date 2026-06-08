@@ -3,6 +3,7 @@ import React, { useMemo, useState } from "react";
 import CheckInTable  from "../Tables/CheckInTable";
 import CheckOutTable from "../Tables/CheckOutTable";
 import AttendanceGraphs from "@/app/utils/basecomponents/AttendanceGraphs";
+import LeaveApplicationPanel from "../attendance/LeaveApplicationPanel";
 import {
   CalendarDays, CheckCircle2, Clock, XCircle,
   ChevronLeft, ChevronRight, TrendingUp,
@@ -213,10 +214,15 @@ const Listattendance = ({ attendance, employee }) => {
   /* ── empty state ──────────────────────────────────────── */
   if (!attendance?.length) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-200 flex flex-col items-center py-20 gap-3 text-slate-400">
-        <CalendarDays size={36} className="text-slate-200" />
-        <p className="text-sm font-semibold">No attendance records yet</p>
-        <p className="text-xs">Records will appear here once you start checking in</p>
+      <div className="space-y-5">
+        <div className="flex justify-end">
+          <LeaveApplicationPanel employee={employee} />
+        </div>
+        <div className="bg-white rounded-2xl border border-slate-200 flex flex-col items-center py-20 gap-3 text-slate-400">
+          <CalendarDays size={36} className="text-slate-200" />
+          <p className="text-sm font-semibold">No attendance records yet</p>
+          <p className="text-xs">Records will appear here once you start checking in</p>
+        </div>
       </div>
     );
   }
@@ -225,7 +231,8 @@ const Listattendance = ({ attendance, employee }) => {
     <div className="space-y-5">
 
       {/* ── Export button ─────────────────────────────── */}
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <LeaveApplicationPanel employee={employee} />
         <div className="relative">
           <button
             onClick={() => setExportOpen((o) => !o)}

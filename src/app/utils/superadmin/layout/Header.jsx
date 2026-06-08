@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { Bell, Search, Menu, X, ShieldCheck, Settings, LogOut, ChevronDown, ShieldAlert, ShieldPlus, ShieldMinus, Receipt } from "lucide-react";
+import { Bell, Search, Menu, X, ShieldCheck, Settings, LogOut, ChevronDown, ShieldAlert, ShieldPlus, ShieldMinus, Receipt, CalendarCheck } from "lucide-react";
 import Image from "next/image";
 import { useSelector, useDispatch } from "react-redux";
 import { useRouter } from "next/navigation";
@@ -178,10 +178,11 @@ const Header = ({ onMobileMenu, mobileOpen }) => {
                       const isAdded   = n.type === "permission_added";
                       const isRemoved = n.type === "permission_removed";
                       const isPaid    = n.type === "invoice_paid";
-                      const iconBg    = isPaid ? "bg-emerald-100" : isAdded ? "bg-emerald-100" : isRemoved ? "bg-red-100" : "bg-violet-100";
-                      const iconColor = isPaid ? "text-emerald-600" : isAdded ? "text-emerald-600" : isRemoved ? "text-red-500" : "text-violet-600";
-                      const NotifIcon = isPaid ? Receipt : isAdded ? ShieldPlus : isRemoved ? ShieldMinus : ShieldAlert;
-                      const rowBg     = n.isRead ? "" : isPaid ? "bg-emerald-50/40" : isAdded ? "bg-emerald-50/40" : isRemoved ? "bg-red-50/30" : "bg-blue-50/40";
+                      const isLeave   = n.type === "leave_application";
+                      const iconBg    = isLeave ? "bg-amber-100" : isPaid ? "bg-emerald-100" : isAdded ? "bg-emerald-100" : isRemoved ? "bg-red-100" : "bg-violet-100";
+                      const iconColor = isLeave ? "text-amber-600" : isPaid ? "text-emerald-600" : isAdded ? "text-emerald-600" : isRemoved ? "text-red-500" : "text-violet-600";
+                      const NotifIcon = isLeave ? CalendarCheck : isPaid ? Receipt : isAdded ? ShieldPlus : isRemoved ? ShieldMinus : ShieldAlert;
+                      const rowBg     = n.isRead ? "" : isLeave ? "bg-amber-50/40" : isPaid ? "bg-emerald-50/40" : isAdded ? "bg-emerald-50/40" : isRemoved ? "bg-red-50/30" : "bg-blue-50/40";
                       return (
                         <div
                           key={n.id}

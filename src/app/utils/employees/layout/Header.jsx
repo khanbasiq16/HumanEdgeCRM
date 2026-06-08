@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import { Bell, Search, Menu, X, UserCheck, Timer as TimerIcon, Building2, Check, FolderKanban, Loader2, Settings, LogOut, ChevronDown, Megaphone, Users, Receipt } from "lucide-react";
+import { Bell, Search, Menu, X, UserCheck, Timer as TimerIcon, Building2, Check, FolderKanban, Loader2, Settings, LogOut, ChevronDown, Megaphone, Users, Receipt, CalendarCheck, CalendarX } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -32,6 +32,8 @@ const NotificationPanel = ({ notifications, onMarkRead, onAcceptInvite }) => {
     if (type === "client_assigned")  return { bg: "bg-blue-100",    icon: <Users        size={14} className="text-blue-600"/>    };
     if (type === "invoice_assigned") return { bg: "bg-indigo-100",  icon: <Receipt size={14} className="text-indigo-600"/> };
     if (type === "invoice_paid")     return { bg: "bg-emerald-100", icon: <Receipt size={14} className="text-emerald-600"/> };
+    if (type === "leave_approved")   return { bg: "bg-emerald-100", icon: <CalendarCheck size={14} className="text-emerald-600"/> };
+    if (type === "leave_rejected")   return { bg: "bg-red-100", icon: <CalendarX size={14} className="text-red-600"/> };
     return { bg: "bg-blue-100", icon: <Bell size={14} className="text-blue-600"/> };
   };
 
