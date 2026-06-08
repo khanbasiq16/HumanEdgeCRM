@@ -213,7 +213,7 @@ const Employeedailog = () => {
               <Field label="Phone Number" icon={Phone}>
                 <PhoneInput
                   international
-                  defaultCountry="PK"
+                  defaultCountry="US"
                   value={phoneValue}
                   onChange={(val) => {
                     setPhoneValue(val || "");

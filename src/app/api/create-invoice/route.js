@@ -11,6 +11,7 @@ import {
   updateDoc,
   arrayUnion
 } from "firebase/firestore";
+import { admin, adminDb } from "@/lib/firebaseAdmin";
 import { v4 as uuidv4 } from "uuid";
 
 export async function POST(req) {
@@ -82,6 +83,25 @@ export async function POST(req) {
     await updateDoc(doc(db, "companies", companyDocId), {
       assignedInvoices: arrayUnion(invoiceId),
     });
+
+    // Notify assigned employee
+    if (assignedEmployeeId) {
+      try {
+        await adminDb.collection("notifications").add({
+          employeeId:  assignedEmployeeId,
+          type:        "invoice_assigned",
+          title:       "New Invoice Assigned",
+          body:        `Invoice ${invoiceNumber} (${companyName}) has been assigned to you`,
+          isRead:      false,
+          invoiceId,
+          invoiceNumber,
+          companyName,
+          createdAt:   admin.firestore.FieldValue.serverTimestamp(),
+        });
+      } catch (notifErr) {
+        console.error("Invoice notification error:", notifErr);
+      }
+    }
 
     const assignedIds = [
       ...((companyData.assignedInvoices || [])),

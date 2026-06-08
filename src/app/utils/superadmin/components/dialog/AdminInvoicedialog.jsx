@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -32,13 +32,13 @@ const AdminInvoicedialog = ({ setInvoices }) => {
 
   const [clients, setClients]                     = useState([]);
   const [clientSearch, setClientSearch]           = useState("");
-  const [filteredClients, setFilteredClients]     = useState([]);
   const [selectedClient, setSelectedClient]       = useState(null);
+  const [clientDropOpen, setClientDropOpen]       = useState(false);
+  const clientDropRef                             = useRef(null);
 
   const [invoiceNumber, setInvoiceNumber]         = useState("");
   const [currentDate, setCurrentDate]             = useState("");
 
-  const clientSearchRef = useRef(null);
   const dispatch        = useDispatch();
   const { user }        = useSelector((s) => s.User);
 
@@ -52,7 +52,7 @@ const AdminInvoicedialog = ({ setInvoices }) => {
     setClients([]);
     setClientSearch("");
     setSelectedClient(null);
-    setFilteredClients([]);
+    setClientDropOpen(false);
   }, [open]);
 
   useEffect(() => {
@@ -89,20 +89,19 @@ const AdminInvoicedialog = ({ setInvoices }) => {
     fetchClients();
   }, [selectedCompany]);
 
-  useEffect(() => {
-    if (clientSearch.trim() === "") { setFilteredClients([]); return; }
-    setFilteredClients(
-      clients.filter((c) =>
-        c.clientName?.toLowerCase().includes(clientSearch.toLowerCase())
-      )
-    );
-  }, [clientSearch, clients]);
+  const filteredClients = clientSearch.trim()
+    ? clients.filter((c) => c.clientName?.toLowerCase().includes(clientSearch.toLowerCase()))
+    : clients;
 
-  const selectClient = useCallback((client) => {
-    setSelectedClient(client);
-    setClientSearch(client.clientName);
-    setFilteredClients([]);
-  }, []);
+  // close client dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (clientDropRef.current && !clientDropRef.current.contains(e.target))
+        setClientDropOpen(false);
+    };
+    if (clientDropOpen) document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [clientDropOpen]);
 
   const filteredCompanies = companies.filter((c) =>
     (c.name || c.companyslug || "").toLowerCase().includes(companySearch.toLowerCase())
@@ -250,42 +249,77 @@ const AdminInvoicedialog = ({ setInvoices }) => {
               </div>
             </div>
 
-            {/* Client search */}
+            {/* Client dropdown */}
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
                 <User size={12} className="text-slate-400" />
                 Select Client <span className="text-red-500">*</span>
               </Label>
-              <div className="relative">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                <Input
-                  ref={clientSearchRef}
-                  value={clientSearch}
-                  onChange={(e) => {
-                    setClientSearch(e.target.value);
-                    if (selectedClient && selectedClient.clientName !== e.target.value)
-                      setSelectedClient(null);
-                  }}
-                  onBlur={() => setTimeout(() => setFilteredClients([]), 120)}
+              <div className="relative" ref={clientDropRef}>
+                <button
+                  type="button"
                   disabled={!selectedCompany}
-                  placeholder={selectedCompany ? "Search client name…" : "Select a company first"}
-                  className={`${inputCls} pl-9`}
-                />
-                {filteredClients.length > 0 && (
-                  <div className="absolute z-50 bg-white border border-slate-200 w-full mt-1 rounded-xl shadow-xl max-h-44 overflow-y-auto">
-                    {filteredClients.map((c) => (
-                      <div
-                        key={c.id}
-                        onMouseDown={(e) => { e.preventDefault(); selectClient(c); }}
-                        className="px-4 py-2.5 cursor-pointer text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-                      >
-                        <span className="font-medium">{c.clientName}</span>
-                        <span className="text-xs text-slate-400 ml-2">({c.clientEmail})</span>
+                  onClick={() => { if (selectedCompany) setClientDropOpen((o) => !o); }}
+                  className="w-full h-9 flex items-center justify-between px-3 bg-white border border-slate-200 rounded-lg text-sm hover:border-blue-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span className={selectedClient ? "text-slate-800" : "text-slate-400"}>
+                    {selectedClient
+                      ? selectedClient.clientName
+                      : selectedCompany ? "Choose a client…" : "Select a company first"}
+                  </span>
+                  <div className="flex items-center gap-1.5 shrink-0 ml-1">
+                    {selectedClient && (
+                      <span
+                        onMouseDown={(e) => { e.stopPropagation(); setSelectedClient(null); setClientSearch(""); }}
+                        className="w-4 h-4 flex items-center justify-center rounded-full hover:bg-red-100 text-slate-400 hover:text-red-500 text-[10px] transition-colors"
+                      >✕</span>
+                    )}
+                    <ChevronDown size={14} className="text-slate-400" />
+                  </div>
+                </button>
+
+                {clientDropOpen && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden">
+                    {/* Search inside dropdown */}
+                    <div className="p-2 border-b border-slate-100">
+                      <div className="relative">
+                        <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                          autoFocus
+                          value={clientSearch}
+                          onChange={(e) => setClientSearch(e.target.value)}
+                          placeholder="Search client…"
+                          className="w-full h-7 pl-7 pr-2 text-xs bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-blue-500"
+                        />
                       </div>
-                    ))}
+                    </div>
+                    <div className="max-h-44 overflow-y-auto">
+                      {filteredClients.length === 0 ? (
+                        <p className="px-4 py-3 text-xs text-slate-400">
+                          {clients.length === 0 ? "No clients in this company" : "No matches found"}
+                        </p>
+                      ) : filteredClients.map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onMouseDown={() => {
+                            setSelectedClient(c);
+                            setClientDropOpen(false);
+                            setClientSearch("");
+                          }}
+                          className="w-full text-left px-4 py-2.5 hover:bg-blue-50 transition-colors"
+                        >
+                          <p className="text-sm font-semibold text-slate-700">{c.clientName}</p>
+                          {c.clientEmail && (
+                            <p className="text-[11px] text-slate-400 mt-0.5">{c.clientEmail}</p>
+                          )}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
+
               {selectedClient && (
                 <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200">
                   <User size={12} className="text-emerald-600 shrink-0" />

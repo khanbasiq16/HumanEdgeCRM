@@ -4,15 +4,12 @@ import { NextResponse } from "next/server";
 
 export async function GET(req, { params }) {
   try {
-    const { id, employeeid } = params; 
+    const { id, employeeid } = params;
 
-    console.log(id)
-
-    const companyQuery = query(
-      collection(db, "companies"),
-      where("companyslug", "==", id)
+    // Resolve company document ID from slug
+    const companySnapshot = await getDocs(
+      query(collection(db, "companies"), where("companyslug", "==", id))
     );
-    const companySnapshot = await getDocs(companyQuery);
 
     if (companySnapshot.empty) {
       return NextResponse.json(
@@ -21,39 +18,46 @@ export async function GET(req, { params }) {
       );
     }
 
-    const companyData = companySnapshot.docs[0].data();
-    const companyId = companyData?.companyId;
+    // Use the Firestore document ID (not a field called companyId)
+    const companyId = companySnapshot.docs[0].id;
 
+    // Query 1: clients the employee created themselves (userid field)
+    const [createdSnap, assignedSnap] = await Promise.all([
+      getDocs(
+        query(
+          collection(db, "clients"),
+          where("companyId", "==", companyId),
+          where("userid", "==", employeeid)
+        )
+      ),
+      // Query 2: clients admin assigned to this employee (assignedEmployeeId field)
+      getDocs(
+        query(
+          collection(db, "clients"),
+          where("companyId", "==", companyId),
+          where("assignedEmployeeId", "==", employeeid)
+        )
+      ),
+    ]);
 
+    // Merge and deduplicate by document ID
+    const seen = new Set();
+    const clients = [];
 
- 
-    const clientsQuery = query(
-      collection(db, "clients"),
-      where("companyId", "==", companyId),
-      where("userid", "==", employeeid)
-    );
+    for (const snap of [createdSnap, assignedSnap]) {
+      for (const doc of snap.docs) {
+        if (!seen.has(doc.id)) {
+          seen.add(doc.id);
+          clients.push({ id: doc.id, ...doc.data() });
+        }
+      }
+    }
 
-    const clientSnapshot = await getDocs(clientsQuery);
-    const employeeClients = clientSnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-
-    return NextResponse.json(
-      {
-        success: true,
-        clients: employeeClients,
-      },
-      { status: 200 }
-    );
+    return NextResponse.json({ success: true, clients }, { status: 200 });
   } catch (error) {
     console.error("Error fetching clients:", error);
     return NextResponse.json(
-      {
-        success: false,
-        message: "Failed to fetch clients",
-        error: error.message,
-      },
+      { success: false, message: "Failed to fetch clients", error: error.message },
       { status: 500 }
     );
   }

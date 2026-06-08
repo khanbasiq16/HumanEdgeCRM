@@ -10,6 +10,8 @@ import toast from "react-hot-toast";
 import { useParams } from "next/navigation";
 import { getallclients } from "@/features/Slice/ClientSlice";
 import { useDispatch } from "react-redux";
+import PhoneInput, { isValidPhoneNumber } from "react-phone-number-input";
+import "react-phone-number-input/style.css";
 import {
   Users, Loader2, Plus, Globe, Mail, Phone, MapPin, Briefcase, Package,
   Bold, Italic, Underline, List, ListOrdered,
@@ -116,6 +118,8 @@ const Clientdialog = () => {
   const [open, setOpen] = useState(false);
   const [projectsDetails, setProjectsDetails] = useState("");
   const [packageDetails,  setPackageDetails]  = useState("");
+  const [phoneValue, setPhoneValue]           = useState("");
+  const [phoneError, setPhoneError]           = useState("");
   const dispatch = useDispatch();
   const { id } = useParams();
 
@@ -127,19 +131,23 @@ const Clientdialog = () => {
     setOpen(false);
     setProjectsDetails("");
     setPackageDetails("");
+    setPhoneValue("");
+    setPhoneError("");
   };
 
   const formHandler = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
+      if (!phoneValue) { toast.error("Phone number is required"); setLoading(false); return; }
+      if (!isValidPhoneNumber(phoneValue)) { toast.error("Enter a valid phone number"); setLoading(false); return; }
       const fd = new FormData(e.target);
       const body = {
         companyName:     id,
         clientName:      fd.get("clientName"),
         clientAddress:   fd.get("clientAddress"),
         clientEmail:     fd.get("clientEmail"),
-        clientPhone:     fd.get("clientPhone"),
+        clientPhone:     phoneValue,
         clientWebsite:   fd.get("clientWebsite"),
         projectsDetails,
         packageDetails,
@@ -152,6 +160,8 @@ const Clientdialog = () => {
       if (res.data.success) {
         toast.success("Client Created Successfully");
         e.target.reset();
+        setPhoneValue("");
+        setPhoneError("");
         dispatch(getallclients(res.data?.allclients));
         handleClose();
       }
@@ -205,7 +215,24 @@ const Clientdialog = () => {
 
             <div className="grid grid-cols-2 gap-4">
               <Field label="Phone" required icon={Phone}>
-                <Input name="clientPhone" placeholder="+1 234 567 8900" required className={inputCls} />
+                <PhoneInput
+                  international
+                  defaultCountry="US"
+                  value={phoneValue}
+                  onChange={(val) => {
+                    setPhoneValue(val || "");
+                    if (!val)                          setPhoneError("");
+                    else if (!isValidPhoneNumber(val)) setPhoneError("Enter a valid phone number");
+                    else                               setPhoneError("");
+                  }}
+                  placeholder="+92 300 1234567"
+                  className={`phone-input-wrapper${phoneError ? " phone-input-error" : ""}`}
+                />
+                {phoneError && (
+                  <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+                    <span className="w-1 h-1 rounded-full bg-red-500 inline-block" /> {phoneError}
+                  </p>
+                )}
               </Field>
               <Field label="Website" icon={Globe}>
                 <Input name="clientWebsite" placeholder="https://example.com" className={inputCls} />

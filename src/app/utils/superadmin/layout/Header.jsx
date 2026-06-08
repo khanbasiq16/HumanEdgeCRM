@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { Bell, Search, Menu, X, ShieldCheck, Settings, LogOut, ChevronDown, ShieldAlert, ShieldPlus, ShieldMinus } from "lucide-react";
+import { Bell, Search, Menu, X, ShieldCheck, Settings, LogOut, ChevronDown, ShieldAlert, ShieldPlus, ShieldMinus, Receipt } from "lucide-react";
 import Image from "next/image";
 import { useSelector, useDispatch } from "react-redux";
 import { useRouter } from "next/navigation";
@@ -177,10 +177,11 @@ const Header = ({ onMobileMenu, mobileOpen }) => {
                     notifications.map((n) => {
                       const isAdded   = n.type === "permission_added";
                       const isRemoved = n.type === "permission_removed";
-                      const iconBg    = isAdded ? "bg-emerald-100" : isRemoved ? "bg-red-100" : "bg-violet-100";
-                      const iconColor = isAdded ? "text-emerald-600" : isRemoved ? "text-red-500" : "text-violet-600";
-                      const NotifIcon = isAdded ? ShieldPlus : isRemoved ? ShieldMinus : ShieldAlert;
-                      const rowBg     = n.isRead ? "" : isAdded ? "bg-emerald-50/40" : isRemoved ? "bg-red-50/30" : "bg-blue-50/40";
+                      const isPaid    = n.type === "invoice_paid";
+                      const iconBg    = isPaid ? "bg-emerald-100" : isAdded ? "bg-emerald-100" : isRemoved ? "bg-red-100" : "bg-violet-100";
+                      const iconColor = isPaid ? "text-emerald-600" : isAdded ? "text-emerald-600" : isRemoved ? "text-red-500" : "text-violet-600";
+                      const NotifIcon = isPaid ? Receipt : isAdded ? ShieldPlus : isRemoved ? ShieldMinus : ShieldAlert;
+                      const rowBg     = n.isRead ? "" : isPaid ? "bg-emerald-50/40" : isAdded ? "bg-emerald-50/40" : isRemoved ? "bg-red-50/30" : "bg-blue-50/40";
                       return (
                         <div
                           key={n.id}

@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import { Bell, Search, Menu, X, UserCheck, Timer as TimerIcon, Building2, Check, FolderKanban, Loader2, Settings, LogOut, ChevronDown, Megaphone } from "lucide-react";
+import { Bell, Search, Menu, X, UserCheck, Timer as TimerIcon, Building2, Check, FolderKanban, Loader2, Settings, LogOut, ChevronDown, Megaphone, Users, Receipt } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -29,6 +29,9 @@ const NotificationPanel = ({ notifications, onMarkRead, onAcceptInvite }) => {
     if (type === "project_invite")   return { bg: "bg-emerald-100", icon: <FolderKanban size={14} className="text-emerald-600"/> };
     if (type === "company_assigned") return { bg: "bg-violet-100",  icon: <Building2    size={14} className="text-violet-600"/>  };
     if (type === "announcement")     return { bg: "bg-amber-100",   icon: <Megaphone    size={14} className="text-amber-600"/>   };
+    if (type === "client_assigned")  return { bg: "bg-blue-100",    icon: <Users        size={14} className="text-blue-600"/>    };
+    if (type === "invoice_assigned") return { bg: "bg-indigo-100",  icon: <Receipt size={14} className="text-indigo-600"/> };
+    if (type === "invoice_paid")     return { bg: "bg-emerald-100", icon: <Receipt size={14} className="text-emerald-600"/> };
     return { bg: "bg-blue-100", icon: <Bell size={14} className="text-blue-600"/> };
   };
 
@@ -218,7 +221,7 @@ const Header = ({ onMobileMenu, mobileOpen }) => {
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-50 h-[73px] bg-white border-b border-slate-200 flex items-center px-3 md:px-5 gap-3">
+      <header className="fixed top-0 left-0 right-0 z-50 h-18.25 bg-white border-b border-slate-200 flex items-center px-3 md:px-5 gap-3">
 
         {/* Mobile menu toggle */}
         <button onClick={onMobileMenu}
@@ -274,7 +277,7 @@ const Header = ({ onMobileMenu, mobileOpen }) => {
               className="relative w-9 h-9 flex items-center justify-center rounded-lg hover:bg-slate-100 transition-colors">
               <Bell size={18} className="text-slate-500" />
               {unreadCount > 0 && (
-                <span className="absolute top-1 right-1 min-w-[16px] h-4 px-0.5 bg-red-500 text-white text-[9px] font-bold rounded-full ring-2 ring-white flex items-center justify-center">
+                <span className="absolute top-1 right-1 min-w-4 h-4 px-0.5 bg-red-500 text-white text-[9px] font-bold rounded-full ring-2 ring-white flex items-center justify-center">
                   {unreadCount > 9 ? "9+" : unreadCount}
                 </span>
               )}
@@ -301,14 +304,14 @@ const Header = ({ onMobileMenu, mobileOpen }) => {
               className="flex items-center gap-2.5 rounded-xl px-2 py-1.5 hover:bg-slate-50 transition-colors"
             >
               <div className="relative shrink-0">
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center text-xs font-bold shadow-sm">
+                <div className="w-9 h-9 rounded-full bg-linear-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center text-xs font-bold shadow-sm">
                   {initials(user?.employeeName)}
                 </div>
                 <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-2 ring-white" />
               </div>
               <div className="hidden md:block leading-tight text-left">
                 <p className="text-sm font-bold text-slate-800 leading-none">{user?.employeeName || "Employee"}</p>
-                <p className="text-[11px] text-slate-400 mt-0.5 truncate max-w-[120px]">
+                <p className="text-[11px] text-slate-400 mt-0.5 truncate max-w-30">
                   {user?.department?.departmentName || user?.employeeemail}
                 </p>
               </div>

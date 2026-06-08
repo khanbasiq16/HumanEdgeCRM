@@ -535,7 +535,7 @@ const Page = () => {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50/70">
-                  {["Employee", "Department", "Company", "Status"].map((h) => (
+                  {["Employee", "Department", "Address", "Status"].map((h) => (
                     <th key={h} className="px-5 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -592,7 +592,7 @@ const Page = () => {
 
           {/* ── Left sidebar ────────────────────────────── */}
           <nav className="w-56 shrink-0 border-r border-slate-100 py-3 flex flex-col gap-0.5">
-            <p className="px-4 pt-2 pb-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Settings</p>
+            {/* <p className="px-4 pt-2 pb-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Settings</p> */}
             {NAV.map(({ id, label, icon: Icon, color, bg }) => {
               const active = activeTab === id;
               return (

@@ -19,11 +19,8 @@ export async function GET(req, { params }) {
       );
     }
     
-    const formattedCompanyName = capitalizeWords(slug);
-
-    // Change collection to "clients"
     const clientsRef = collection(db, "clients");
-    const q = query(clientsRef, where("companyName", "==", formattedCompanyName));
+    const q = query(clientsRef, where("companySlug", "==", slug));
     const snapshot = await getDocs(q);
 
     const clients = snapshot.docs.map((doc) => ({

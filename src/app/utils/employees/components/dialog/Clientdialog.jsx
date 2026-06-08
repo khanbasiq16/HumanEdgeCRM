@@ -5,6 +5,8 @@ import toast from "react-hot-toast";
 import { useParams } from "next/navigation";
 import { getallclients } from "@/features/Slice/ClientSlice";
 import { useDispatch, useSelector } from "react-redux";
+import PhoneInput, { isValidPhoneNumber } from "react-phone-number-input";
+import "react-phone-number-input/style.css";
 import {
   X, Loader2, Plus, User, Mail, Phone, MapPin,
   Globe, Bold, Italic, Underline, List, ListOrdered,
@@ -101,6 +103,8 @@ const Clientdialog = ({
   const [internalOpen,     setInternalOpen]     = useState(false);
   const [loading,          setLoading]          = useState(false);
   const [pickedCompany,    setPickedCompany]     = useState(null);
+  const [phoneValue,       setPhoneValue]       = useState("");
+  const [phoneError,       setPhoneError]       = useState("");
   const { user }   = useSelector((s) => s.User);
   const dispatch   = useDispatch();
   const params     = useParams();
@@ -109,6 +113,8 @@ const Clientdialog = ({
   const isControlled = openProp !== undefined;
   const open         = isControlled ? openProp : internalOpen;
   const close        = () => {
+    setPhoneValue("");
+    setPhoneError("");
     if (isControlled) onClose?.();
     else setInternalOpen(false);
   };
@@ -147,12 +153,14 @@ const Clientdialog = ({
     }
     setLoading(true);
     try {
+      if (!phoneValue) { toast.error("Phone number is required"); setLoading(false); return; }
+      if (!isValidPhoneNumber(phoneValue)) { toast.error("Enter a valid phone number"); setLoading(false); return; }
       const fd   = new FormData(e.target);
       const body = {
         companyName:     companySlug,
         clientName:      fd.get("clientName")      || "",
         clientEmail:     fd.get("clientEmail")     || "",
-        clientPhone:     fd.get("clientPhone")     || "",
+        clientPhone:     phoneValue,
         clientAddress:   fd.get("clientAddress")   || "",
         clientWebsite:   fd.get("clientWebsite")   || "",
         projectsDetails: fd.get("projectsDetails") || "",
@@ -168,6 +176,8 @@ const Clientdialog = ({
         toast.success("Client created successfully");
         dispatch(getallclients(res.data?.allclients || []));
         e.target.reset();
+        setPhoneValue("");
+        setPhoneError("");
         onSuccess?.();
         close();
       } else {
@@ -276,11 +286,24 @@ const Clientdialog = ({
                     <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                       Phone <span className="text-red-400">*</span>
                     </label>
-                    <div className="relative">
-                      <Phone size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
-                      <input name="clientPhone" type="text" placeholder="Enter phone number" required
-                        className="w-full pl-8 pr-3 py-2.5 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-slate-700 placeholder:text-slate-300 transition-all"/>
-                    </div>
+                    <PhoneInput
+                      international
+                      defaultCountry="US"
+                      value={phoneValue}
+                      onChange={(val) => {
+                        setPhoneValue(val || "");
+                        if (!val)                          setPhoneError("");
+                        else if (!isValidPhoneNumber(val)) setPhoneError("Enter a valid phone number");
+                        else                               setPhoneError("");
+                      }}
+                      placeholder="+92 300 1234567"
+                      className={`phone-input-wrapper${phoneError ? " phone-input-error" : ""}`}
+                    />
+                    {phoneError && (
+                      <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+                        <span className="w-1 h-1 rounded-full bg-red-500 inline-block" /> {phoneError}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Address</label>

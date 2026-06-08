@@ -8,6 +8,8 @@ import {
 import axios from "axios";
 import toast from "react-hot-toast";
 import { useSelector } from "react-redux";
+import PhoneInput, { isValidPhoneNumber } from "react-phone-number-input";
+import "react-phone-number-input/style.css";
 import {
   Users, Loader2, Plus, Globe, Mail, Phone, MapPin, Briefcase,
   Package, Building2, ChevronDown, Search, Check, UserCheck,
@@ -119,6 +121,8 @@ const AdminClientdialog = ({ setClients }) => {
 
   const [projectsDetails, setProjectsDetails]   = useState("");
   const [packageDetails, setPackageDetails]     = useState("");
+  const [phoneValue, setPhoneValue]             = useState("");
+  const [phoneError, setPhoneError]             = useState("");
 
   const { user } = useSelector((s) => s.User);
 
@@ -131,6 +135,8 @@ const AdminClientdialog = ({ setClients }) => {
     setEmployeeDropOpen(false);
     setProjectsDetails("");
     setPackageDetails("");
+    setPhoneValue("");
+    setPhoneError("");
   }, [open]);
 
   useEffect(() => {
@@ -181,11 +187,15 @@ const AdminClientdialog = ({ setClients }) => {
     setOpen(false);
     setProjectsDetails("");
     setPackageDetails("");
+    setPhoneValue("");
+    setPhoneError("");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedCompany) { toast.error("Please select a company"); return; }
+    if (!phoneValue) { toast.error("Phone number is required"); return; }
+    if (!isValidPhoneNumber(phoneValue)) { toast.error("Enter a valid phone number"); return; }
     setLoading(true);
     try {
       const fd = new FormData(e.target);
@@ -193,13 +203,14 @@ const AdminClientdialog = ({ setClients }) => {
         companyName:          selectedCompany.companyslug,
         clientName:           fd.get("clientName"),
         clientEmail:          fd.get("clientEmail"),
-        clientPhone:          fd.get("clientPhone"),
+        clientPhone:          phoneValue,
         clientWebsite:        fd.get("clientWebsite"),
         clientAddress:        fd.get("clientAddress"),
         projectsDetails,
         packageDetails,
-        assignedEmployeeId:   selectedEmployee?.employeeId || selectedEmployee?.id || null,
-        assignedEmployeeName: selectedEmployee?.employeeName || null,
+        assignedEmployeeId:    selectedEmployee?.employeeId || selectedEmployee?.id || null,
+        assignedEmployeeName:  selectedEmployee?.employeeName || null,
+        assignedEmployeeEmail: selectedEmployee?.employeeemail || null,
       };
 
       const res = await axios.post("/api/create-client", body, {
@@ -213,6 +224,8 @@ const AdminClientdialog = ({ setClients }) => {
           if (allRes.data.success) setClients(allRes.data.clients || []);
         }
         e.target.reset();
+        setPhoneValue("");
+        setPhoneError("");
         handleClose();
       } else {
         toast.error(res.data.error || "Failed to create client");
@@ -390,7 +403,24 @@ const AdminClientdialog = ({ setClients }) => {
 
             <div className="grid grid-cols-2 gap-4">
               <Field label="Phone" required icon={Phone}>
-                <Input name="clientPhone" placeholder="+1 234 567 8900" required className={inputCls} />
+                <PhoneInput
+                  international
+                  defaultCountry="US"
+                  value={phoneValue}
+                  onChange={(val) => {
+                    setPhoneValue(val || "");
+                    if (!val)                          setPhoneError("");
+                    else if (!isValidPhoneNumber(val)) setPhoneError("Enter a valid phone number");
+                    else                               setPhoneError("");
+                  }}
+                  placeholder="+92 300 1234567"
+                  className={`phone-input-wrapper${phoneError ? " phone-input-error" : ""}`}
+                />
+                {phoneError && (
+                  <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+                    <span className="w-1 h-1 rounded-full bg-red-500 inline-block" /> {phoneError}
+                  </p>
+                )}
               </Field>
               <Field label="Website" icon={Globe}>
                 <Input name="clientWebsite" placeholder="https://example.com" className={inputCls} />

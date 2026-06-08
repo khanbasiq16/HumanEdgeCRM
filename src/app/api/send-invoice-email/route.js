@@ -1,188 +1,177 @@
 import { sendEmail } from "@/lib/SendEmail";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/firebase";
-import { collection, doc, getDoc, getDocs, query, updateDoc, where } from "firebase/firestore";
-
+import {
+  collection, doc, getDoc, getDocs,
+  query, updateDoc, where,
+} from "firebase/firestore";
 
 export async function POST(req) {
   try {
-    const { to, subject, message, invoiceLink, invoiceid , slug } = await req.json();
+    const {
+      to, invoiceLink, invoiceid, slug,
+      invoiceNumber, totalAmount, description, clientName,
+    } = await req.json();
 
-    if (!to || !subject || !invoiceid) {
+    if (!to || !invoiceid || !slug) {
       return NextResponse.json(
-        { success: false, message: "Missing required fields: to, subject, invoiceid" },
+        { success: false, message: "Missing required fields" },
         { status: 400 }
       );
     }
 
+    // Get company SMTP settings
+    const companySnap = await getDocs(
+      query(collection(db, "companies"), where("companyslug", "==", slug))
+    );
 
-      const q = query(
-          collection(db, "companies"),
-          where("companyslug", "==", slug) 
-        );
-    
-        const querySnapshot = await getDocs(q);
-    
-        if (querySnapshot.empty) {
-          return NextResponse.json(
-            { success: false, error: "Company not found" },
-            { status: 404 }
-          );
-        }
-    
-       
-        const docSnap = querySnapshot.docs[0];
-        const companyData = { id: docSnap.id, ...docSnap.data() };
+    if (companySnap.empty) {
+      return NextResponse.json(
+        { success: false, message: "Company not found" },
+        { status: 404 }
+      );
+    }
 
-        console.log(companyData)
+    const companyData = { id: companySnap.docs[0].id, ...companySnap.docs[0].data() };
 
+    if (
+      !companyData.companyemail ||
+      !companyData.companyemailpassword ||
+      !companyData.companyemailhost ||
+      !companyData.companysmtphost
+    ) {
+      return NextResponse.json(
+        { success: false, message: "Company SMTP not configured. Please add email settings first." },
+        { status: 400 }
+      );
+    }
 
-
-       
-
+    const subject = `Invoice #${invoiceNumber} from ${companyData.name}`;
+    const year    = new Date().getFullYear();
+    const amount  = `$${Number(totalAmount || 0).toLocaleString()}`;
 
     const html = `
-      <div style="
-  font-family: 'Segoe UI', Roboto, Arial, sans-serif;
-  background-color: #f5f6fa;
-  padding: 40px 0;
-  display: flex;
-  justify-content: center;
-">
-  <div style="
-    background: #ffffff;
-    border-radius: 12px;
-    max-width: 650px;
-    width: 100%;
-    padding: 36px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.05);
-    border: 1px solid #e5e8ec;
-  ">
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Roboto,Arial,sans-serif;">
 
-    <div style="text-align: center; margin-bottom: 28px;">
-    
-      <h2 style="
-        color: #1f2937;
-        font-size: 22px;
-        margin: 0;
-        font-weight: 700;
-      ">
-        Invoice Details
-      </h2>
-      <p style="color: #6b7280; font-size: 14px; margin-top: 6px;">
-        Thank you for your continued trust.
+  <div style="max-width:620px;margin:40px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.07);border:1px solid #e2e8f0;">
+
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#4f46e5 0%,#6366f1 100%);padding:32px 36px;text-align:center;">
+      ${companyData.companyLogo
+        ? `<img src="${companyData.companyLogo}" alt="${companyData.name}" style="height:48px;object-fit:contain;margin-bottom:16px;" />`
+        : `<p style="color:#fff;font-size:22px;font-weight:800;margin:0 0 16px;">${companyData.name}</p>`
+      }
+      <p style="color:rgba(255,255,255,0.85);font-size:13px;margin:0;letter-spacing:0.5px;text-transform:uppercase;font-weight:600;">Invoice</p>
+      <p style="color:#ffffff;font-size:32px;font-weight:800;margin:6px 0 0;letter-spacing:-0.5px;">#${invoiceNumber}</p>
+    </div>
+
+    <!-- Body -->
+    <div style="padding:32px 36px;">
+
+      <p style="font-size:15px;color:#334155;margin:0 0 8px;">Hi <strong>${clientName || "there"}</strong>,</p>
+      <p style="font-size:14px;color:#64748b;line-height:1.7;margin:0 0 28px;">
+        Please find your invoice from <strong>${companyData.name}</strong> below. Click the button to view and pay securely online.
+      </p>
+
+      <!-- Invoice summary box -->
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:20px 24px;margin-bottom:28px;">
+        <table style="width:100%;border-collapse:collapse;">
+          <tr>
+            <td style="padding:8px 0;border-bottom:1px solid #e2e8f0;">
+              <span style="font-size:12px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Invoice Number</span>
+            </td>
+            <td style="padding:8px 0;border-bottom:1px solid #e2e8f0;text-align:right;">
+              <span style="font-size:14px;font-weight:700;color:#1e293b;">#${invoiceNumber}</span>
+            </td>
+          </tr>
+          ${description ? `
+          <tr>
+            <td style="padding:8px 0;border-bottom:1px solid #e2e8f0;">
+              <span style="font-size:12px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Description</span>
+            </td>
+            <td style="padding:8px 0;border-bottom:1px solid #e2e8f0;text-align:right;">
+              <span style="font-size:14px;color:#475569;">${description}</span>
+            </td>
+          </tr>` : ""}
+          <tr>
+            <td style="padding:12px 0 0;">
+              <span style="font-size:13px;color:#64748b;font-weight:700;">Total Amount Due</span>
+            </td>
+            <td style="padding:12px 0 0;text-align:right;">
+              <span style="font-size:22px;font-weight:800;color:#4f46e5;">${amount}</span>
+            </td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- CTA Button -->
+      <div style="text-align:center;margin-bottom:28px;">
+        <a href="${invoiceLink}"
+          style="display:inline-block;background:#4f46e5;color:#ffffff;text-decoration:none;padding:14px 40px;border-radius:10px;font-size:15px;font-weight:700;letter-spacing:0.3px;box-shadow:0 4px 12px rgba(79,70,229,0.3);">
+          View &amp; Pay Invoice →
+        </a>
+      </div>
+
+      <!-- Fallback link -->
+      <p style="font-size:12px;color:#94a3b8;text-align:center;line-height:1.6;">
+        If the button doesn't work, copy this link into your browser:<br>
+        <a href="${invoiceLink}" style="color:#4f46e5;word-break:break-all;">${invoiceLink}</a>
       </p>
     </div>
 
-    <div style="
-      background: #f9fafb;
-      border: 1px solid #e5e7eb;
-      padding: 18px 22px;
-      border-radius: 10px;
-      color: #374151;
-      font-size: 15px;
-      line-height: 1.6;
-      margin-bottom: 28px;
-    ">
-      ${message}
+    <!-- Footer -->
+    <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 36px;text-align:center;">
+      <p style="font-size:13px;font-weight:700;color:#334155;margin:0 0 4px;">${companyData.name}</p>
+      <p style="font-size:12px;color:#94a3b8;margin:0;">${companyData.companyemail}</p>
+      <p style="font-size:11px;color:#cbd5e1;margin:12px 0 0;">© ${year} ${companyData.name}. All rights reserved.</p>
     </div>
-
-    <div style="
-      text-align: center;
-      padding: 10px 0 25px;
-      color: #111827;
-    ">
-      <h3 style="margin: 0; font-size: 19px; font-weight: 600;">
-        Invoice Summary
-      </h3>
-      <p style="margin: 6px 0 0; font-size: 14px; color: #6b7280;">
-        Issued securely by ${companyData?.name || "Our Company"}
-      </p>
-    </div>
-
-    <div style="text-align: center; margin-bottom: 25px;">
-      <a href="${invoiceLink}" style="
-        color: #ffffff;
-        background-color: #5965AB;
-        text-decoration: none;
-        padding: 13px 36px;
-        border-radius: 8px;
-        font-size: 15px;
-        font-weight: 600;
-        display: inline-block;
-        box-shadow: 0 3px 8px rgba(79,70,229,0.15);
-        transition: background 0.3s ease;
-      " 
-   >
-        View Invoice
-      </a>
-    </div>
-
-    <p style="
-      font-size: 13px; 
-      color: #6b7280; 
-      line-height: 1.6; 
-      text-align: center;
-      margin-top: 15px;
-    ">
-      If the button doesn't work, copy and paste this link into your browser:
-      <br>
-      <a href="${invoiceLink}" style="color: #4f46e5; text-decoration: none;">
-       Your Invoice Link
-      </a>
-    </p>
-
-    <p style="
-      text-align: center;
-      color: #9ca3af;
-      font-size: 12px;
-      line-height: 1.5;
-    ">
-      © ${new Date().getFullYear()} ${companyData?.name || "Your Company"}. All rights reserved.<br>
-      This is an automated message — please do not reply.
-    </p>
 
   </div>
-</div>
-    `;
+</body>
+</html>`;
 
-   let  EMAIL_HOST=companyData?.companyemailhost
- let EMAIL_PORT=companyData?.companysmtphost
-let EMAIL_USER=companyData?.companyemail
-let EMAIL_PASS=companyData?.companyemailpassword 
+    const result = await sendEmail({
+      to,
+      subject,
+      html,
+      EMAIL_HOST: companyData.companyemailhost,
+      EMAIL_PORT: companyData.companysmtphost,
+      EMAIL_USER: companyData.companyemail,
+      EMAIL_PASS: companyData.companyemailpassword,
+    });
 
-    const result = await sendEmail({ to, subject, html , EMAIL_HOST , EMAIL_PORT , EMAIL_USER , EMAIL_PASS });
-
-    if (result.success) {
-      const invoiceRef = doc(db, "invoices", invoiceid);
-      const invoiceSnap = await getDoc(invoiceRef);
-
-      if (!invoiceSnap.exists()) {
-        return NextResponse.json(
-          { success: false, message: "Invoice not found" },
-          { status: 404 }
-        );
-      }
-
-      await updateDoc(invoiceRef, { status: "Sent" });
-
-      const updatedInvoiceSnap = await getDoc(invoiceRef);
-      const updatedInvoice = { id: updatedInvoiceSnap.id, ...updatedInvoiceSnap.data() };
-
-      return NextResponse.json({
-        success: true,
-        message: "Email sent successfully and invoice status updated.",
-        invoice:updatedInvoice,
-        messageId: result.messageId,
-      });
-    } else {
+    if (!result.success) {
       return NextResponse.json(
-        { success: false, message: result.error },
+        { success: false, message: result.error || "Failed to send email" },
         { status: 500 }
       );
     }
+
+    // Update invoice status to Sent
+    const invoiceRef  = doc(db, "invoices", invoiceid);
+    const invoiceSnap = await getDoc(invoiceRef);
+
+    if (!invoiceSnap.exists()) {
+      return NextResponse.json(
+        { success: false, message: "Invoice not found" },
+        { status: 404 }
+      );
+    }
+
+    await updateDoc(invoiceRef, { status: "Sent" });
+    const updated = await getDoc(invoiceRef);
+
+    return NextResponse.json({
+      success: true,
+      message: `Invoice sent to ${to} successfully`,
+      invoice: { id: updated.id, ...updated.data() },
+    });
+
   } catch (error) {
-    console.error("API Error:", error);
+    console.error("send-invoice-email error:", error);
     return NextResponse.json(
       { success: false, message: error.message },
       { status: 500 }

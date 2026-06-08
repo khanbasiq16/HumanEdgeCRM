@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import * as React from "react"
+import * as React from "react";
 import {
   flexRender,
   getCoreRowModel,
@@ -8,140 +8,147 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
-} from "@tanstack/react-table"
-import { ArrowUpDown, ChevronDown, MoreHorizontal } from "lucide-react"
+} from "@tanstack/react-table";
+import { Search, ChevronLeft, ChevronRight, Copy, ExternalLink, Check } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import Link from "next/link";
 
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import Link from "next/link"
-
-export function Clienttable({clients , slug , companyslug}) {
-
-  const [sorting, setSorting] = React.useState([])
-  const [columnFilters, setColumnFilters] = React.useState([])
-  const [columnVisibility, setColumnVisibility] = React.useState({})
-  const [rowSelection, setRowSelection] = React.useState({})
-
-
-const columns = [
-  {
-    id: "select",
-    header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
-        }
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
-    accessorKey: "clientName",
-    header: "Client Name",
-    cell: ({ row }) => (
-      <div className="capitalize whitespace-nowrap overflow-hidden text-ellipsis">
-        {row.getValue("clientName")}
-      </div>
-    ),
-  },
-  {
-    accessorKey: "clientEmail",
-    header: "Email",
-    cell: ({ row }) => (
-      <div className="lowercase whitespace-nowrap overflow-hidden text-ellipsis">
-        {row.getValue("clientEmail")}
-      </div>
-    ),
-  },
-  {
-    accessorKey: "clientPhone",
-    header: "Phone",
-    cell: ({ row }) => (
-      <div className="whitespace-nowrap">{row.getValue("clientPhone")}</div>
-    ),
-  },
-
-  {
-    accessorKey: "clientWebsite",
-    header: "Website",
-    cell: ({ row }) => (
-      <div className="whitespace-nowrap overflow-hidden text-ellipsis">
-        <a href={row.getValue("clientWebsite")} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
-          {row.getValue("clientWebsite").replace(/(^\w+:|^)\/\//, '').replace(/\/$/, '')}
-        </a>
-      </div>
-    ),
-  },
-  {
-    accessorKey: "companyName",
-    header: "Company",
-    cell: ({ row }) => (
-      <div className="capitalize whitespace-nowrap overflow-hidden text-ellipsis">
-        {row.getValue("companyName")}
-      </div>
-    ),
-  },
-  {
-    id: "actions",
-    enableHiding: false,
-    cell: ({ row }) => {
-      const client = row.original;
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <MoreHorizontal />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => navigator.clipboard.writeText(client.clientEmail)}>
-              Copy Email
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <Link
-                  href={`/employee/${slug}/company/${companyslug}/clients/${client?.id}/client-details`}
-                >
-                  View Details
-                </Link>
-              </DropdownMenuItem>
-            {/* <DropdownMenuItem>Edit Client</DropdownMenuItem> */}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
-    },
-  },
+const AVATAR_COLORS = [
+  "bg-blue-100 text-blue-700",
+  "bg-violet-100 text-violet-700",
+  "bg-emerald-100 text-emerald-700",
+  "bg-amber-100 text-amber-700",
+  "bg-rose-100 text-rose-700",
+  "bg-cyan-100 text-cyan-700",
 ];
+
+export function Clienttable({ clients, slug, companyslug }) {
+  const [sorting, setSorting]                   = React.useState([]);
+  const [columnFilters, setColumnFilters]       = React.useState([]);
+  const [columnVisibility, setColumnVisibility] = React.useState({});
+  const [rowSelection, setRowSelection]         = React.useState({});
+  const [copiedId, setCopiedId]                 = React.useState(null);
+
+  const handleCopyEmail = (email, id) => {
+    navigator.clipboard.writeText(email);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 1500);
+  };
+
+  const columns = [
+    {
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")}
+          onCheckedChange={(v) => table.toggleAllPageRowsSelected(!!v)}
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(v) => row.toggleSelected(!!v)}
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+    {
+      accessorKey: "clientName",
+      header: "Client",
+      cell: ({ row }) => {
+        const client   = row.original;
+        const name     = row.getValue("clientName") || "";
+        const initials = name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+        const colorCls = AVATAR_COLORS[row.index % AVATAR_COLORS.length];
+        return (
+          <div className="flex items-center gap-2.5">
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${colorCls}`}>
+              {initials}
+            </div>
+            <span className="text-sm font-semibold text-slate-700 truncate max-w-32.5">{name}</span>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "clientEmail",
+      header: "Email",
+      cell: ({ row }) => (
+        <span className="text-sm text-slate-500 truncate max-w-40 block">
+          {row.getValue("clientEmail")}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "clientPhone",
+      header: "Phone",
+      cell: ({ row }) => (
+        <span className="text-sm text-slate-500 whitespace-nowrap">
+          {row.getValue("clientPhone") || "—"}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "clientWebsite",
+      header: "Website",
+      cell: ({ row }) => {
+        const url = row.getValue("clientWebsite");
+        if (!url) return <span className="text-sm text-slate-400">—</span>;
+        const display = url.replace(/(^\w+:|^)\/\//, "").replace(/\/$/, "");
+        return (
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors"
+          >
+            {display}
+            <ExternalLink size={10} />
+          </a>
+        );
+      },
+    },
+    {
+      accessorKey: "companyName",
+      header: "Company",
+      cell: ({ row }) => (
+        <span className="text-sm text-slate-500 truncate max-w-30 block capitalize">
+          {row.getValue("companyName") || "—"}
+        </span>
+      ),
+    },
+    {
+      id: "actions",
+      enableHiding: false,
+      cell: ({ row }) => {
+        const client = row.original;
+        const copied = copiedId === client.id;
+        return (
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => handleCopyEmail(client.clientEmail, client.id)}
+              title="Copy email"
+              className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+            >
+              {copied ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
+            </button>
+            <Link
+              href={`/employee/${slug}/company/${companyslug}/clients/${client?.id}/client-details`}
+              className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+              title="View details"
+            >
+              <ExternalLink size={13} />
+            </Link>
+          </div>
+        );
+      },
+    },
+  ];
+
   const table = useReactTable({
-    data:clients,
+    data: clients,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -151,100 +158,95 @@ const columns = [
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
-    state: {
-      sorting,
-      columnFilters,
-      columnVisibility,
-      rowSelection,
-    },
-  })
+    state: { sorting, columnFilters, columnVisibility, rowSelection },
+  });
+
+  const selectedCount = table.getFilteredSelectedRowModel().rows.length;
+  const totalCount    = table.getFilteredRowModel().rows.length;
 
   return (
-    <div className="w-full ">
-      <div className="flex items-center py-4">
-        <Input
-          placeholder="Filter emails..."
-          value={table.getColumn("clientEmail")?.getFilterValue() ?? ""}
-          onChange={(event) => table.getColumn("clientEmail")?.setFilterValue(event.target.value)}
-          className="max-w-sm"
-        />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto">
-              Columns <ChevronDown />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {table
-              .getAllColumns()
-              .filter((column) => column.getCanHide())
-              .map((column) => (
-                <DropdownMenuCheckboxItem
-                  key={column.id}
-                  className="capitalize"
-                  checked={column.getIsVisible()}
-                  onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                >
-                  {column.id}
-                </DropdownMenuCheckboxItem>
-              ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+    <div className="space-y-3">
+      {/* Toolbar */}
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1 max-w-xs">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <Input
+            placeholder="Search clients…"
+            value={table.getColumn("clientName")?.getFilterValue() ?? ""}
+            onChange={(e) => table.getColumn("clientName")?.setFilterValue(e.target.value)}
+            className="pl-9 h-9 bg-slate-50 border-slate-200 text-sm rounded-lg focus-visible:ring-blue-500"
+          />
+        </div>
+        <span className="text-xs text-slate-400 font-medium ml-auto">
+          {selectedCount > 0 ? `${selectedCount} selected · ` : ""}{totalCount} client{totalCount !== 1 ? "s" : ""}
+        </span>
       </div>
-      <div className="overflow-hidden rounded-md border">
-        <Table>
-          <TableHeader>
-           {table.getHeaderGroups().map((headerGroup) => (
-  <TableRow key={headerGroup.id}>
-    {headerGroup.headers.map((header) => (
-      <TableHead
-        key={header.id}
-        className="whitespace-nowrap overflow-hidden text-ellipsis"
-      >
-        {header.isPlaceholder
-          ? null
-          : flexRender(header.column.columnDef.header, header.getContext())}
-      </TableHead>
-    ))}
-  </TableRow>
-))}
 
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
+      {/* Table */}
+      <div className="rounded-xl border border-slate-200 overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            {table.getHeaderGroups().map((hg) => (
+              <tr key={hg.id} className="border-b border-slate-100 bg-slate-50/60">
+                {hg.headers.map((h) => (
+                  <th
+                    key={h.id}
+                    className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap"
+                  >
+                    {h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}
+                  </th>
+                ))}
+              </tr>
+            ))}
+          </thead>
+          <tbody>
+            {table.getRowModel().rows.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                <tr
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
+                  className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60 transition-colors data-[state=selected]:bg-blue-50/40"
+                >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <td key={cell.id} className="px-4 py-3">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
+                    </td>
                   ))}
-                </TableRow>
+                </tr>
               ))
             ) : (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                  No results.
-                </TableCell>
-              </TableRow>
+              <tr>
+                <td colSpan={columns.length} className="px-4 py-10 text-center text-sm text-slate-400">
+                  No clients found
+                </td>
+              </tr>
             )}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       </div>
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <div className="text-muted-foreground flex-1 text-sm">
-          {table.getFilteredSelectedRowModel().rows.length} of{" "}
-          {table.getFilteredRowModel().rows.length} row(s) selected.
-        </div>
-        <div className="space-x-2">
-          <Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>
-            Previous
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
-            Next
-          </Button>
+
+      {/* Pagination */}
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-slate-400">
+          Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount() || 1}
+        </p>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
+            className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronLeft size={14} />
+          </button>
+          <button
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+            className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronRight size={14} />
+          </button>
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -46,7 +46,14 @@ const ListInvoices = () => {
         </div>
       ) : (
         <>
-        <InvoiceTable invoices={invoices} slug={id}/>
+        <InvoiceTable
+          invoices={invoices}
+          slug={id}
+          onRefresh={async () => {
+            const res = await axios.get(`/api/get-all-invoice/${id}`);
+            dispatch(getallinvoice(res.data?.invoices || []));
+          }}
+        />
         </>
       )}
     </Card>

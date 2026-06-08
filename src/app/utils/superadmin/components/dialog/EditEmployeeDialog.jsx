@@ -189,7 +189,7 @@ const EditEmployeeDialog = ({ employee, setemployee, open: externalOpen, onOpenC
               <Field label="Phone Number" icon={Phone}>
                 <PhoneInput
                   international
-                  defaultCountry="PK"
+                  defaultCountry="US"
                   value={formData.employeePhone}
                   onChange={(val) => {
                     setFormData((p) => ({ ...p, employeePhone: val || "" }));

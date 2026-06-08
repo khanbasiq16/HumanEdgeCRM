@@ -3,99 +3,248 @@ import React from "react";
 import EditClient from "../dialog/EditClient";
 import {
   Mail, Phone, MapPin, Package, Building2, Hash,
-  FolderOpen, Globe, CalendarDays,
+  FolderOpen, Globe, CalendarDays, UserCheck, ExternalLink,
+  Copy, CheckCircle2,
 } from "lucide-react";
 
-const ClientDetails = ({ client, setClient }) => {
-  if (!client) return null;
-
+/* ── Copy chip ── */
+const CopyChip = ({ text }) => {
+  const [copied, setCopied] = React.useState(false);
+  const copy = () => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  };
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+    <button
+      onClick={copy}
+      className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors"
+    >
+      {copied ? <CheckCircle2 size={10} className="text-emerald-500" /> : <Copy size={10} />}
+      {copied ? "Copied" : "Copy"}
+    </button>
+  );
+};
 
-      {/* ── Header ── */}
-      <div className="flex items-start justify-between px-8 pt-7 pb-5 border-b border-slate-100">
-        <div className="space-y-2">
-          <h2 className="text-2xl font-bold text-slate-800 tracking-tight">
-            {client.clientName}
-          </h2>
-          <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-500 text-xs px-3 py-1 rounded-full font-mono">
-            <Hash size={11} />
-            {client.id}
-          </span>
-        </div>
-        <EditClient client={client} setClient={setClient} />
+/* ── Section card ── */
+const Card = ({ children, className = "" }) => (
+  <div className={`bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden ${className}`}>
+    {children}
+  </div>
+);
+
+const CardHeader = ({ title, icon: Icon, color = "blue" }) => {
+  const colors = {
+    blue:   "bg-blue-50 text-blue-600",
+    violet: "bg-violet-50 text-violet-600",
+    emerald:"bg-emerald-50 text-emerald-600",
+  };
+  return (
+    <div className="flex items-center gap-2.5 px-5 py-4 border-b border-slate-100">
+      <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${colors[color]}`}>
+        <Icon size={14} />
       </div>
-
-      {/* ── Info Grid ── */}
-      <div className="px-8 py-7 grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-6">
-        <InfoRow icon={<Mail size={15} />}      label="Email"        value={client.clientEmail} />
-        <InfoRow icon={<Building2 size={15} />} label="Company Name" value={client.companyName} />
-        <InfoRow icon={<Phone size={15} />}     label="Phone"        value={client.clientPhone} />
-        <InfoRow icon={<Hash size={15} />}      label="Company ID"   value={client.companyId} mono />
-        <InfoRow icon={<MapPin size={15} />}    label="Address"      value={client.clientAddress} />
-        <InfoRow icon={<FolderOpen size={15} />}label="Projects"     value={client.projectsDetails} html />
-        <InfoRow icon={<Package size={15} />}   label="Package"      value={client.packageDetails}  html />
-
-        {/* Website — renders as link */}
-        <div className="flex items-start gap-3">
-          <div className="mt-0.5 w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
-            <Globe size={15} className="text-blue-600" />
-          </div>
-          <div>
-            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-1">
-              Website
-            </p>
-            {client.clientWebsite ? (
-              <a
-                href={client.clientWebsite}
-                target="_blank"
-                rel="noreferrer"
-                className="text-sm text-blue-600 hover:underline font-medium break-all"
-              >
-                {client.clientWebsite.replace(/(^\w+:|^)\/\//, "").replace(/\/$/, "")}
-              </a>
-            ) : (
-              <span className="text-sm text-slate-400">N/A</span>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Footer ── */}
-      <div className="px-8 py-4 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-400">
-        <CalendarDays size={13} />
-        Created{" "}
-        {new Date(client.createdAt).toLocaleDateString("en-US", {
-          day: "2-digit",
-          month: "long",
-          year: "numeric",
-        })}
-      </div>
+      <p className="text-sm font-bold text-slate-800">{title}</p>
     </div>
   );
 };
 
-const InfoRow = ({ icon, label, value, mono = false, html = false }) => (
-  <div className="flex items-start gap-3">
-    <div className="mt-0.5 w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
-      <span className="text-blue-600">{icon}</span>
-    </div>
-    <div className="min-w-0 flex-1">
-      <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-1">
-        {label}
-      </p>
+/* ── Single info row inside a card ── */
+const InfoLine = ({ label, value, mono = false, link = false, copyable = false, html = false }) => (
+  <div className="flex items-start justify-between gap-4 py-3 border-b border-slate-50 last:border-0">
+    <p className="text-xs text-slate-400 font-medium shrink-0 w-28">{label}</p>
+    <div className="flex-1 min-w-0 text-right">
       {html ? (
         <div
-          className="text-sm text-slate-700 prose-sm prose-ul:list-disc prose-ol:list-decimal prose-ul:pl-4 prose-ol:pl-4"
-          dangerouslySetInnerHTML={{ __html: value || "<span class='text-slate-400'>N/A</span>" }}
+          className="text-xs text-slate-700 text-right prose-sm prose-ul:list-disc prose-ol:list-decimal prose-ul:pl-4 prose-ol:pl-4 leading-relaxed"
+          dangerouslySetInnerHTML={{ __html: value || "<span class='text-slate-300'>—</span>" }}
         />
+      ) : link && value ? (
+        <a
+          href={value}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-semibold hover:underline"
+        >
+          {value.replace(/(^\w+:|^)\/\//, "").replace(/\/$/, "")}
+          <ExternalLink size={10} />
+        </a>
       ) : (
-        <p className={`text-sm text-slate-700 font-semibold break-all ${mono ? "font-mono" : ""}`}>
-          {value || "N/A"}
-        </p>
+        <div className="flex items-center justify-end gap-1.5">
+          <p className={`text-xs text-slate-800 font-semibold break-all ${mono ? "font-mono text-[11px]" : ""}`}>
+            {value || <span className="text-slate-300 font-normal">—</span>}
+          </p>
+          {copyable && value && <CopyChip text={value} />}
+        </div>
       )}
     </div>
   </div>
 );
+
+/* ── Main component ── */
+const ClientDetails = ({ client, setClient }) => {
+  if (!client) return (
+    <div className="flex items-center justify-center h-64 text-slate-400 text-sm">Loading client…</div>
+  );
+
+  const initials = (client.clientName || "?")
+    .split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+
+  const createdDate = client.createdAt
+    ? new Date(client.createdAt).toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" })
+    : "—";
+
+  return (
+    <div className="space-y-5">
+
+      {/* ── Hero header ── */}
+      <Card>
+        <div className="flex items-center justify-between gap-6 px-7 py-6">
+          {/* Left — avatar + info */}
+          <div className="flex items-center gap-5 min-w-0">
+            {/* Avatar */}
+            <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center text-white text-xl font-extrabold select-none shrink-0 shadow-md shadow-blue-200">
+              {initials}
+            </div>
+
+            {/* Name + badges */}
+            <div className="min-w-0 space-y-2">
+              <h1 className="text-xl font-extrabold text-slate-900 leading-tight truncate">
+                {client.clientName}
+              </h1>
+              <div className="flex flex-wrap items-center gap-2">
+                {client.clientEmail && (
+                  <span className="inline-flex items-center gap-1.5 text-xs text-slate-500 bg-slate-100 px-3 py-1 rounded-full font-medium">
+                    <Mail size={11} className="text-slate-400" /> {client.clientEmail}
+                  </span>
+                )}
+                {client.companyName && (
+                  <span className="inline-flex items-center gap-1.5 text-xs text-blue-700 bg-blue-50 border border-blue-100 px-3 py-1 rounded-full font-semibold">
+                    <Building2 size={11} /> {client.companyName}
+                  </span>
+                )}
+                {client.assignedEmployeeName && (
+                  <span className="inline-flex items-center gap-1.5 text-xs text-violet-700 bg-violet-50 border border-violet-100 px-3 py-1 rounded-full font-semibold">
+                    <UserCheck size={11} /> {client.assignedEmployeeName}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right — edit button */}
+          <div className="shrink-0">
+            <EditClient client={client} setClient={setClient} />
+          </div>
+        </div>
+      </Card>
+
+      {/* ── Stat strip ── */}
+      <div className="grid grid-cols-3 gap-4">
+        {[
+          {
+            icon: Building2,
+            label: "Company",
+            value: client.companyName || "—",
+            color: "blue",
+          },
+          {
+            icon: UserCheck,
+            label: "Assigned To",
+            value: client.assignedEmployeeName || "Unassigned",
+            color: "violet",
+          },
+          {
+            icon: CalendarDays,
+            label: "Client Since",
+            value: createdDate,
+            color: "emerald",
+          },
+        ].map(({ icon: Icon, label, value, color }) => {
+          const bg    = { blue: "bg-blue-50",    violet: "bg-violet-50",    emerald: "bg-emerald-50"    };
+          const text  = { blue: "text-blue-600", violet: "text-violet-600", emerald: "text-emerald-600" };
+          const ring  = { blue: "border-blue-100", violet: "border-violet-100", emerald: "border-emerald-100" };
+          return (
+            <Card key={label} className={`border ${ring[color]}`}>
+              <div className="px-4 py-4 flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${bg[color]}`}>
+                  <Icon size={16} className={text[color]} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label}</p>
+                  <p className="text-sm font-bold text-slate-800 truncate mt-0.5">{value}</p>
+                </div>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* ── Contact + Company details ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+        {/* Contact Info */}
+        <Card>
+          <CardHeader title="Contact Information" icon={Phone} color="blue" />
+          <div className="px-5 py-1">
+            <InfoLine label="Email"   value={client.clientEmail}   copyable />
+            <InfoLine label="Phone"   value={client.clientPhone}   copyable />
+            <InfoLine label="Address" value={client.clientAddress} />
+            <InfoLine label="Website" value={client.clientWebsite} link />
+          </div>
+        </Card>
+
+        {/* Company Info */}
+        <Card>
+          <CardHeader title="Company Information" icon={Building2} color="violet" />
+          <div className="px-5 py-1">
+            <InfoLine label="Company"    value={client.companyName} />
+            <InfoLine label="Company ID" value={client.companyId}   mono copyable />
+            <InfoLine label="Client ID"  value={client.id}          mono copyable />
+            <InfoLine label="Created"    value={createdDate} />
+          </div>
+        </Card>
+      </div>
+
+      {/* ── Projects & Package ── */}
+      {(client.projectsDetails || client.packageDetails) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+          {client.projectsDetails && (
+            <Card>
+              <CardHeader title="Project Details" icon={FolderOpen} color="blue" />
+              <div className="px-7 py-5">
+                <div
+                  className="rich-content text-sm text-slate-700 leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: client.projectsDetails }}
+                />
+              </div>
+            </Card>
+          )}
+
+          {client.packageDetails && (
+            <Card>
+              <CardHeader title="Package Details" icon={Package} color="emerald" />
+              <div className="px-7 py-5">
+                <div
+                  className="rich-content text-sm text-slate-700 leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: client.packageDetails }}
+                />
+              </div>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* ── Footer ID strip ── */}
+      <div className="flex items-center gap-2 px-1 text-xs text-slate-400">
+        <Hash size={11} />
+        <span className="font-mono">{client.id}</span>
+        <CopyChip text={client.id} />
+      </div>
+
+    </div>
+  );
+};
 
 export default ClientDetails;

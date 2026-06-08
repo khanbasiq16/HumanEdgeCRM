@@ -8,6 +8,8 @@ import {
 import axios from "axios";
 import toast from "react-hot-toast";
 import { useParams } from "next/navigation";
+import PhoneInput, { isValidPhoneNumber } from "react-phone-number-input";
+import "react-phone-number-input/style.css";
 import {
   Pencil, Bold, Italic, Underline, List, ListOrdered,
 } from "lucide-react";
@@ -92,6 +94,7 @@ const RichEditor = ({ value = "", onChange, placeholder = "" }) => {
 const EditClient = ({ client, setClient }) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [phoneError, setPhoneError] = useState("");
   const { id } = useParams();
 
   const capitalizedCompanyName = id
@@ -113,6 +116,9 @@ const EditClient = ({ client, setClient }) => {
 
   const formHandler = async (e) => {
     e.preventDefault();
+    if (formData.clientPhone && !isValidPhoneNumber(formData.clientPhone)) {
+      return toast.error("Enter a valid phone number");
+    }
     setLoading(true);
     try {
       const res = await axios.post(`/api/update-client/${client?.id}`, {
@@ -182,12 +188,24 @@ const EditClient = ({ client, setClient }) => {
 
             <div className="grid grid-cols-2 gap-3">
               <Field label="Phone">
-                <Input
-                  name="clientPhone"
+                <PhoneInput
+                  international
+                  defaultCountry="US"
                   value={formData.clientPhone}
-                  onChange={handleChange}
-                  placeholder="+1 234 567 890"
+                  onChange={(val) => {
+                    setFormData({ ...formData, clientPhone: val || "" });
+                    if (!val)                          setPhoneError("");
+                    else if (!isValidPhoneNumber(val)) setPhoneError("Enter a valid phone number");
+                    else                               setPhoneError("");
+                  }}
+                  placeholder="+92 300 1234567"
+                  className={`phone-input-wrapper${phoneError ? " phone-input-error" : ""}`}
                 />
+                {phoneError && (
+                  <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+                    <span className="w-1 h-1 rounded-full bg-red-500 inline-block" /> {phoneError}
+                  </p>
+                )}
               </Field>
               <Field label="Website">
                 <Input
