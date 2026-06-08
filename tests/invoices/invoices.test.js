@@ -9,6 +9,13 @@ const { makeInvoice, makeCompany, mockDoc, mockQuerySnapshot } = require("../hel
 
 jest.mock("@/lib/firebase", () => ({ db: {}, auth: {} }));
 
+jest.mock("@/lib/firebaseAdmin", () => ({
+  admin: { firestore: { FieldValue: { serverTimestamp: jest.fn() } } },
+  adminDb: { collection: jest.fn(() => ({ add: jest.fn().mockResolvedValue({}) })) },
+  adminAuth: {},
+  fcmAdmin: {},
+}));
+
 jest.mock("firebase/firestore", () => ({
   collection: jest.fn(),
   doc: jest.fn(),

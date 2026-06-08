@@ -9,6 +9,13 @@ const { makeClient, makeCompany, mockDoc, mockQuerySnapshot } = require("../help
 
 jest.mock("@/lib/firebase", () => ({ db: {}, auth: {} }));
 
+jest.mock("@/lib/firebaseAdmin", () => ({
+  admin: { firestore: { FieldValue: { serverTimestamp: jest.fn() } } },
+  adminDb: { collection: jest.fn(() => ({ add: jest.fn().mockResolvedValue({}) })) },
+  adminAuth: {},
+  fcmAdmin: {},
+}));
+
 jest.mock("firebase/firestore", () => ({
   collection: jest.fn(),
   doc: jest.fn(),
@@ -35,7 +42,7 @@ function setupDefaults() {
   ff.setDoc.mockResolvedValue(undefined);
   ff.updateDoc.mockResolvedValue(undefined);
   ff.arrayUnion.mockImplementation((v) => v);
-  sendEmail.mockResolvedValue(undefined);
+  sendEmail.mockResolvedValue({ success: true });
 }
 
 function validPayload(overrides = {}) {
