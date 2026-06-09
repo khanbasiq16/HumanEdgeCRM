@@ -6,8 +6,9 @@ import CheckOut from "@/app/utils/employees/components/attendance/CheckOut";
 import { useParams } from "next/navigation";
 import { useSelector, useDispatch } from "react-redux";
 import { updateCheckIn } from "@/features/Slice/UserSlice";
-import axios from "axios";
 import toast from "react-hot-toast";
+import { db } from "@/lib/firebase";
+import { doc, onSnapshot } from "firebase/firestore";
 import {
   Clock, Timer, Clock3, CheckCheck, CalendarDays,
   Building2, User, CheckCircle2, LogOut,
@@ -125,29 +126,31 @@ const Page = () => {
   const dispatch = useDispatch();
   const now      = useKarachiClock();
 
-  /* ── fetch today's status ─────────────────────────────── */
+  /* ── real-time sync from Firestore (all devices stay in sync) ── */
   useEffect(() => {
     if (!user?.employeeId) return;
-    (async () => {
-      setLoading(true);
-      try {
-        const res = await axios.get(
-          `/api/attendance/get-attendance-status/${user.employeeId}`
-        );
-        setIsCheckedin(res.data.employee.isCheckedin);
-        setIsCheckedout(false);
-        if (res.data.employee.isCheckedin && res.data.employee.startTime) {
+    setLoading(true);
+    const unsub = onSnapshot(
+      doc(db, "employees", user.employeeId),
+      (snap) => {
+        if (!snap.exists()) { setLoading(false); return; }
+        const data = snap.data();
+        setIsCheckedin(data.isCheckedin ?? false);
+        setIsCheckedout(data.isCheckedout ?? false);
+        if (data.isCheckedin && data.startTime) {
           dispatch(updateCheckIn({
-            startTime:    res.data.employee.startTime,
-            attendanceid: res.data.employee.attendanceid,
+            startTime:    data.startTime,
+            attendanceid: data.attendanceid,
           }));
         }
-      } catch (err) {
-        toast.error(err.response?.data?.error || "Failed to fetch status");
-      } finally {
+        setLoading(false);
+      },
+      () => {
+        toast.error("Failed to sync attendance status");
         setLoading(false);
       }
-    })();
+    );
+    return () => unsub();
   }, [user?.employeeId]);
 
   /* ── cooldown countdown ───────────────────────────────── */

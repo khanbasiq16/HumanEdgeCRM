@@ -154,7 +154,6 @@ const CheckoutForm = ({ clientSecret, amount , invoiceid }) => {
                 {loading ? "Processing Securely..." : success ? "Payment Done!" : `Pay $${displayAmount}`}
             </button>
 
-           
         </form>
     );
 }
