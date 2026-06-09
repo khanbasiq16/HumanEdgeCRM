@@ -206,21 +206,26 @@ const Page = () => {
         if (!invoiceRes.data?.success) throw new Error("Invoice not found");
         if (!stripeRes.data?.success)  throw new Error("Stripe not configured");
 
-        // Initialize Stripe with key from server
-        setStripePromise(loadStripe(stripeRes.data.publishableKey));
-
         const inv = invoiceRes.data.invoice;
         setInvoice(inv);
         setCompany(compRes.data?.company || null);
 
-        const clientRes = await axios.get(`/api/get-client/${inv.clientId}`);
-        if (clientRes.data?.success) setClient(clientRes.data.client);
+        // If the invoice is already paid or is still draft, do NOT load Stripe promise,
+        // client info or payment intent. This avoids generating unwanted Stripe Intents
+        // and enhances security.
+        if (inv.status !== "Paid" && inv.status !== "Draft") {
+          // Initialize Stripe with key from server
+          setStripePromise(loadStripe(stripeRes.data.publishableKey));
 
-        const intentRes = await axios.post("/api/create-payment-intent", {
-          invoiceId: invoiceid,
-          amount:    inv.totalAmount,
-        });
-        setClientSecret(intentRes.data.clientSecret);
+          const clientRes = await axios.get(`/api/get-client/${inv.clientId}`);
+          if (clientRes.data?.success) setClient(clientRes.data.client);
+
+          const intentRes = await axios.post("/api/create-payment-intent", {
+            invoiceId: invoiceid,
+            amount:    inv.totalAmount,
+          });
+          setClientSecret(intentRes.data.clientSecret);
+        }
       } catch (err) {
         console.error(err);
         setError("Could not load payment details. Please try again.");
@@ -338,7 +343,7 @@ const Page = () => {
   }
 
   /* ── Error ── */
-  if (error || !clientSecret || !stripePromise) {
+  if (error) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-10 text-center max-w-md">
@@ -347,7 +352,7 @@ const Page = () => {
           </div>
           <p className="text-base font-bold text-slate-800">Failed to Load Invoice</p>
           <p className="text-sm text-slate-400 mt-2 leading-relaxed">
-            {error || "Payment initialization failed. Please check the invoice link or contact support."}
+            {error}
           </p>
         </div>
       </div>
@@ -368,6 +373,64 @@ const Page = () => {
           <p className="text-base font-extrabold text-slate-900">Invoice Not Ready</p>
           <p className="text-sm text-slate-400 mt-2 leading-relaxed">
             This invoice is still in <span className="font-bold text-amber-600">Draft</span> status and is not yet available for payment. Please contact the company for more details.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── Paid = Link Expired / Deactivated ── */
+  if (invoice?.status === "Paid") {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-10 text-center max-w-md w-full animate-in fade-in zoom-in duration-300">
+          {company?.companyLogo && (
+            <img src={company.companyLogo} alt={company?.name} className="h-14 object-contain mx-auto mb-6" />
+          )}
+          <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center mx-auto mb-4 border border-emerald-100">
+            <CheckCircle2 size={24} className="text-emerald-500" />
+          </div>
+          <p className="text-base font-extrabold text-slate-900">Invoice Already Paid</p>
+          <p className="text-sm text-slate-400 mt-2 leading-relaxed">
+            This invoice has already been paid successfully. The payment link has been deactivated.
+          </p>
+          
+          <div className="mt-6 p-4 bg-slate-50 rounded-xl border border-slate-100 text-left space-y-2.5">
+            <div className="flex justify-between text-xs">
+              <span className="text-slate-400 font-medium">Invoice No.</span>
+              <span className="text-slate-800 font-bold">#{invoice.invoiceNumber}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-slate-400 font-medium">Paid Amount</span>
+              <span className="text-emerald-600 font-extrabold">${Number(invoice.totalAmount || 0).toLocaleString()}</span>
+            </div>
+            {invoice.paidAt && (
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-400 font-medium">Paid On</span>
+                <span className="text-slate-600 font-semibold">
+                  {new Date(invoice.paidAt).toLocaleDateString("en-US", {
+                    day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit"
+                  })}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── Missing Stripe Config or Client Secret Error ── */
+  if (!clientSecret || !stripePromise) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-10 text-center max-w-md">
+          <div className="w-14 h-14 rounded-2xl bg-red-50 flex items-center justify-center mx-auto mb-4">
+            <Receipt size={22} className="text-red-500" />
+          </div>
+          <p className="text-base font-bold text-slate-800">Failed to Initialize Payment</p>
+          <p className="text-sm text-slate-400 mt-2 leading-relaxed">
+            Payment initialization failed. Please check the invoice link or contact support.
           </p>
         </div>
       </div>

@@ -143,7 +143,10 @@ export async function POST(req) {
 
     // ── 5. Notify all super admins (adminNotifications) ───────────────
     try {
-      const adminsSnap = await adminDb.collection("Users").get();
+      const adminsSnap = await adminDb
+        .collection("users")
+        .where("role", "in", ["admin", "superAdmin"])
+        .get();
       const batch      = adminDb.batch();
 
       adminsSnap.forEach((adminDoc) => {
@@ -183,6 +186,28 @@ export async function POST(req) {
         });
       } catch (e) {
         console.error("Employee notification error:", e);
+      }
+    }
+
+    // ── 7. Notify creator employee ────────────────────────────────────
+    if (invoice.user_id && invoice.user_id !== invoice.assignedEmployeeId) {
+      try {
+        const creatorSnap = await adminDb.collection("employees").doc(invoice.user_id).get();
+        if (creatorSnap.exists) {
+          await adminDb.collection("notifications").add({
+            employeeId:    invoice.user_id,
+            type:          "invoice_paid",
+            title:         "Invoice Paid",
+            body:          `Invoice #${invNumber} (${companyName}) — $${amount} has been paid successfully.`,
+            isRead:        false,
+            invoiceId,
+            invoiceNumber: invNumber,
+            companyName,
+            createdAt:     admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+      } catch (e) {
+        console.error("Creator employee notification error:", e);
       }
     }
 
