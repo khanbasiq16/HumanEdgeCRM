@@ -19,7 +19,7 @@ import {
   ExternalLink, Hash, Loader2, FileText, Package,
 } from "lucide-react";
 
-/* ── Stripe element style ── */
+
 const CARD_STYLE = {
   style: {
     base: {

@@ -21,34 +21,23 @@ export async function GET(req, { params }) {
     // Use the Firestore document ID (not a field called companyId)
     const companyId = companySnapshot.docs[0].id;
 
-    // Query 1: clients the employee created themselves (userid field)
+    // Single-field queries — no composite index required
+    // Filter by companyId in JS to avoid Firestore index issues
     const [createdSnap, assignedSnap] = await Promise.all([
-      getDocs(
-        query(
-          collection(db, "clients"),
-          where("companyId", "==", companyId),
-          where("userid", "==", employeeid)
-        )
-      ),
-      // Query 2: clients admin assigned to this employee (assignedEmployeeId field)
-      getDocs(
-        query(
-          collection(db, "clients"),
-          where("companyId", "==", companyId),
-          where("assignedEmployeeId", "==", employeeid)
-        )
-      ),
+      getDocs(query(collection(db, "clients"), where("userid", "==", employeeid))),
+      getDocs(query(collection(db, "clients"), where("assignedEmployeeId", "==", employeeid))),
     ]);
 
-    // Merge and deduplicate by document ID
+    // Merge, filter by company, and deduplicate
     const seen = new Set();
     const clients = [];
 
     for (const snap of [createdSnap, assignedSnap]) {
-      for (const doc of snap.docs) {
-        if (!seen.has(doc.id)) {
-          seen.add(doc.id);
-          clients.push({ id: doc.id, ...doc.data() });
+      for (const d of snap.docs) {
+        const data = d.data();
+        if (data.companyId === companyId && !seen.has(d.id)) {
+          seen.add(d.id);
+          clients.push({ id: d.id, ...data });
         }
       }
     }

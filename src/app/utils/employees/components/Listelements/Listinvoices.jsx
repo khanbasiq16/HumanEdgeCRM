@@ -16,6 +16,7 @@ const Listinvoices = () => {
   const { id, slug } = useParams();
 
   useEffect(() => {
+    if (!id || !user?.employeeId) return;
     const fetch = async () => {
       try {
         setLoading(true);
@@ -28,7 +29,7 @@ const Listinvoices = () => {
       }
     };
     fetch();
-  }, [id]);
+  }, [id, user?.employeeId]);
 
   return (
     <div className="w-full space-y-6">

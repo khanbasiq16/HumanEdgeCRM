@@ -6,35 +6,30 @@ export async function GET(req, { params }) {
   try {
     const { id, employeeid } = params;
 
+    // Single-field queries — no composite index required
+    // Then filter by companySlug in JS to avoid Firestore index issues
+    const [createdSnap, assignedSnap] = await Promise.all([
+      getDocs(query(collection(db, "invoices"), where("user_id", "==", employeeid))),
+      getDocs(query(collection(db, "invoices"), where("assignedEmployeeId", "==", employeeid))),
+    ]);
 
-    const invoicesQuery = query(
-      collection(db, "invoices"),
-      where("companySlug", "==", id),
-      where("user_id", "==", employeeid)
-    );
+    const seen = new Set();
+    const employeeInvoices = [];
+    for (const snap of [createdSnap, assignedSnap]) {
+      for (const d of snap.docs) {
+        const data = d.data();
+        if (data.companySlug === id && !seen.has(d.id)) {
+          seen.add(d.id);
+          employeeInvoices.push({ id: d.id, ...data });
+        }
+      }
+    }
 
-    const invoicesSnapshot = await getDocs(invoicesQuery);
-
-    const employeeInvoices = invoicesSnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-
-    return NextResponse.json(
-      {
-        success: true,
-        invoices: employeeInvoices,
-      },
-      { status: 200 }
-    );
+    return NextResponse.json({ success: true, invoices: employeeInvoices }, { status: 200 });
   } catch (error) {
     console.error("Error fetching invoices:", error);
     return NextResponse.json(
-      {
-        success: false,
-        message: "Failed to fetch invoices",
-        error: error.message,
-      },
+      { success: false, message: "Failed to fetch invoices", error: error.message },
       { status: 500 }
     );
   }

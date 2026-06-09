@@ -1,6 +1,7 @@
 import { sendEmail } from "@/lib/SendEmail";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/firebase";
+import { admin, adminDb } from "@/lib/firebaseAdmin";
 import {
   collection, doc, getDoc, getDocs,
   query, updateDoc, where,
@@ -34,17 +35,6 @@ export async function POST(req) {
 
     const companyData = { id: companySnap.docs[0].id, ...companySnap.docs[0].data() };
 
-    if (
-      !companyData.companyemail ||
-      !companyData.companyemailpassword ||
-      !companyData.companyemailhost ||
-      !companyData.companysmtphost
-    ) {
-      return NextResponse.json(
-        { success: false, message: "Company SMTP not configured. Please add email settings first." },
-        { status: 400 }
-      );
-    }
 
     const subject = `Invoice #${invoiceNumber} from ${companyData.name}`;
     const year    = new Date().getFullYear();
@@ -137,10 +127,7 @@ export async function POST(req) {
       to,
       subject,
       html,
-      EMAIL_HOST: companyData.companyemailhost,
-      EMAIL_PORT: companyData.companysmtphost,
-      EMAIL_USER: companyData.companyemail,
-      EMAIL_PASS: companyData.companyemailpassword,
+      fromName: companyData.name,
     });
 
     if (!result.success) {
@@ -163,6 +150,38 @@ export async function POST(req) {
 
     await updateDoc(invoiceRef, { status: "Sent" });
     const updated = await getDoc(invoiceRef);
+    const invoiceData = invoiceSnap.data();
+    const sentBy = invoiceData.assignedEmployeeName || invoiceData.createdBy || "An employee";
+
+    // Notify all admins
+    try {
+      const adminSnap = await adminDb
+        .collection("users")
+        .where("role", "in", ["admin", "superAdmin"])
+        .get();
+
+      await Promise.all(
+        adminSnap.docs.map((adminDoc) =>
+          adminDb.collection("adminNotifications").add({
+            userId:        adminDoc.id,
+            type:          "invoice_sent",
+            title:         "Invoice Sent to Client",
+            body:          `${sentBy} sent invoice #${invoiceNumber} ($${Number(totalAmount || 0).toLocaleString()}) to ${clientName || to} — ${companyData.name}`,
+            isRead:        false,
+            invoiceId:     invoiceid,
+            invoiceNumber,
+            companyName:   companyData.name,
+            companySlug:   slug,
+            clientName:    clientName || null,
+            clientEmail:   to,
+            sentBy,
+            createdAt:     admin.firestore.FieldValue.serverTimestamp(),
+          })
+        )
+      );
+    } catch (notifErr) {
+      console.error("Admin notification error:", notifErr);
+    }
 
     return NextResponse.json({
       success: true,

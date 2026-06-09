@@ -2,11 +2,12 @@
 import EditCompanyDialog from "@/app/utils/superadmin/components/dialog/EditCompanyDialog";
 import SuperAdminlayout from "@/app/utils/superadmin/layout/SuperAdmin";
 import axios from "axios";
+import Link from "next/link";
 import {
   Building2, Globe, MapPin, Phone, Mail, Clock, Hash,
   Calendar, Facebook, Instagram, Linkedin, CheckCircle2,
   XCircle, Pencil, FileText, Users, LayoutTemplate, UserCheck,
-  ScrollText,
+  ScrollText, ExternalLink,
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import React, { useEffect, useState } from "react";
@@ -81,6 +82,65 @@ const ArrayCard = ({ icon: Icon, title, data, color }) => {
     </div>
   );
 };
+
+/* ── Invoice card with links ────────────────────────────── */
+const statusStyle = (s) => {
+  const map = {
+    paid:    "bg-emerald-50 text-emerald-700 border-emerald-200",
+    sent:    "bg-blue-50 text-blue-700 border-blue-200",
+    pending: "bg-amber-50 text-amber-700 border-amber-200",
+    overdue: "bg-rose-50 text-rose-700 border-rose-200",
+  };
+  return map[(s || "").toLowerCase()] || "bg-slate-50 text-slate-500 border-slate-200";
+};
+
+const InvoiceCard = ({ invoices, companySlug }) => (
+  <div className="rounded-2xl border p-5 space-y-3 bg-blue-50 border-blue-100">
+    <div className="flex items-center gap-2">
+      <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 bg-blue-100 text-blue-600">
+        <FileText size={13} />
+      </div>
+      <p className="text-xs font-bold uppercase tracking-wider text-blue-700">Assigned Invoices</p>
+      <span className="ml-auto text-xs font-bold px-2 py-0.5 rounded-full bg-white border border-blue-100 text-blue-700">
+        {invoices?.length || 0}
+      </span>
+    </div>
+    {invoices && invoices.length > 0 ? (
+      <ul className="space-y-2 max-h-52 overflow-y-auto pr-1">
+        {invoices.map((inv) => (
+          <li key={inv.id}>
+            <Link
+              href={`/invoice/${companySlug}/details/${inv.id}`}
+              className="flex items-center justify-between gap-2 bg-white rounded-xl px-3 py-2.5 border border-blue-100 hover:border-blue-300 hover:shadow-sm transition-all group"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-6 h-6 rounded-md bg-blue-50 flex items-center justify-center shrink-0">
+                  <FileText size={11} className="text-blue-500" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-slate-800 truncate">{inv.number}</p>
+                  {inv.amount != null && (
+                    <p className="text-[10px] text-slate-400 font-medium">${Number(inv.amount).toLocaleString()}</p>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {inv.status && (
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusStyle(inv.status)}`}>
+                    {inv.status}
+                  </span>
+                )}
+                <ExternalLink size={11} className="text-slate-300 group-hover:text-blue-400 transition-colors" />
+              </div>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <p className="text-xs text-slate-400 italic">No invoices assigned</p>
+    )}
+  </div>
+);
 
 /* ── Skeleton ───────────────────────────────────────────── */
 const Skeleton = () => (
@@ -232,9 +292,9 @@ const Page = () => {
 
         {/* ── Assigned data grid ────────────────────────────── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <ArrayCard icon={FileText}     title="Assigned Invoices"  data={company.assignedInvoices}  color="blue"    />
-          <ArrayCard icon={Users}        title="Assigned Employees" data={company.AssignEmployee}     color="violet"  />
-          <ArrayCard icon={LayoutTemplate} title="Assign Templates" data={company.ContactTemplates}  color="emerald" />
+          <InvoiceCard invoices={company.resolvedInvoices} companySlug={company.companyslug} />
+          <ArrayCard icon={Users}        title="Assigned Employees" data={company.resolvedEmployees}  color="violet"  />
+          <ArrayCard icon={LayoutTemplate} title="Assign Templates" data={company.resolvedTemplates}  color="emerald" />
           <ArrayCard icon={UserCheck}    title="Assign Clients"     data={company.CreateClients}      color="amber"   />
           <ArrayCard icon={ScrollText}   title="Assign Contracts"   data={company.Createcontracts}    color="rose"    />
         </div>

@@ -49,6 +49,25 @@ export async function GET(req, { params }) {
       } catch { templateNames.push(tid); }
     }
 
+    /* ── Resolve assignedInvoices IDs → structured objects (skip missing/unlabelled) ── */
+    const invIds = Array.isArray(companyData.assignedInvoices) ? companyData.assignedInvoices : [];
+    const invoiceLabels = [];
+    for (const iid of invIds) {
+      try {
+        const iSnap = await getDoc(doc(db, "invoices", iid));
+        if (!iSnap.exists()) continue;
+        const d = iSnap.data();
+        const num = d.invoiceNumber || d.title;
+        if (!num) continue;
+        invoiceLabels.push({
+          id:     iid,
+          number: num,
+          status: d.status || null,
+          amount: d.totalAmount ?? d.invoiceAmount ?? null,
+        });
+      } catch { /* skip on error */ }
+    }
+
     /* ── Live client count from clients collection ── */
     let clientCount = 0;
     try {
@@ -62,6 +81,7 @@ export async function GET(req, { params }) {
       success: true,
       company: {
         ...companyData,
+        resolvedInvoices:   invoiceLabels,
         resolvedEmployees:  employeeNames,
         resolvedTemplates:  templateNames,
         liveClientCount:    clientCount,
