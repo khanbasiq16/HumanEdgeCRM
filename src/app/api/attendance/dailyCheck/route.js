@@ -1,5 +1,5 @@
 import { db } from "@/lib/firebase";
-import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc, query, where } from "firebase/firestore";
 import { NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 
@@ -69,7 +69,19 @@ export async function GET() {
         message: `Yesterday was a holiday (${holidayName}) — skipping marking`,
       });
     }
-    
+
+    // Approved leave wale employees fetch karo
+    const leavesSnap = await getDocs(
+      query(collection(db, "LeaveApplications"), where("status", "==", "Approved"))
+    );
+    const onLeaveEmployees = new Set();
+    leavesSnap.docs.forEach((leaveDoc) => {
+      const leave = leaveDoc.data();
+      if (leave.fromDate <= yesterdayISO && yesterdayISO <= leave.toDate) {
+        onLeaveEmployees.add(leave.employeeId);
+      }
+    });
+
     const autoCheckouts = [];
 
     for (const empDoc of employeesSnap.docs) {
@@ -77,6 +89,11 @@ export async function GET() {
       const empId = empDoc.id;
 
       if (empData.status === "deactivate") {
+        continue;
+      }
+
+      if (onLeaveEmployees.has(empId)) {
+        console.log(`📅 Employee ${empId} is on approved leave for ${yesterdayISO} — skipping`);
         continue;
       }
 
