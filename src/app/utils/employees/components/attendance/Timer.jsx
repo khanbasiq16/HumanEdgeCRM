@@ -44,10 +44,12 @@ const Timer = () => {
     return () => clearInterval(id);
   }, [active, startTime]);
 
-  const fmt = (s) =>
-    [Math.floor(s / 3600), Math.floor((s % 3600) / 60), s % 60]
-      .map((v) => String(v).padStart(2, "0"))
-      .join(":");
+  const fmt = (s) => {
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sc = s % 60;
+    return `${h}h ${String(m).padStart(2, "0")}m ${String(sc).padStart(2, "0")}s`;
+  };
 
   return <span className="tabular-nums font-semibold">{fmt(elapsed)}</span>;
 };
