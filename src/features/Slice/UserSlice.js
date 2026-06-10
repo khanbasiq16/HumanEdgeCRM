@@ -35,8 +35,8 @@ const UserSlice = createSlice({
           isCheckedin: false,
           isCheckedout: true,
           startTime: null,
+          checkoutTime: action.payload || null,
           attendanceid: null,
-          
         };
       }
     },

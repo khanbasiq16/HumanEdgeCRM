@@ -123,7 +123,7 @@ const CheckOut = ({ isCheckedIn, isCheckedout, setIsCheckedout, setIsCheckedin, 
       if (res.data.success) {
         toast.success("Checked out successfully!");
         dispatch(resetCheckIn());
-        dispatch(updateCheckOut());
+        dispatch(updateCheckOut(new Date().toISOString()));
         dispatch(resetTimer());
         setIsCheckedin(false);
         setIsCheckedout(false);

@@ -191,6 +191,7 @@ export async function POST(req) {
       isCheckedin: false,
       isCheckedout: true,
       startTime: null,
+      checkoutTime: new Date().toISOString(),
       attendanceid: "",
     });
 

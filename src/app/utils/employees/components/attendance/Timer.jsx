@@ -8,30 +8,34 @@ const Timer = () => {
   const { user }                                 = useSelector((s) => s.User);
   const { isRunning, startTime: reduxStartTime } = useSelector((s) => s.Stopwatch);
 
-  const [fsCheckedin, setFsCheckedin] = useState(false);
-  const [fsStartTime, setFsStartTime] = useState(null);
-  const [elapsed,     setElapsed]     = useState(0);
+  const [fsCheckedin,    setFsCheckedin]    = useState(false);
+  const [fsCheckedout,   setFsCheckedout]   = useState(false);
+  const [fsStartTime,    setFsStartTime]    = useState(null);
+  const [fsCheckoutTime, setFsCheckoutTime] = useState(null);
+  const [elapsed,        setElapsed]        = useState(0);
 
-  /* ── Firestore listener — only updates local state, never touches Redux ── */
+  /* ── Firestore listener ── */
   useEffect(() => {
     if (!user?.employeeId) return;
     const unsub = onSnapshot(doc(db, "employees", user.employeeId), (snap) => {
       if (snap.exists()) {
         const d = snap.data();
-        setFsCheckedin(d.isCheckedin  || false);
-        setFsStartTime(d.startTime    || null);
+        setFsCheckedin(d.isCheckedin     || false);
+        setFsCheckedout(d.isCheckedout   || false);
+        setFsStartTime(d.startTime       || null);
+        setFsCheckoutTime(d.checkoutTime || null);
       }
     });
     return () => unsub();
   }, [user?.employeeId]);
 
-  /* ── Use whichever source is available first ─────────────────────────── */
-  // Redux is updated instantly on check-in (no network delay).
-  // Firestore arrives 1-3 s later and takes over.
-  const active    = fsCheckedin || isRunning;
-  const startTime = fsStartTime || reduxStartTime;
+  const isCheckedout = fsCheckedout || user?.isCheckedout || false;
+  const active       = fsCheckedin || isRunning || isCheckedout;
+  const startTime    = isCheckedout
+    ? (fsCheckoutTime || user?.checkoutTime)
+    : (fsStartTime || reduxStartTime);
 
-  /* ── Tick every second ───────────────────────────────────────────────── */
+  /* ── Tick every second ── */
   useEffect(() => {
     if (!active || !startTime) { setElapsed(0); return; }
 
@@ -45,8 +49,8 @@ const Timer = () => {
   }, [active, startTime]);
 
   const fmt = (s) => {
-    const h = Math.floor(s / 3600);
-    const m = Math.floor((s % 3600) / 60);
+    const h  = Math.floor(s / 3600);
+    const m  = Math.floor((s % 3600) / 60);
     const sc = s % 60;
     return `${h}h ${String(m).padStart(2, "0")}m ${String(sc).padStart(2, "0")}s`;
   };
