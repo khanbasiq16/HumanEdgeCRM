@@ -10,7 +10,7 @@ import toast from "react-hot-toast";
 import { db } from "@/lib/firebase";
 import { doc, onSnapshot } from "firebase/firestore";
 import {
-  Clock, Timer, Clock3, CheckCheck, CalendarDays,
+  Clock, Timer, Clock3, CalendarDays,
   Building2, User, CheckCircle2, LogOut,
 } from "lucide-react";
 
@@ -168,8 +168,7 @@ const Page = () => {
   const handleCheckinDone  = () => { setCooldownType("checkin");  setCooldownSecs(COOLDOWN_SECS); };
   const handleCheckoutDone = () => { setCooldownType("checkout"); setCooldownSecs(COOLDOWN_SECS); };
 
-  const step    = cooldownType === "checkout" ? 3 : (isCheckedIn || cooldownType === "checkin") ? 1 : 0;
-  const allDone = isCheckedout;
+  const step = cooldownType === "checkout" ? 3 : (isCheckedIn || cooldownType === "checkin") ? 1 : 0;
   const { time, ampm } = fmtClock(now);
 
   return (
@@ -247,20 +246,7 @@ const Page = () => {
           ) : cooldownType ? (
             <CooldownCard type={cooldownType} secs={cooldownSecs} />
 
-          ) : allDone ? (
-            <div className="flex flex-col items-center py-8 gap-4 text-center">
-              <div className="w-16 h-16 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center">
-                <CheckCheck size={30} className="text-emerald-500" />
-              </div>
-              <div>
-                <p className="text-base font-extrabold text-slate-900">All Done for Today!</p>
-                <p className="text-sm text-slate-400 mt-1">
-                  You've completed your attendance. See you tomorrow!
-                </p>
-              </div>
-            </div>
-
-          ) : !isCheckedIn ? (
+          ) : !isCheckedIn && !isCheckedout ? (
             <Checkin
               isCheckedIn={isCheckedIn}
               setIsCheckedin={setIsCheckedin}
