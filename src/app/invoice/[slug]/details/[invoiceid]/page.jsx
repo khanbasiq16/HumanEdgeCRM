@@ -245,9 +245,11 @@ const Page = () => {
     return (
       <div className="min-h-screen bg-slate-50">
         {/* top bar skeleton */}
-        <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
-          <Sk className="h-9 w-32" />
-          <Sk className="h-6 w-16 rounded-full" />
+        <div className="bg-white border-b border-slate-200">
+          <div className="max-w-5xl mx-auto px-4 py-3.5 flex items-center justify-between">
+            <Sk className="h-9 w-32" />
+            <Sk className="h-8 w-36 rounded-xl" />
+          </div>
         </div>
 
         <div className="max-w-5xl mx-auto px-4 py-10 grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -443,24 +445,36 @@ const Page = () => {
     <div className="min-h-screen bg-slate-50">
 
       {/* ── Top bar ── */}
-      <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
-        {/* Logo */}
-        {company?.companyLogo ? (
-          <img src={company.companyLogo} alt={company.name} className="h-12 w-auto object-contain max-w-40" />
-        ) : (
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
-              <Building2 size={15} className="text-white" />
+      <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200/70">
+        <div className="max-w-5xl mx-auto px-4 py-3.5 flex items-center justify-between">
+          {/* Left — Logo / company name */}
+          {company?.companyLogo ? (
+            <img src={company.companyLogo} alt={company.name} className="h-10 w-auto object-contain max-w-40" />
+          ) : (
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center shrink-0">
+                <Building2 size={15} className="text-white" />
+              </div>
+              <span className="text-sm font-bold text-slate-800">{company?.name || invoice?.companyName}</span>
             </div>
-            <span className="text-sm font-bold text-slate-800">{company?.name || invoice?.companyName}</span>
-          </div>
-        )}
+          )}
 
-        {/* Invoice meta — right side */}
-        <div className="text-right">
-          <p className="text-xs text-slate-400 font-medium">Invoice</p>
-          <p className="text-sm font-extrabold text-slate-800">#{invoice?.invoiceNumber}</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">{invoice?.invoiceDate}</p>
+          {/* Right — invoice number + download */}
+          <div className="flex items-center gap-3">
+            <div className="text-right hidden sm:block">
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest leading-none">Invoice</p>
+              <p className="text-sm font-extrabold text-slate-800 mt-0.5 font-mono">#{invoice?.invoiceNumber}</p>
+            </div>
+            <button
+              onClick={() => window.print()}
+              className="flex items-center gap-2 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-colors shadow-sm shadow-blue-200"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Download Invoice
+            </button>
+          </div>
         </div>
       </div>
 
@@ -468,10 +482,10 @@ const Page = () => {
       <div className="max-w-5xl mx-auto px-4 py-8">
 
         {/* Top 2-col: left = invoice info, right = payment (sticky) */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
-          {/* ── Left ── */}
-          <div className="space-y-4">
+          {/* ── Left (7 cols) ── */}
+          <div className="lg:col-span-7 space-y-4">
 
             {/* Invoice header */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm px-6 py-5">
@@ -521,8 +535,8 @@ const Page = () => {
             )}
           </div>
 
-          {/* ── Right — sticky payment form ── */}
-          <div className="lg:sticky lg:top-6">
+          {/* ── Right (5 cols) — sticky payment form ── */}
+          <div className="lg:col-span-5 lg:sticky lg:top-[65px]">
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm px-6 py-7">
               <div className="flex items-center gap-3 mb-6 pb-5 border-b border-slate-100">
                 <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
