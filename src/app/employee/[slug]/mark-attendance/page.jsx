@@ -246,7 +246,7 @@ const Page = () => {
           ) : cooldownType ? (
             <CooldownCard type={cooldownType} secs={cooldownSecs} />
 
-          ) : !isCheckedIn && !isCheckedout ? (
+          ) : !isCheckedIn ? (
             <Checkin
               isCheckedIn={isCheckedIn}
               setIsCheckedin={setIsCheckedin}
