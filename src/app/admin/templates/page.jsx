@@ -767,7 +767,7 @@ const Page = () => {
                 onEdit={tmpl => router.push(
                   (tmpl.role === "Admin" || tmpl.role === "Contract")
                     ? `/contract-editor/${tmpl.id}`
-                    : `/template-editor/${tmpl.id}`
+                    : `/employee-letter-canvas/${tmpl.id}`
                 )}
                 onAssign={openAssign}
                 onDelete={openDelete}

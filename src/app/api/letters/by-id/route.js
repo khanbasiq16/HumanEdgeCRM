@@ -17,6 +17,17 @@ export async function GET(req) {
     }
 
     const data = snap.data();
+
+    /* If the letter has no canvasData but has a templateId, fetch it from the template */
+    let canvasData = data.canvasData || null;
+    if (!canvasData && data.templateId) {
+      try {
+        const { doc: docFn, getDoc: getDocFn } = await import("firebase/firestore");
+        const tmplSnap = await getDocFn(docFn(db, "templates", data.templateId));
+        if (tmplSnap.exists()) canvasData = tmplSnap.data().canvasData || null;
+      } catch { /* template fetch failed — canvas will be empty */ }
+    }
+
     return NextResponse.json({
       success: true,
       letter: {
@@ -25,10 +36,14 @@ export async function GET(req) {
         templateName: data.templateName || "Untitled",
         templateRole: data.templateRole || "Employee",
         isContract:   data.isContract   || false,
-        canvasData:   data.canvasData   || null,
+        canvasData,
         company:      data.company      || null,
         employeeId:   data.employeeId   || "",
         employeeName: data.employeeName || "",
+        designation:  data.designation  || "",
+        department:   data.department   || "",
+        joinDate:     data.joinDate     || "",
+        salary:       data.salary       || "",
         assignedBy:   data.assignedBy   || "",
         assignedAt:   data.assignedAt   || null,
         isRead:       data.isRead       || false,

@@ -214,7 +214,7 @@ const ListTemplates = ({ loading }) => {
               onClick={() => router.push(
                 template.role === "Admin"
                   ? `/contract-editor/${template.id}`
-                  : `/template-editor/${template.id}`
+                  : `/employee-letter-canvas/${template.id}`
               )}
             />
           ))}

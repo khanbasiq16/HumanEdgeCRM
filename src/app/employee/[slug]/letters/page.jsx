@@ -6,7 +6,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import Employeelayout from "@/app/utils/employees/layout/Employeelayout";
 import {
-  FileText, Loader2, Building2, Calendar, Download, Eye, Mail, MailOpen,
+  FileText, Loader2, Building2, Calendar, Download, Eye, Mail, MailOpen, PenLine,
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -502,6 +502,13 @@ const LettersPage = () => {
                   {viewLetter.assignedBy && ` · From ${viewLetter.assignedBy}`}
                 </p>
               </div>
+              <Button
+                onClick={() => { router.push(`/employee-letter-editor/${viewLetter.id}`); setViewLetter(null); }}
+                size="sm"
+                className="h-8 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shrink-0"
+              >
+                <PenLine size={13} className="mr-1"/> Edit
+              </Button>
               <Button
                 onClick={handleDownload}
                 disabled={printing}
