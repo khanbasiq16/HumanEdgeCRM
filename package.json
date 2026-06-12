@@ -51,6 +51,8 @@
     "firebase": "^12.4.0",
     "firebase-admin": "^13.5.0",
     "framer-motion": "^12.23.22",
+    "html-to-image": "^1.11.13",
+    "html2canvas": "^1.4.1",
     "jodit-react": "^5.2.38",
     "jose": "^6.1.0",
     "jsonwebtoken": "^9.0.2",

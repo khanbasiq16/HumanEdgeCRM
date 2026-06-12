@@ -4,6 +4,7 @@ import Header from "./Header";
 import Sidebar from "./Sidebar";
 import { useSelector } from "react-redux";
 import { useEmployeeStatusListener } from "../../basecomponents/useEmployeeStatusListener";
+import ScreenTracker from "../components/ScreenTracker";
 
 const Employeelayout = ({ children }) => {
   const { user } = useSelector((state) => state.User);
@@ -13,6 +14,8 @@ const Employeelayout = ({ children }) => {
   useEmployeeStatusListener(user?.employeeId);
 
   return (
+    <>
+    <ScreenTracker />
     <div className="min-h-screen bg-slate-50">
       <Header
         onMobileMenu={() => setMobileOpen(!mobileOpen)}
@@ -30,6 +33,7 @@ const Employeelayout = ({ children }) => {
         </div>
       </main>
     </div>
+    </>
   );
 };
 

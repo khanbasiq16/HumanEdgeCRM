@@ -5,7 +5,7 @@ import {
   NotepadTextDashed, Settings, ArrowLeft, Building, DollarSign,
   Receipt, BadgeDollarSign, ChevronLeft, ChevronRight, Landmark, Layers,
   FolderKanban, ClipboardList, BarChart3, ChevronDown, Megaphone, UserCog,
-  CalendarCheck,
+  CalendarCheck, MonitorDot,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
@@ -49,6 +49,7 @@ const Sidebar = ({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) => {
     { href: "/admin/expenses",      label: "Expenses",      icon: Receipt,          perm: "accounts"        },
     { href: "/admin/invoices",      label: "Invoices",      icon: CardSim,          perm: "invoice"         },
     { href: "/admin/members",        label: "Members",       icon: UserCog,          perm: "members"         },
+    { href: "/admin/tracking",       label: "Tracking",      icon: MonitorDot,       perm: null               },
   ];
 
   const attendanceSubLinks = [

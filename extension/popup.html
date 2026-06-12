@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HumanEdge Monitor</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 260px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f8fafc;
+      color: #1e293b;
+    }
+    .header {
+      background: #2563eb;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .header-icon {
+      width: 32px; height: 32px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .header h1 { color: white; font-size: 14px; font-weight: 700; }
+    .header p  { color: rgba(255,255,255,0.7); font-size: 11px; }
+    .body { padding: 16px; }
+    .status-row {
+      display: flex; align-items: center; gap: 8px;
+      background: white; border: 1px solid #e2e8f0;
+      border-radius: 10px; padding: 12px;
+      margin-bottom: 12px;
+    }
+    .dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .dot.green  { background: #22c55e; box-shadow: 0 0 0 3px #dcfce7; }
+    .dot.red    { background: #ef4444; box-shadow: 0 0 0 3px #fee2e2; }
+    .dot.gray   { background: #94a3b8; }
+    .status-info p { font-size: 12px; font-weight: 600; }
+    .status-info span { font-size: 11px; color: #64748b; }
+    .meta { background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; }
+    .meta-row { display: flex; justify-content: space-between; margin-bottom: 8px; }
+    .meta-row:last-child { margin-bottom: 0; }
+    .meta-label { font-size: 11px; color: #94a3b8; }
+    .meta-value { font-size: 11px; font-weight: 600; color: #475569; }
+    .footer { padding: 10px 16px; border-top: 1px solid #e2e8f0; text-align: center; }
+    .footer span { font-size: 10px; color: #94a3b8; }
+    #not-connected { text-align: center; padding: 8px 0; }
+    #not-connected p { font-size: 12px; color: #64748b; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="3" width="20" height="14" rx="2"/>
+        <path d="M8 21h8M12 17v4"/>
+      </svg>
+    </div>
+    <div>
+      <h1>HumanEdge Monitor</h1>
+      <p>Screen Tracking</p>
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="status-row">
+      <div class="dot" id="dot"></div>
+      <div class="status-info">
+        <p id="status-text">Checking…</p>
+        <span id="status-sub"></span>
+      </div>
+    </div>
+
+    <div class="meta" id="meta-box" style="display:none">
+      <div class="meta-row">
+        <span class="meta-label">Employee</span>
+        <span class="meta-value" id="emp-name">—</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-label">Last Screenshot</span>
+        <span class="meta-value" id="last-ss">—</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-label">Interval</span>
+        <span class="meta-value">Every 1 minute</span>
+      </div>
+    </div>
+
+    <div id="not-connected" style="display:none">
+      <p>Log in to the HumanEdge HR app to activate monitoring.</p>
+    </div>
+  </div>
+
+  <div id="test-row" style="display:none; padding: 0 16px 12px;">
+    <button id="test-btn" style="width:100%;background:#2563eb;color:white;border:none;border-radius:10px;padding:9px;font-size:12px;font-weight:600;cursor:pointer;">
+      Take Screenshot Now
+    </button>
+    <p id="test-result" style="font-size:10px;color:#22c55e;text-align:center;margin-top:6px;min-height:14px;"></p>
+    <p id="last-error" style="font-size:10px;color:#ef4444;text-align:center;margin-top:2px;min-height:14px;"></p>
+  </div>
+
+  <div class="footer">
+    <span>v1.0.0 · HumanEdge HR</span>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
