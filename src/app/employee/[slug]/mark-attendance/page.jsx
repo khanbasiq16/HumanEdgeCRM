@@ -51,17 +51,31 @@ const CooldownCard = ({ type, secs }) => {
   );
 };
 
-/* ── live karachi clock ──────────────────────────────────── */
+/* ── live karachi clock (server-corrected) ───────────────── */
 const useKarachiClock = () => {
+  const [serverOffset, setServerOffset] = useState(0);
   const [now, setNow] = useState(() =>
     new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Karachi" }))
   );
+
+  // Fetch server time once → compute offset to correct device clock skew
   useEffect(() => {
-    const id = setInterval(() => {
-      setNow(new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Karachi" })));
-    }, 1000);
-    return () => clearInterval(id);
+    fetch("/api/server-time")
+      .then((r) => r.json())
+      .then(({ timestamp }) => setServerOffset(timestamp - Date.now()))
+      .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    const tick = () => {
+      const corrected = new Date(Date.now() + serverOffset);
+      setNow(new Date(corrected.toLocaleString("en-US", { timeZone: "Asia/Karachi" })));
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [serverOffset]);
+
   return now;
 };
 
