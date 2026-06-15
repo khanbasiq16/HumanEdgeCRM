@@ -11,7 +11,8 @@ const ScreenTracker = () => {
     const pathname = usePathname();
     const swRef    = useRef(null);
 
-    const [extStatus, setExtStatus] = useState("checking"); // "checking" | "connected" | "not-installed"
+    const [extStatus,  setExtStatus]  = useState("checking"); // "checking" | "connected" | "not-installed"
+    const [dismissed, setDismissed] = useState(false);
 
     // ── Service Worker (offline beacon fallback) ─────────────────────────────
     useEffect(() => {
@@ -136,7 +137,7 @@ const ScreenTracker = () => {
     }
 
     // Extension not installed → install instructions (non-blocking, just info)
-    if (extStatus === "not-installed") {
+    if (extStatus === "not-installed" && !dismissed) {
         return (
             <div
                 style={{ zIndex: 99999 }}
@@ -149,12 +150,20 @@ const ScreenTracker = () => {
                             <path d="M8 21h8M12 17v4"/>
                         </svg>
                     </div>
-                    <div>
+                    <div className="flex-1">
                         <p className="font-semibold text-slate-800 text-sm">Install Monitoring Extension</p>
                         <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
                             Screen monitoring requires the HumanEdge extension. Install it once — no popups ever again.
                         </p>
                     </div>
+                    <button
+                        onClick={() => setDismissed(true)}
+                        className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+                    >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                            <path d="M18 6L6 18M6 6l12 12"/>
+                        </svg>
+                    </button>
                 </div>
                 <div className="bg-slate-50 rounded-xl p-3 text-xs text-slate-600 leading-relaxed">
                     <p className="font-semibold text-slate-700 mb-1">How to install:</p>
