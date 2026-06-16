@@ -26,6 +26,15 @@ const CheckOut = ({ isCheckedIn, isCheckedout, setIsCheckedout, setIsCheckedin, 
   const [loading,       setLoading]      = useState(false);
   const [sliderKey,     setSliderKey]    = useState(0);
   const [elapsedSecs,   setElapsedSecs]  = useState(0);
+  const [serverOffset,  setServerOffset] = useState(0);
+
+  /* ── fetch server time once on mount ─────────────────── */
+  useEffect(() => {
+    fetch("/api/server-time")
+      .then((r) => r.json())
+      .then(({ timestamp }) => setServerOffset(timestamp - Date.now()))
+      .catch(() => {});
+  }, []);
 
   /* ── live elapsed timer (updates every second) ──────────── */
   useEffect(() => {
@@ -62,8 +71,10 @@ const CheckOut = ({ isCheckedIn, isCheckedout, setIsCheckedout, setIsCheckedin, 
   const progressPct = Math.min(100, Math.round((elapsedSecs / requiredSecs) * 100));
 
   /* ── helpers ──────────────────────────────────────────── */
-  const getKarachiTime = () =>
-    new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Karachi" }));
+  const getKarachiTime = () => {
+    const corrected = new Date(Date.now() + serverOffset);
+    return new Date(corrected.toLocaleString("en-US", { timeZone: "Asia/Karachi" }));
+  };
 
   const getIP = async () => {
     try {

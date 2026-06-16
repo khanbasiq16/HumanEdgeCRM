@@ -92,6 +92,7 @@ const SearchableDropdown = ({
                   autoFocus
                 />
               </div>
+              
             </div>
 
             {/* Items */}

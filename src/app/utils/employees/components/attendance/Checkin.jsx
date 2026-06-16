@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -18,17 +18,28 @@ const Checkin = ({ isCheckedIn, setIsCheckedin, setIsCheckedout, onCheckinDone }
   const { user } = useSelector((state) => state.User);
   const dispatch = useDispatch();
 
-  const [noteModal,    setNoteModal]    = useState(false);
-  const [confirmModal, setConfirmModal] = useState(false);
-  const [confirmTime,  setConfirmTime]  = useState({ time: "", date: "" });
-  const [lateTime,     setLateTime]     = useState({ time: "", date: "" });
-  const [note,         setNote]         = useState("");
-  const [loading,      setLoading]      = useState(false);
-  const [sliderKey,    setSliderKey]    = useState(0);
+  const [noteModal,     setNoteModal]    = useState(false);
+  const [confirmModal,  setConfirmModal] = useState(false);
+  const [confirmTime,   setConfirmTime]  = useState({ time: "", date: "" });
+  const [lateTime,      setLateTime]     = useState({ time: "", date: "" });
+  const [note,          setNote]         = useState("");
+  const [loading,       setLoading]      = useState(false);
+  const [sliderKey,     setSliderKey]    = useState(0);
+  const [serverOffset,  setServerOffset] = useState(0);
+
+  /* ── fetch server time once on mount ─────────────────── */
+  useEffect(() => {
+    fetch("/api/server-time")
+      .then((r) => r.json())
+      .then(({ timestamp }) => setServerOffset(timestamp - Date.now()))
+      .catch(() => {});
+  }, []);
 
   /* ── helpers ──────────────────────────────────────────── */
-  const getKarachiTime = () =>
-    new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Karachi" }));
+  const getKarachiTime = () => {
+    const corrected = new Date(Date.now() + serverOffset);
+    return new Date(corrected.toLocaleString("en-US", { timeZone: "Asia/Karachi" }));
+  };
 
   const getIP = async () => {
     try {
