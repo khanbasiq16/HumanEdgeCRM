@@ -7,6 +7,7 @@ import {
   FileSignature, Plus, X, Search, MapPin,
   User, Loader2, Building2, Receipt,
   Hash, DollarSign, FolderKanban, CalendarCheck,
+  Megaphone, ChevronDown, ChevronUp,
 } from "lucide-react";
 import Clientdialog from "@/app/utils/employees/components/dialog/Clientdialog";
 import { usePathname, useRouter } from "next/navigation";
@@ -24,7 +25,11 @@ const Sidebar = ({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) => {
   const router   = useRouter();
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.User);
-  const [unreadLetters, setUnreadLetters] = useState(0);
+  const [unreadLetters,      setUnreadLetters]      = useState(0);
+  const [announcementsOpen,  setAnnouncementsOpen]  = useState(false);
+  const [announcements,      setAnnouncements]      = useState([]);
+  const [annLoading,         setAnnLoading]         = useState(false);
+  const [annExpanded,        setAnnExpanded]        = useState({});
 
   /* ── Companies (for sales dialogs) ── */
   const [saleCompanies, setSaleCompanies] = useState([]);
@@ -164,6 +169,7 @@ const Sidebar = ({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) => {
     { href: `/employee/${employeeSlug}/tasks`,      label: "My Tasks",    icon: ClipboardList, badge: null },
     { href: `/employee/${employeeSlug}/projects`,   label: "My Projects", icon: FolderKanban,  badge: null },
     { href: `/employee/${employeeSlug}/letters`,    label: "My Letters",  icon: Mail,          badge: unreadLetters || null },
+    { href: null, label: "Announcements", icon: Megaphone, badge: null, onClick: openAnnouncements },
   ];
 
   const depStr  = (user?.department?.departmentName || user?.designation || user?.role || "").toLowerCase();
@@ -189,6 +195,21 @@ const Sidebar = ({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) => {
   const links            = isInCompany ? companyDetailsLinks : dashboardLinks;
   const isSettingsActive = pathname === `/employee/${employeeSlug}/settings`;
   const isAttendanceActive = pathname === `/employee/${employeeSlug}/mark-attendance`;
+
+  const openAnnouncements = async () => {
+    setAnnouncementsOpen(true);
+    setMobileOpen(false);
+    if (announcements.length > 0) return;
+    setAnnLoading(true);
+    try {
+      const res = await axios.get("/api/announcements");
+      setAnnouncements(res.data.announcements || []);
+    } catch {
+      toast.error("Failed to load announcements");
+    } finally {
+      setAnnLoading(false);
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -253,7 +274,16 @@ const Sidebar = ({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) => {
         <nav className="flex-1 px-2 pt-3 pb-2 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {links.map((link) => {
             const Icon = link.icon;
-            const isActive = pathname === link.href;
+            const isActive = link.href ? pathname === link.href : false;
+            if (!link.href) {
+              return (
+                <button key={link.label} onClick={link.onClick} title={collapsed ? link.label : ""}
+                  className={`w-full group flex items-center gap-3 px-3 py-2.5 rounded-lg mb-0.5 text-sm font-medium transition-all text-slate-600 hover:bg-amber-50 hover:text-amber-700`}>
+                  <Icon size={18} className="shrink-0 text-slate-400 group-hover:text-amber-600 transition-colors"/>
+                  {!collapsed && <span className="truncate flex-1">{link.label}</span>}
+                </button>
+              );
+            }
             return (
               <Link key={link.href} href={link.href} title={collapsed ? link.label : ""}
                 onClick={() => setMobileOpen(false)}
@@ -336,6 +366,100 @@ const Sidebar = ({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) => {
           </div>
         </div>
       </aside>
+
+      {/* ══ ANNOUNCEMENTS DIALOG ══ */}
+      {announcementsOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl w-full max-w-[560px] shadow-xl overflow-hidden flex flex-col" style={{ maxHeight: "88vh" }}>
+
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
+                <Megaphone size={17} className="text-amber-500"/>
+              </div>
+              <div className="flex-1 min-w-0">
+                <h2 className="text-sm font-bold text-slate-900 leading-none">Announcements</h2>
+                <p className="text-xs text-slate-400 mt-0.5">Latest updates from management</p>
+              </div>
+              <button onClick={() => setAnnouncementsOpen(false)}
+                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors">
+                <X size={15}/>
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] px-5 py-4 space-y-3 bg-slate-50/50">
+              {annLoading ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-3">
+                  <Loader2 size={24} className="animate-spin text-amber-400"/>
+                  <p className="text-xs text-slate-400">Loading announcements…</p>
+                </div>
+              ) : announcements.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center">
+                    <Megaphone size={20} className="text-amber-300"/>
+                  </div>
+                  <p className="text-sm font-semibold text-slate-500">No announcements yet</p>
+                  <p className="text-xs text-slate-400">Check back later for updates</p>
+                </div>
+              ) : (
+                announcements.map((ann) => {
+                  const expanded = !!annExpanded[ann.id];
+                  const d = ann.createdAt
+                    ? (() => { const dt = ann.createdAt.toDate ? ann.createdAt.toDate() : new Date(ann.createdAt.seconds ? ann.createdAt.seconds * 1000 : ann.createdAt); return dt.toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }); })()
+                    : "—";
+                  return (
+                    <div key={ann.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3 transition-all">
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center shrink-0 mt-0.5">
+                          <Megaphone size={14} className="text-amber-500"/>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-slate-900 leading-snug">{ann.title}</p>
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1">
+                            <span className="text-[11px] text-slate-400">{d}</span>
+                            {ann.createdBy && (
+                              <span className="text-[11px] text-slate-400">by <span className="font-semibold text-slate-500">{ann.createdBy}</span></span>
+                            )}
+                          </div>
+                        </div>
+                        {ann.body && (
+                          <button
+                            onClick={() => setAnnExpanded(prev => ({ ...prev, [ann.id]: !prev[ann.id] }))}
+                            className="h-7 px-2.5 inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors shrink-0">
+                            {expanded ? <ChevronUp size={11}/> : <ChevronDown size={11}/>}
+                            {expanded ? "Less" : "More"}
+                          </button>
+                        )}
+                      </div>
+                      {!ann.body && (
+                        <div className="ml-11 h-px bg-slate-100"/>
+                      )}
+                      {ann.body && !expanded && (
+                        <p className="text-xs text-slate-500 ml-11 line-clamp-2 leading-relaxed">{ann.body}</p>
+                      )}
+                      {ann.body && expanded && (
+                        <div className="ml-11 p-3 bg-amber-50/60 border border-amber-100 rounded-xl">
+                          <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{ann.body}</p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-3 border-t border-slate-100 bg-white flex items-center justify-between">
+              <span className="text-xs text-slate-400">{announcements.length} announcement{announcements.length !== 1 ? "s" : ""}</span>
+              <button onClick={() => setAnnouncementsOpen(false)}
+                className="px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ══ CREATE CLIENT DIALOG — reuses shared Clientdialog ══ */}
       <Clientdialog
