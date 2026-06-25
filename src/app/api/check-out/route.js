@@ -166,7 +166,8 @@ export async function POST(req) {
       );
     }
 
-    const elapsedMs = Date.now() - new Date(checkInStart).getTime();
+    const elapsedMs   = Date.now() - new Date(checkInStart).getTime();
+    const elapsedSecs = Math.max(0, Math.floor(elapsedMs / 1000));
 
     let status = "";
     if (elapsedMs < workingMs - graceMs) {
@@ -192,6 +193,7 @@ export async function POST(req) {
       isCheckedout: true,
       startTime: null,
       checkoutTime: new Date().toISOString(),
+      checkoutDuration: elapsedSecs,
       attendanceid: "",
     });
 

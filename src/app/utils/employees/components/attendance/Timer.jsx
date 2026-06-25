@@ -8,11 +8,11 @@ const Timer = () => {
   const { user }                                 = useSelector((s) => s.User);
   const { isRunning, startTime: reduxStartTime } = useSelector((s) => s.Stopwatch);
 
-  const [fsCheckedin,    setFsCheckedin]    = useState(false);
-  const [fsCheckedout,   setFsCheckedout]   = useState(false);
-  const [fsStartTime,    setFsStartTime]    = useState(null);
-  const [fsCheckoutTime, setFsCheckoutTime] = useState(null);
-  const [elapsed,        setElapsed]        = useState(0);
+  const [fsCheckedin,       setFsCheckedin]       = useState(false);
+  const [fsCheckedout,      setFsCheckedout]      = useState(false);
+  const [fsStartTime,       setFsStartTime]       = useState(null);
+  const [fsCheckoutDuration, setFsCheckoutDuration] = useState(null);
+  const [elapsed,           setElapsed]           = useState(0);
 
   /* ── Firestore listener ── */
   useEffect(() => {
@@ -20,33 +20,39 @@ const Timer = () => {
     const unsub = onSnapshot(doc(db, "employees", user.employeeId), (snap) => {
       if (snap.exists()) {
         const d = snap.data();
-        setFsCheckedin(d.isCheckedin     || false);
-        setFsCheckedout(d.isCheckedout   || false);
-        setFsStartTime(d.startTime       || null);
-        setFsCheckoutTime(d.checkoutTime || null);
+        setFsCheckedin(d.isCheckedin          || false);
+        setFsCheckedout(d.isCheckedout        || false);
+        setFsStartTime(d.startTime            || null);
+        setFsCheckoutDuration(d.checkoutDuration != null ? d.checkoutDuration : null);
       }
     });
     return () => unsub();
   }, [user?.employeeId]);
 
-  const isCheckedout = fsCheckedout || user?.isCheckedout || false;
-  const active       = fsCheckedin || isRunning || isCheckedout;
-  const startTime    = isCheckedout
-    ? (fsCheckoutTime || user?.checkoutTime)
-    : (fsStartTime || reduxStartTime);
+  const isCheckedout  = fsCheckedout || user?.isCheckedout || false;
+  const checkInStart  = fsStartTime || reduxStartTime;
+  const activeTicking = (fsCheckedin || isRunning) && !isCheckedout;
 
   /* ── Tick every second ── */
   useEffect(() => {
-    if (!active || !startTime) { setElapsed(0); return; }
+    // After checkout: show frozen total work time saved by the API
+    if (isCheckedout) {
+      if (fsCheckoutDuration != null) {
+        setElapsed(fsCheckoutDuration);
+      }
+      return; // no interval — timer is frozen
+    }
+
+    if (!activeTicking || !checkInStart) { setElapsed(0); return; }
 
     const tick = () => {
-      const diff = Math.floor((Date.now() - new Date(startTime).getTime()) / 1000);
+      const diff = Math.floor((Date.now() - new Date(checkInStart).getTime()) / 1000);
       setElapsed(Math.max(0, diff));
     };
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [active, startTime]);
+  }, [activeTicking, checkInStart, isCheckedout, fsCheckoutDuration]);
 
   const fmt = (s) => {
     const h  = Math.floor(s / 3600);

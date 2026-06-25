@@ -137,7 +137,7 @@ const CheckOut = ({ isCheckedIn, isCheckedout, setIsCheckedout, setIsCheckedin, 
         dispatch(updateCheckOut(new Date().toISOString()));
         dispatch(resetTimer());
         setIsCheckedin(false);
-        setIsCheckedout(false);
+        setIsCheckedout(true);
         setElapsedSecs(0);
         setDialogOpen(false);
         setNote("");
