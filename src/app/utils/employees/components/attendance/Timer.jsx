@@ -8,11 +8,10 @@ const Timer = () => {
   const { user }                                 = useSelector((s) => s.User);
   const { isRunning, startTime: reduxStartTime } = useSelector((s) => s.Stopwatch);
 
-  const [fsCheckedin,       setFsCheckedin]       = useState(false);
-  const [fsCheckedout,      setFsCheckedout]      = useState(false);
-  const [fsStartTime,       setFsStartTime]       = useState(null);
-  const [fsCheckoutDuration, setFsCheckoutDuration] = useState(null);
-  const [elapsed,           setElapsed]           = useState(0);
+  const [fsCheckedin,  setFsCheckedin]  = useState(false);
+  const [fsCheckedout, setFsCheckedout] = useState(false);
+  const [fsStartTime,  setFsStartTime]  = useState(null);
+  const [elapsed,      setElapsed]      = useState(0);
 
   /* ── Firestore listener ── */
   useEffect(() => {
@@ -20,10 +19,9 @@ const Timer = () => {
     const unsub = onSnapshot(doc(db, "employees", user.employeeId), (snap) => {
       if (snap.exists()) {
         const d = snap.data();
-        setFsCheckedin(d.isCheckedin          || false);
-        setFsCheckedout(d.isCheckedout        || false);
-        setFsStartTime(d.startTime            || null);
-        setFsCheckoutDuration(d.checkoutDuration != null ? d.checkoutDuration : null);
+        setFsCheckedin(d.isCheckedin   || false);
+        setFsCheckedout(d.isCheckedout || false);
+        setFsStartTime(d.startTime     || null);
       }
     });
     return () => unsub();
@@ -35,12 +33,10 @@ const Timer = () => {
 
   /* ── Tick every second ── */
   useEffect(() => {
-    // After checkout: show frozen total work time saved by the API
+    // After checkout: reset to 0 and stop — do not count further
     if (isCheckedout) {
-      if (fsCheckoutDuration != null) {
-        setElapsed(fsCheckoutDuration);
-      }
-      return; // no interval — timer is frozen
+      setElapsed(0);
+      return;
     }
 
     if (!activeTicking || !checkInStart) { setElapsed(0); return; }
@@ -52,7 +48,7 @@ const Timer = () => {
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [activeTicking, checkInStart, isCheckedout, fsCheckoutDuration]);
+  }, [activeTicking, checkInStart, isCheckedout]);
 
   const fmt = (s) => {
     const h  = Math.floor(s / 3600);

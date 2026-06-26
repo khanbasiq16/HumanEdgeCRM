@@ -245,6 +245,8 @@ export async function POST(req) {
       attendanceid: attendanceid,
       isCheckedout: false,
       startTime: letstaketime,
+      checkoutDuration: null,
+      checkoutTime: null,
     });
 
 
