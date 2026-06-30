@@ -231,7 +231,7 @@ const Page = () => {
     try {
       await axios.post("/api/update-employee-reg-access", { employeeRegAccess: newVal });
       setEmpRegAccess(newVal);
-      if (newVal) setLinkDialog({ open: true, title: "Employee Registration Page", url: `${origin}/register` });
+      if (newVal) setLinkDialog({ open: true, title: "Employee Registration Page", url: `${origin}/register/employee` });
       else toast.success("Employee registration disabled");
     } catch { toast.error("Failed to update employee registration setting"); }
     finally { setEmpRegToggling(false); }
